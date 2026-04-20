@@ -307,10 +307,29 @@
     iconDiv.textContent = activeNote.icon || "📄";
   }
 
-  async function initEditor(data, noteId) {
-    if (editor) {
-      await editor.destroy();
+  async function destroyEditorInstance() {
+    if (!editor) {
+      return;
     }
+
+    const currentEditor = editor;
+    editor = null;
+
+    try {
+      if (currentEditor.isReady && typeof currentEditor.isReady.then === "function") {
+        await currentEditor.isReady;
+      }
+    } catch (error) {
+      console.warn("Editor.js 实例还没完全准备好，继续尝试清理。", error);
+    }
+
+    if (typeof currentEditor.destroy === "function") {
+      currentEditor.destroy();
+    }
+  }
+
+  async function initEditor(data, noteId) {
+    await destroyEditorInstance();
 
     const editorNoteId = noteId;
 
@@ -386,16 +405,22 @@
 
   async function switchNote(noteId, options) {
     const settings = options || {};
-
-    if (!settings.skipFlush && activeNoteId) {
-      await captureEditorState(activeNoteId);
-      await flushPendingSync(activeNoteId, "");
-    }
-
     const nextNote = getNoteById(noteId) || notes[0] || null;
 
     if (!nextNote) {
       return;
+    }
+
+    if (editor && activeNoteId === nextNote.id && !settings.forceReload) {
+      if (isMobileViewport()) {
+        closeSidebar();
+      }
+      return;
+    }
+
+    if (!settings.skipFlush && activeNoteId) {
+      await captureEditorState(activeNoteId);
+      await flushPendingSync(activeNoteId, "");
     }
 
     activeNoteId = nextNote.id;
@@ -622,10 +647,7 @@
       return;
     }
 
-    if (editor) {
-      await editor.destroy();
-      editor = null;
-    }
+    await destroyEditorInstance();
 
     const { error: deleteError } = await supabase
       .from(NOTE_TABLE)
