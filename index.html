@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的第一个 Vercel 网站</title>
+    <title>我的 Vercel 魔法网页</title>
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -11,32 +11,157 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f0f2f5;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
             color: #333;
+            overflow: hidden;
+            transition: background 0.5s ease;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3rem 4rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            transition: transform 0.5s ease;
         }
         h1 {
-            font-size: 3rem;
-            color: #0070f3;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #ff6b6b;
         }
         p {
             font-size: 1.2rem;
+            color: #555;
+            margin-bottom: 2rem;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        .card {
-            background: white;
-            padding: 2rem 4rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
+        button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        .emoji {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        /* 烟花粒子动画 */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: pop 1s cubic-bezier(0, .9, .57, 1) forwards;
+        }
+        @keyframes pop {
+            0% { transform: scale(1) translate(0, 0); opacity: 1; }
+            100% { transform: scale(0) translate(var(--tx), var(--ty)); opacity: 0; }
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>Hello World! 👋</h1>
-        <p>这是我部署在 Vercel 上的第一个网页。</p>
-        <p>太酷啦！</p>
+        <div class="emoji" id="emoji">🚀</div>
+        <h1>魔法实验室</h1>
+        <p id="message">点一下下面的按钮，看看会发生什么？</p>
+        <button id="magicBtn">施展魔法 ✨</button>
     </div>
+
+    <script>
+        const btn = document.getElementById('magicBtn');
+        const message = document.getElementById('message');
+        const emoji = document.getElementById('emoji');
+        const body = document.body;
+
+        const magicTricks = [
+            { text: "背景变色了！像不像夏天的汽水？", emoji: "🍹", bg: "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)" },
+            { text: "送你一个冷知识：草莓其实不是浆果，但香蕉是！", emoji: "🍌", bg: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)" },
+            { text: "给你变个小魔术，咻~ 页面翻转！", emoji: "🙃", bg: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)", flip: true },
+            { text: "你还可以试试在屏幕空白的地方随便点点！", emoji: "🎇", bg: "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)" },
+            { text: "这就是前端开发的魅力，用代码创造快乐！", emoji: "💻", bg: "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)" }
+        ];
+
+        let trickIndex = 0;
+
+        // 创建粒子爆炸效果
+        function createParticles(x, y) {
+            const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'];
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const size = Math.random() * 10 + 5;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 150 + 50;
+                particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+                
+                body.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 1000);
+            }
+        }
+
+        btn.addEventListener('click', (e) => {
+            // 点击按钮生成粒子
+            const rect = btn.getBoundingClientRect();
+            createParticles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+            // 切换内容和魔法效果
+            const trick = magicTricks[trickIndex % magicTricks.length];
+            message.textContent = trick.text;
+            emoji.textContent = trick.emoji;
+            body.style.background = trick.bg;
+            
+            if (trick.flip) {
+                document.querySelector('.card').style.transform = "rotate(180deg) scale(0.9)";
+                setTimeout(() => {
+                    document.querySelector('.card').style.transform = "rotate(0deg) scale(1)";
+                }, 1000);
+            } else {
+                document.querySelector('.card').style.transform = "rotate(0deg) scale(1)";
+            }
+
+            trickIndex++;
+            // 阻止冒泡，避免触发背景点击事件
+            e.stopPropagation();
+        });
+
+        // 在空白处点击产生烟花
+        document.addEventListener('click', (e) => {
+            createParticles(e.clientX, e.clientY);
+        });
+    </script>
 </body>
 </html>
