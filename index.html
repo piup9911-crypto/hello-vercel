@@ -3,211 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的 Vercel 魔法网页 2.0</title>
+    <title>我的 Mini Notion</title>
+    <!-- 引入 Editor.js 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <!-- 引入一些常用的块工具，比如标题、列表 -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script>
+
     <style>
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-            color: #333;
-            overflow: hidden;
-            transition: background 0.5s ease;
-            perspective: 1000px; /* 为 3D 效果提供景深 */
+            padding: 0;
+            background-color: #ffffff;
+            color: #37352f; /* Notion 的默认文字颜色 */
+            line-height: 1.5;
         }
-        .card-container {
-            perspective: 1000px;
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
         }
-        .card {
-            background: rgba(255, 255, 255, 0.85);
-            padding: 3rem 4rem;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            text-align: center;
-            backdrop-filter: blur(15px);
-            z-index: 10;
-            /* 开启 3D 效果 */
-            transform-style: preserve-3d;
-            transition: transform 0.1s ease-out; 
+
+        /* 顶部标题区 */
+        .page-header {
+            margin-bottom: 20px;
+            padding-left: 50px; /* 和 Editor.js 内容对齐 */
         }
-        /* 让里面的元素也有浮空感 */
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            color: #ff6b6b;
-            transform: translateZ(60px);
-        }
-        p {
-            font-size: 1.2rem;
-            color: #555;
-            margin-bottom: 2rem;
-            max-width: 300px;
-            margin-left: auto;
-            margin-right: auto;
-            transform: translateZ(40px);
-        }
-        button {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1.2rem;
-            border-radius: 50px;
+
+        .page-icon {
+            font-size: 78px;
+            margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.2s;
-            outline: none;
-            transform: translateZ(50px); /* 按钮也浮雕出来 */
-        }
-        button:hover {
-            transform: translateZ(50px) translateY(-2px) scale(1.05);
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
-        }
-        button:active {
-            transform: translateZ(50px) translateY(1px) scale(0.95);
-        }
-        .emoji {
-            font-size: 4rem;
-            margin-bottom: 1rem;
             display: inline-block;
-            animation: float 3s ease-in-out infinite;
-            transform: translateZ(80px); /* 飞得最高 */
+            transition: transform 0.2s;
+            user-select: none;
         }
-        @keyframes float {
-            0% { transform: translateZ(80px) translateY(0px); }
-            50% { transform: translateZ(80px) translateY(-20px); }
-            100% { transform: translateZ(80px) translateY(0px); }
+
+        .page-icon:hover {
+            transform: scale(1.1);
         }
-        /* 烟花粒子动画 */
-        .particle {
-            position: absolute;
-            pointer-events: none;
-            border-radius: 50%;
-            animation: pop 1s cubic-bezier(0, .9, .57, 1) forwards;
-            z-index: 100;
+
+        .page-title {
+            font-size: 40px;
+            font-weight: 700;
+            border: none;
+            outline: none;
+            width: 100%;
+            background: transparent;
+            color: #37352f;
+            margin: 0;
+            padding: 0;
         }
-        @keyframes pop {
-            0% { transform: scale(1) translate(0, 0); opacity: 1; }
-            100% { transform: scale(0) translate(var(--tx), var(--ty)); opacity: 0; }
+        
+        .page-title::placeholder {
+            color: #e0e0e0;
         }
-        /* 鼠标拖尾星光效果 */
-        .trail {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: fadeOut 0.6s linear forwards;
-            z-index: 5;
-            mix-blend-mode: overlay;
+
+        /* 状态提示 */
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: #999;
+            background: #f7f7f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
-        @keyframes fadeOut {
-            to { transform: scale(0); opacity: 0; }
+
+        .status.show {
+            opacity: 1;
+        }
+
+        /* 覆盖一些 Editor.js 的默认样式让它更像 Notion */
+        .codex-editor__redactor {
+            padding-bottom: 100px !important; /* 底部留白 */
+        }
+        .ce-block__content, .ce-toolbar__content {
+            max-width: 800px;
+        }
+        
+        /* 简单美化一下引用块 */
+        .cdx-quote {
+            border-left: 3px solid #37352f;
+            padding-left: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="card-container">
-        <div class="card" id="card">
-            <div class="emoji" id="emoji">🚀</div>
-            <h1>魔法实验室 2.0</h1>
-            <p id="message">晃动你的鼠标试试看，卡片是不是立体悬浮的？</p>
-            <button id="magicBtn">再次施展魔法 ✨</button>
+    <div class="status" id="save-status">已保存到本地</div>
+
+    <div class="container">
+        <!-- 页面头部 -->
+        <div class="page-header">
+            <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
+            <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
         </div>
+
+        <!-- Editor.js 的容器 -->
+        <div id="editorjs"></div>
     </div>
 
     <script>
-        const btn = document.getElementById('magicBtn');
-        const message = document.getElementById('message');
-        const emoji = document.getElementById('emoji');
-        const body = document.body;
-        const card = document.getElementById('card');
+        // 1. 初始化数据
+        const SAVED_DATA_KEY = 'mini-notion-data';
+        const SAVED_TITLE_KEY = 'mini-notion-title';
+        const SAVED_ICON_KEY = 'mini-notion-icon';
 
-        // 🌟 新魔法 1：超酷的 3D 鼠标跟随视差效果
-        document.addEventListener('mousemove', (e) => {
-            // 计算鼠标位置与屏幕中心的距离
-            const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
-            const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
-            // 应用 3D 旋转
-            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-        });
+        const titleInput = document.getElementById('page-title');
+        const iconDiv = document.getElementById('page-icon');
+        const statusDiv = document.getElementById('save-status');
 
-        // 🌟 新魔法 2：鼠标移动时的星光拖尾
-        document.addEventListener('mousemove', (e) => {
-            // 稍微控制一下生成频率，不然满屏都是星星
-            if(Math.random() > 0.4) return;
-            const trail = document.createElement('div');
-            trail.className = 'trail';
-            trail.style.left = e.pageX + 'px';
-            trail.style.top = e.pageY + 'px';
-            const colors = ['#ffffff', '#ffeb3b', '#7efff5', '#ff9ff3'];
-            trail.style.background = colors[Math.floor(Math.random() * colors.length)];
-            body.appendChild(trail);
-            
-            setTimeout(() => trail.remove(), 600);
-        });
+        // 恢复标题和图标
+        titleInput.value = localStorage.getItem(SAVED_TITLE_KEY) || '';
+        iconDiv.textContent = localStorage.getItem(SAVED_ICON_KEY) || '📝';
 
-        // 老魔法：冷知识和点击效果
-        const magicTricks = [
-            { text: "背景变色了！像不像夏天的汽水？", emoji: "🍹", bg: "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)" },
-            { text: "送你一个冷知识：草莓其实不是浆果，但香蕉是！", emoji: "🍌", bg: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)" },
-            { text: "给你变个小魔术，咻~ 页面疯狂旋转！", emoji: "🙃", bg: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)", flip: true },
-            { text: "你还可以试试在屏幕空白的地方随便点点！", emoji: "🎇", bg: "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)" },
-            { text: "这就是前端开发的魅力，用代码创造快乐！", emoji: "💻", bg: "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)" }
-        ];
-
-        let trickIndex = 0;
-
-        function createParticles(x, y) {
-            const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'];
-            for (let i = 0; i < 40; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                const size = Math.random() * 12 + 5;
-                particle.style.width = size + 'px';
-                particle.style.height = size + 'px';
-                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                particle.style.left = x + 'px';
-                particle.style.top = y + 'px';
-                
-                const angle = Math.random() * Math.PI * 2;
-                const distance = Math.random() * 200 + 50;
-                particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
-                particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
-                
-                body.appendChild(particle);
-                setTimeout(() => particle.remove(), 1000);
+        // 尝试从本地存储加载内容
+        let initialData = {};
+        try {
+            const saved = localStorage.getItem(SAVED_DATA_KEY);
+            if (saved) {
+                initialData = JSON.parse(saved);
             }
+        } catch (e) {
+            console.error('加载本地数据失败', e);
         }
 
-        btn.addEventListener('click', (e) => {
-            const rect = btn.getBoundingClientRect();
-            createParticles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        // 显示保存状态的动画
+        function showSaveStatus() {
+            statusDiv.classList.add('show');
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 2000);
+        }
 
-            const trick = magicTricks[trickIndex % magicTricks.length];
-            message.textContent = trick.text;
-            emoji.textContent = trick.emoji;
-            body.style.background = trick.bg;
+        // 2. 初始化 Editor.js
+        const editor = new EditorJS({
+            holder: 'editorjs',
+            placeholder: '点击这里开始输入... (选中文字可加粗/标记，左侧有加号+可添加组件)',
+            data: initialData,
             
-            if (trick.flip) {
-                // 结合现有的 3D 倾斜，加上 Z 轴旋转
-                card.style.transition = "transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-                const currentTransform = card.style.transform;
-                card.style.transform = currentTransform + " rotateZ(360deg) scale(0.5)";
-                setTimeout(() => {
-                    card.style.transition = "transform 0.1s ease-out"; // 恢复跟随动画的平滑度
-                }, 1000);
-            }
+            // 配置支持的块（像 Notion 一样）
+            tools: {
+                header: {
+                    class: Header,
+                    inlineToolbar: true,
+                    config: {
+                        placeholder: '输入标题',
+                        levels: [1, 2, 3],
+                        defaultLevel: 2
+                    }
+                },
+                list: {
+                    class: List,
+                    inlineToolbar: true,
+                },
+                checklist: {
+                    class: Checklist,
+                    inlineToolbar: true,
+                },
+                quote: {
+                    class: Quote,
+                    inlineToolbar: true,
+                },
+                Marker: {
+                    class: Marker,
+                    shortcut: 'CMD+SHIFT+M',
+                }
+            },
 
-            trickIndex++;
-            e.stopPropagation();
+            // 当内容发生改变时自动保存
+            onChange: async () => {
+                try {
+                    const outputData = await editor.save();
+                    localStorage.setItem(SAVED_DATA_KEY, JSON.stringify(outputData));
+                    showSaveStatus();
+                } catch (error) {
+                    console.error('保存失败:', error);
+                }
+            }
         });
 
-        document.addEventListener('click', (e) => {
-            createParticles(e.clientX, e.clientY);
+        // 3. 监听标题的改变并保存
+        titleInput.addEventListener('input', () => {
+            localStorage.setItem(SAVED_TITLE_KEY, titleInput.value);
+            showSaveStatus();
+        });
+
+        // 4. 一个好玩的小功能：点击图标随机更换 Emoji
+        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔'];
+        iconDiv.addEventListener('click', () => {
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            iconDiv.textContent = randomEmoji;
+            localStorage.setItem(SAVED_ICON_KEY, randomEmoji);
+            showSaveStatus();
         });
     </script>
 </body>
