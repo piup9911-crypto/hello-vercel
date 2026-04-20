@@ -15,19 +15,59 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #37352f; line-height: 1.5; }
         .container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
-        .page-header { margin-bottom: 20px; padding-left: 50px; }
+        .page-header { margin-bottom: 10px; padding-left: 50px; }
         .page-icon { font-size: 78px; margin-bottom: 10px; cursor: pointer; display: inline-block; transition: transform 0.2s; user-select: none; }
         .page-icon:hover { transform: scale(1.1); }
         .page-title { font-size: 40px; font-weight: 700; border: none; outline: none; width: 100%; background: transparent; color: #37352f; margin: 0; padding: 0; }
         .page-title::placeholder { color: #e0e0e0; }
+        
+        /* 快捷操作栏样式 */
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-left: 50px;
+        }
+        .action-btn {
+            background: #f7f7f5;
+            border: 1px solid #e8e8e3;
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: #37352f;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .action-btn:hover {
+            background: #e8e8e3;
+            transform: translateY(-1px);
+        }
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
         .status { position: fixed; top: 20px; right: 20px; font-size: 12px; color: #999; background: #f7f7f5; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: opacity 0.3s; z-index: 100;}
         .status.show { opacity: 1; }
         .codex-editor__redactor { padding-bottom: 100px !important; }
         .ce-block__content, .ce-toolbar__content { max-width: 800px; }
         .cdx-quote { border-left: 3px solid #37352f; padding-left: 14px; }
         
-        .nav-back { position:fixed; top:20px; left:20px; text-decoration:none; background:#f7f7f5; padding:8px 16px; border-radius:8px; color:#333; z-index:1000; font-size:14px; transition: background 0.2s; }
+        .nav-back { position:fixed; top:20px; left:20px; text-decoration:none; background:#f7f7f5; padding:8px 16px; border-radius:8px; color:#333; z-index:1000; font-size:14px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);}
         .nav-back:hover { background: #e8e8e3; }
+        
+        /* 帮助提示 */
+        .help-text {
+            color: #999;
+            font-size: 14px;
+            padding-left: 50px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -37,8 +77,20 @@
     <div class="container">
         <div class="page-header">
             <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
-            <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
+            <input type="text" class="page-title" id="page-title" placeholder="给你的笔记起个酷名字吧..." autocomplete="off">
         </div>
+        
+        <div class="help-text">💡 提示：点击下方按钮可以快速插入内容，或者在空白处直接打字：</div>
+        
+        <!-- 快捷操作栏 -->
+        <div class="action-bar">
+            <button class="action-btn" onclick="addBlock('paragraph')">✍️ 记点笔记</button>
+            <button class="action-btn" onclick="addBlock('header')">📌 插入大标题</button>
+            <button class="action-btn" onclick="addBlock('checklist')">✅ 待办清单</button>
+            <button class="action-btn" onclick="addBlock('list')">⚫ 圆点列表</button>
+            <button class="action-btn" onclick="addBlock('quote')">💬 引用金句</button>
+        </div>
+
         <div id="editorjs"></div>
     </div>
 
@@ -73,7 +125,7 @@
 
         const editor = new EditorJS({
             holder: 'editorjs',
-            placeholder: '点击这里开始输入... (选中文字可加粗/标记，左侧有加号+可添加组件)',
+            placeholder: '或者点击这里直接开始打字... (选中文字会弹出小菜单哦)',
             data: initialData,
             tools: {
                 header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
@@ -92,6 +144,31 @@
                 }
             }
         });
+
+        // 给按钮用的快捷插入功能
+        function addBlock(type) {
+            if (!editor) return;
+            
+            let data = {};
+            if (type === 'header') {
+                data = { text: '', level: 2 };
+            } else if (type === 'checklist') {
+                data = { items: [{text: '', checked: false}] };
+            } else if (type === 'list') {
+                data = { style: 'unordered', items: [] };
+            }
+            
+            // 在编辑器末尾插入新块
+            editor.blocks.insert(type, data);
+            
+            // 滚动到最下面，体验更好
+            setTimeout(() => {
+                window.scrollTo({
+                    top: document.body.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
+        }
 
         titleInput.addEventListener('input', () => {
             localStorage.setItem(SAVED_TITLE_KEY, titleInput.value);
