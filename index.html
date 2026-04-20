@@ -49,9 +49,6 @@
         .card:nth-child(2):hover {
             border-color: #37352f;
         }
-        .card:nth-child(3):hover {
-            border-color: #8b5cf6;
-        }
         .icon {
             font-size: 4rem;
             margin-bottom: 1rem;
@@ -64,6 +61,47 @@
             margin: 0;
             color: #666;
             line-height: 1.5;
+        }
+        .secret-trigger {
+            position: fixed;
+            right: 22px;
+            bottom: 20px;
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #c4b5fd;
+            background: rgba(255,255,255,0.42);
+            border: 1px solid rgba(196,181,253,0.28);
+            box-shadow: 0 10px 24px rgba(139,92,246,0.08);
+            backdrop-filter: blur(10px);
+            opacity: 0.42;
+            transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            font-size: 14px;
+        }
+        .secret-trigger:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(139,92,246,0.14);
+            border-color: rgba(139,92,246,0.48);
+        }
+        .secret-trigger:focus-visible {
+            opacity: 1;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(139,92,246,0.12), 0 14px 30px rgba(139,92,246,0.16);
+        }
+        .secret-dot {
+            line-height: 1;
+            transform: translateY(-1px);
+        }
+        @media (max-width: 720px) {
+            .secret-trigger {
+                right: 16px;
+                bottom: 16px;
+            }
         }
     </style>
 </head>
@@ -80,11 +118,9 @@
             <h2>Mini Notion</h2>
             <p>基于本地存储的无干扰极简编辑器</p>
         </a>
-        <a href="secret-diary.html" class="card">
-            <div class="icon">🤍</div>
-            <h2>秘密日记</h2>
-            <p>写给自己看的私密房间，支持本地保存、心情标签、搜索与导出</p>
-        </a>
     </div>
+    <a href="secret-diary.html" class="secret-trigger" aria-label="打开秘密日记" title="打开秘密日记">
+        <span class="secret-dot">✦</span>
+    </a>
 </body>
 </html>
