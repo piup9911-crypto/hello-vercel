@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的 Mini Notion</title>
-    <!-- 引入 Editor.js 核心库 -->
+    
+    <!-- 引入 Editor.js 核心库与插件 -->
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.6"></script>
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.9"></script>
@@ -13,12 +14,161 @@
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #37352f; line-height: 1.5; }
-        .container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+        /* 基础样式与布局重置 */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: #ffffff; 
+            color: #37352f; 
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 280px;
+            background: #f7f7f5;
+            border-right: 1px solid #e8e8e3;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s;
+        }
+
+        .sidebar-header {
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .nav-back {
+            text-decoration: none;
+            color: #787774;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav-back:hover { background: #e8e8e3; }
+
+        .new-btn {
+            background: #ffffff;
+            border: 1px solid #e8e8e3;
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #37352f;
+            transition: all 0.2s;
+            text-align: left;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .new-btn:hover { background: #f0f0ea; }
+
+        .note-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px 20px 12px;
+        }
+
+        .note-item {
+            padding: 10px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .note-item:hover { background: #e8e8e3; }
+        .note-item.active { background: #e8e8e3; }
+
+        .note-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #37352f;
+        }
+
+        .note-item-time {
+            font-size: 12px;
+            color: #999;
+            margin-left: 26px; /* 对齐图标后方 */
+        }
+
+        .delete-btn {
+            position: absolute;
+            right: 8px;
+            top: 10px;
+            font-size: 12px;
+            color: #999;
+            display: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .note-item:hover .delete-btn { display: block; }
+        .delete-btn:hover { background: #dcdcdc; color: #d9534f; }
+
+        /* 主内容区样式 */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            background: #ffffff;
+        }
+
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 80px 40px; 
+        }
+
         .page-header { margin-bottom: 10px; padding-left: 50px; }
-        .page-icon { font-size: 78px; margin-bottom: 10px; cursor: pointer; display: inline-block; transition: transform 0.2s; user-select: none; }
-        .page-icon:hover { transform: scale(1.1); }
-        .page-title { font-size: 40px; font-weight: 700; border: none; outline: none; width: 100%; background: transparent; color: #37352f; margin: 0; padding: 0; }
+        
+        .page-icon { 
+            font-size: 78px; 
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            display: inline-block; 
+            transition: transform 0.2s; 
+            user-select: none; 
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .page-icon:hover { transform: scale(1.05); background: #f7f7f5; }
+        
+        .page-title { 
+            font-size: 40px; 
+            font-weight: 700; 
+            border: none; 
+            outline: none; 
+            width: 100%; 
+            background: transparent; 
+            color: #37352f; 
+            margin: 0; 
+            padding: 0; 
+        }
         .page-title::placeholder { color: #e0e0e0; }
         
         /* 快捷操作栏样式 */
@@ -29,208 +179,335 @@
             margin-bottom: 30px;
             padding-left: 50px;
         }
+
         .action-btn {
-            background: #f7f7f5;
+            background: #ffffff;
             border: 1px solid #e8e8e3;
-            padding: 8px 14px;
-            border-radius: 8px;
-            color: #37352f;
-            font-size: 14px;
-            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: #787774;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             gap: 6px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .action-btn:hover {
-            background: #e8e8e3;
-            transform: translateY(-1px);
-        }
-        .action-btn:active {
-            transform: translateY(0);
         }
 
-        .status { position: fixed; top: 20px; right: 20px; font-size: 12px; color: #999; background: #f7f7f5; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: opacity 0.3s; z-index: 100;}
-        .status.show { opacity: 1; }
-        .codex-editor__redactor { padding-bottom: 100px !important; }
+        .action-btn:hover { background: #f7f7f5; color: #37352f; }
+        
+        /* 状态提示 */
+        .status { 
+            position: fixed; 
+            top: 20px; 
+            right: 30px; 
+            font-size: 12px; 
+            color: #787774; 
+            background: #ffffff; 
+            border: 1px solid #e8e8e3;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            opacity: 0; 
+            transition: opacity 0.3s, transform 0.3s; 
+            transform: translateY(-10px);
+            z-index: 100;
+        }
+        .status.show { opacity: 1; transform: translateY(0); }
+        
+        /* 覆盖 Editor.js 样式 */
+        .codex-editor__redactor { padding-bottom: 150px !important; }
         .ce-block__content, .ce-toolbar__content { max-width: 800px; }
         .cdx-quote { border-left: 3px solid #37352f; padding-left: 14px; }
-        
-        .nav-back { position:fixed; top:20px; left:20px; text-decoration:none; background:#f7f7f5; padding:8px 16px; border-radius:8px; color:#333; z-index:1000; font-size:14px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);}
-        .nav-back:hover { background: #e8e8e3; }
-        
-        /* 帮助提示 */
-        .help-text {
-            color: #999;
-            font-size: 14px;
-            padding-left: 50px;
-            margin-bottom: 15px;
-        }
+        .help-text { color: #999; font-size: 13px; padding-left: 50px; margin-bottom: 15px; }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c0c0c0; }
     </style>
 </head>
 <body>
-    <a href="index.html" class="nav-back">🏠 返回主页</a>
-    <div class="status" id="save-status">已保存到本地</div>
 
-    <div class="container">
-        <div class="page-header">
-            <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
-            <input type="text" class="page-title" id="page-title" placeholder="给你的笔记起个酷名字吧..." autocomplete="off">
+    <!-- 侧边栏：文档列表区 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="nav-back">🏠 返回应用主页</a>
+            <button class="new-btn" onclick="createNewNote()">➕ 新建笔记文档</button>
         </div>
-        
-        <div class="help-text">💡 提示：点击下方按钮可以快速插入内容，立刻开始打字：</div>
-        
-        <!-- 快捷操作栏 -->
-        <div class="action-bar">
-            <button class="action-btn" onclick="addBlock('paragraph')">✍️ 记点笔记</button>
-            <button class="action-btn" onclick="addBlock('header')">📌 插入大标题</button>
-            <button class="action-btn" onclick="addBlock('checklist')">✅ 待办清单</button>
-            <button class="action-btn" onclick="addBlock('list')">⚫ 圆点列表</button>
-            <button class="action-btn" onclick="addBlock('quote')">💬 引用金句</button>
+        <div class="note-list" id="note-list">
+            <!-- 动态生成的笔记列表 -->
         </div>
+    </div>
 
-        <div id="editorjs"></div>
+    <!-- 主编辑区 -->
+    <div class="main-content" id="main-scroll-area">
+        <div class="status" id="save-status">☁️ 已自动保存到本地</div>
+
+        <div class="container">
+            <div class="page-header">
+                <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
+                <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
+            </div>
+            
+            <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字：</div>
+            
+            <div class="action-bar">
+                <button class="action-btn" onclick="addBlock('paragraph')">✍️ 记点笔记</button>
+                <button class="action-btn" onclick="addBlock('header')">📌 插入标题</button>
+                <button class="action-btn" onclick="addBlock('checklist')">✅ 待办清单</button>
+                <button class="action-btn" onclick="addBlock('list')">⚫ 圆点列表</button>
+                <button class="action-btn" onclick="addBlock('quote')">💬 引用金句</button>
+            </div>
+
+            <div id="editorjs"></div>
+        </div>
     </div>
 
     <script>
-        const SAVED_DATA_KEY = 'mini-notion-data';
-        const SAVED_TITLE_KEY = 'mini-notion-title';
-        const SAVED_ICON_KEY = 'mini-notion-icon';
+        // 核心状态管理
+        const NOTES_KEY = 'mini-notion-notes';
+        const ACTIVE_ID_KEY = 'mini-notion-active-id';
 
+        let notes = JSON.parse(localStorage.getItem(NOTES_KEY));
+        let activeNoteId = localStorage.getItem(ACTIVE_ID_KEY);
+        let editor = null;
+
+        // 数据迁移逻辑：如果用户以前用过老版本，把老数据迁移到新版本格式中
+        if (!notes) {
+            notes = [];
+            const oldData = localStorage.getItem('mini-notion-data');
+            const oldTitle = localStorage.getItem('mini-notion-title') || '';
+            const oldIcon = localStorage.getItem('mini-notion-icon') || '📝';
+            
+            const defaultId = Date.now().toString();
+            notes.push({ id: defaultId, title: oldTitle, icon: oldIcon, updatedAt: Date.now() });
+            activeNoteId = defaultId;
+            
+            if (oldData) {
+                localStorage.setItem('mini-notion-doc-' + defaultId, oldData);
+            }
+            
+            // 清理老版本遗留
+            localStorage.removeItem('mini-notion-data');
+            localStorage.removeItem('mini-notion-title');
+            localStorage.removeItem('mini-notion-icon');
+        }
+
+        // 确保 activeNoteId 合法
+        if (!notes.find(n => n.id === activeNoteId)) {
+            activeNoteId = notes[0].id;
+        }
+
+        // DOM 元素引用
         const titleInput = document.getElementById('page-title');
         const iconDiv = document.getElementById('page-icon');
         const statusDiv = document.getElementById('save-status');
+        const noteListDiv = document.getElementById('note-list');
 
-        titleInput.value = localStorage.getItem(SAVED_TITLE_KEY) || '';
-        iconDiv.textContent = localStorage.getItem(SAVED_ICON_KEY) || '📝';
-
-        let initialData = {};
-        try {
-            const saved = localStorage.getItem(SAVED_DATA_KEY);
-            if (saved) {
-                initialData = JSON.parse(saved);
-            }
-        } catch (e) {
-            console.error('加载本地数据失败', e);
+        // 保存索引
+        function saveNotesIndex() {
+            localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+            localStorage.setItem(ACTIVE_ID_KEY, activeNoteId);
         }
 
+        // 格式化时间戳
+        function formatDate(timestamp) {
+            const d = new Date(timestamp);
+            const today = new Date();
+            const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+            
+            const timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            if (isToday) {
+                return `今天 ${timeStr}`;
+            }
+            return `${d.getMonth()+1}月${d.getDate()}日 ${timeStr}`;
+        }
+
+        // 渲染左侧边栏
+        function renderSidebar() {
+            noteListDiv.innerHTML = '';
+            // 按更新时间降序排序（最新的在最上面）
+            const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            sortedNotes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
+                div.onclick = () => switchNote(note.id);
+                
+                const titleStr = note.title.trim() === '' ? '无标题' : note.title;
+                
+                div.innerHTML = `
+                    <div class="note-item-header">
+                        <span>${note.icon}</span>
+                        <span>${titleStr}</span>
+                    </div>
+                    <div class="note-item-time">编辑于 ${formatDate(note.updatedAt)}</div>
+                    ${notes.length > 1 ? `<div class="delete-btn" title="删除文档" onclick="deleteNote(event, '${note.id}')">🗑️</div>` : ''}
+                `;
+                noteListDiv.appendChild(div);
+            });
+        }
+
+        // 显示保存动画
         function showSaveStatus() {
             statusDiv.classList.add('show');
-            setTimeout(() => {
-                statusDiv.classList.remove('show');
-            }, 2000);
+            setTimeout(() => statusDiv.classList.remove('show'), 2000);
         }
 
-        const editor = new EditorJS({
-            holder: 'editorjs',
-            placeholder: '或者点击这里直接开始打字... (选中文字会弹出小菜单哦)',
-            data: initialData,
-            tools: {
-                header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
-                list: { class: EditorjsList, inlineToolbar: true },
-                checklist: { class: Checklist, inlineToolbar: true },
-                quote: { class: Quote, inlineToolbar: true },
-                marker: { class: Marker, shortcut: 'CMD+SHIFT+M' }
-            },
-            // 添加 i18n 中文配置
-            i18n: {
-                messages: {
-                    ui: {
-                        "blockTunes": {
-                            "toggler": {
-                                "Click to tune": "点击调整设置",
-                                "or drag to move": "或拖动以移动"
+        // 初始化编辑器
+        async function initEditor(data) {
+            if (editor) {
+                await editor.destroy();
+            }
+            
+            editor = new EditorJS({
+                holder: 'editorjs',
+                placeholder: '或者点击这里直接开始打字... (选中文字会弹出设置菜单哦)',
+                data: data,
+                tools: {
+                    header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
+                    list: { class: EditorjsList, inlineToolbar: true },
+                    checklist: { class: Checklist, inlineToolbar: true },
+                    quote: { class: Quote, inlineToolbar: true },
+                    marker: { class: Marker, shortcut: 'CMD+SHIFT+M' }
+                },
+                i18n: {
+                    messages: {
+                        ui: {
+                            "blockTunes": {
+                                "toggler": {
+                                    // 修复了重复和啰嗦的提示语
+                                    "Click to tune": "模块设置",
+                                    "or drag to move": "(拖拽可移动)" 
+                                }
                             },
+                            "inlineToolbar": { "converter": { "Convert to": "转换为" } },
+                            "toolbar": { "toolbox": { "Add": "添加组件" } }
                         },
-                        "inlineToolbar": {
-                            "converter": {
-                                "Convert to": "转换为"
-                            }
+                        toolNames: {
+                            "Text": "正文", "Heading": "标题", "List": "列表", 
+                            "Checklist": "待办清单", "Quote": "引用", "Marker": "高亮", 
+                            "Bold": "加粗", "Italic": "斜体", "Link": "链接"
                         },
-                        "toolbar": {
-                            "toolbox": {
-                                "Add": "添加组件"
-                            }
-                        }
-                    },
-                    toolNames: {
-                        "Text": "正文",
-                        "Heading": "标题",
-                        "List": "列表",
-                        "Checklist": "待办清单",
-                        "Quote": "引用",
-                        "Marker": "高亮",
-                        "Bold": "加粗",
-                        "Italic": "斜体",
-                        "Link": "链接",
-                    },
-                    blockTunes: {
-                        "delete": {
-                            "Delete": "删除"
-                        },
-                        "moveUp": {
-                            "Move up": "上移"
-                        },
-                        "moveDown": {
-                            "Move down": "下移"
+                        blockTunes: {
+                            "delete": { "Delete": "删除模块" }, 
+                            "moveUp": { "Move up": "向上移动" }, 
+                            "moveDown": { "Move down": "向下移动" }
                         }
                     }
+                },
+                onChange: async () => {
+                    try {
+                        const outputData = await editor.save();
+                        localStorage.setItem('mini-notion-doc-' + activeNoteId, JSON.stringify(outputData));
+                        
+                        const activeNote = notes.find(n => n.id === activeNoteId);
+                        if (activeNote) {
+                            activeNote.updatedAt = Date.now();
+                            saveNotesIndex();
+                            renderSidebar();
+                        }
+                        showSaveStatus();
+                    } catch (error) {
+                        console.error('保存失败:', error);
+                    }
                 }
-            },
-            onChange: async () => {
-                try {
-                    const outputData = await editor.save();
-                    localStorage.setItem(SAVED_DATA_KEY, JSON.stringify(outputData));
-                    showSaveStatus();
-                } catch (error) {
-                    console.error('保存失败:', error);
+            });
+        }
+
+        // 切换笔记
+        async function switchNote(id) {
+            if (activeNoteId === id && editor) return;
+            
+            activeNoteId = id;
+            const note = notes.find(n => n.id === id);
+            
+            titleInput.value = note.title;
+            iconDiv.textContent = note.icon;
+            
+            saveNotesIndex();
+            renderSidebar();
+            
+            const docData = JSON.parse(localStorage.getItem('mini-notion-doc-' + id)) || {};
+            await initEditor(docData);
+        }
+
+        // 新建笔记
+        function createNewNote() {
+            const newId = Date.now().toString();
+            const newNote = { id: newId, title: '', icon: '📄', updatedAt: Date.now() };
+            notes.push(newNote);
+            switchNote(newId);
+        }
+
+        // 删除笔记
+        function deleteNote(event, id) {
+            event.stopPropagation();
+            if (confirm('确定要删除这篇文档吗？删除后无法恢复！')) {
+                notes = notes.filter(n => n.id !== id);
+                localStorage.removeItem('mini-notion-doc-' + id);
+                
+                if (activeNoteId === id) {
+                    switchNote(notes[0].id);
+                } else {
+                    saveNotesIndex();
+                    renderSidebar();
                 }
+            }
+        }
+
+        // 监听标题修改
+        titleInput.addEventListener('input', () => {
+            const activeNote = notes.find(n => n.id === activeNoteId);
+            if (activeNote) {
+                activeNote.title = titleInput.value;
+                activeNote.updatedAt = Date.now();
+                saveNotesIndex();
+                renderSidebar();
+                showSaveStatus();
             }
         });
 
-        // 给按钮用的快捷插入功能
+        // 监听图标修改
+        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔', '🌈', '🔥', '📄', '📅', '🎉', '🏖️'];
+        iconDiv.addEventListener('click', () => {
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            iconDiv.textContent = randomEmoji;
+            const activeNote = notes.find(n => n.id === activeNoteId);
+            if (activeNote) {
+                activeNote.icon = randomEmoji;
+                activeNote.updatedAt = Date.now();
+                saveNotesIndex();
+                renderSidebar();
+                showSaveStatus();
+            }
+        });
+
+        // 快捷插入按钮
         function addBlock(type) {
             if (!editor) return;
-            
             let data = {};
-            if (type === 'header') {
-                data = { text: '', level: 2 };
-            } else if (type === 'checklist') {
-                data = { items: [{text: '', checked: false}] };
-            } else if (type === 'list') {
-                data = { style: 'unordered', items: [] };
-            }
+            if (type === 'header') data = { text: '', level: 2 };
+            else if (type === 'checklist') data = { items: [{text: '', checked: false}] };
+            else if (type === 'list') data = { style: 'unordered', items: [] };
             
-            // 获取当前块数量，以便插入到最后
             const index = editor.blocks.getBlocksCount();
-            
-            // 第五个参数设置为 true，代表插入后需要获取焦点
             editor.blocks.insert(type, data, {}, index, true);
             
-            // 确保光标强制聚焦到新插入的块，并且页面滚动过去
             setTimeout(() => {
                 editor.caret.setToLastBlock('end');
-                window.scrollTo({
-                    top: document.body.scrollHeight,
+                document.getElementById('main-scroll-area').scrollTo({
+                    top: document.getElementById('main-scroll-area').scrollHeight,
                     behavior: 'smooth'
                 });
             }, 50);
         }
 
-        titleInput.addEventListener('input', () => {
-            localStorage.setItem(SAVED_TITLE_KEY, titleInput.value);
-            showSaveStatus();
-        });
-
-        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔'];
-        iconDiv.addEventListener('click', () => {
-            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            iconDiv.textContent = randomEmoji;
-            localStorage.setItem(SAVED_ICON_KEY, randomEmoji);
-            showSaveStatus();
-        });
+        // 页面首次加载
+        renderSidebar();
+        switchNote(activeNoteId);
     </script>
 </body>
 </html>
