@@ -113,7 +113,7 @@
         .note-item-time {
             font-size: 12px;
             color: #999;
-            margin-left: 26px; /* 对齐图标后方 */
+            margin-left: 26px;
         }
 
         .delete-btn {
@@ -221,6 +221,12 @@
         .cdx-quote { border-left: 3px solid #37352f; padding-left: 14px; }
         .help-text { color: #999; font-size: 13px; padding-left: 50px; margin-bottom: 15px; }
 
+        /* 给 placeholder 加入一点强调效果 */
+        .ce-paragraph[data-placeholder]:empty::before {
+            color: #d1d1d1 !important;
+            font-style: italic;
+        }
+
         /* 滚动条美化 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -247,8 +253,8 @@
 
         <div class="container">
             <div class="page-header">
-                <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
-                <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
+                <div class="page-icon" id="page-icon" title="点击随机更换图标">📄</div>
+                <input type="text" class="page-title" id="page-title" placeholder="在这里输入文档标题..." autocomplete="off">
             </div>
             
             <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字：</div>
@@ -274,25 +280,12 @@
         let activeNoteId = localStorage.getItem(ACTIVE_ID_KEY);
         let editor = null;
 
-        // 数据迁移逻辑：如果用户以前用过老版本，把老数据迁移到新版本格式中
+        // 数据迁移与初始生成逻辑
         if (!notes) {
             notes = [];
-            const oldData = localStorage.getItem('mini-notion-data');
-            const oldTitle = localStorage.getItem('mini-notion-title') || '';
-            const oldIcon = localStorage.getItem('mini-notion-icon') || '📝';
-            
             const defaultId = Date.now().toString();
-            notes.push({ id: defaultId, title: oldTitle, icon: oldIcon, updatedAt: Date.now() });
+            notes.push({ id: defaultId, title: '', icon: '📄', updatedAt: Date.now() });
             activeNoteId = defaultId;
-            
-            if (oldData) {
-                localStorage.setItem('mini-notion-doc-' + defaultId, oldData);
-            }
-            
-            // 清理老版本遗留
-            localStorage.removeItem('mini-notion-data');
-            localStorage.removeItem('mini-notion-title');
-            localStorage.removeItem('mini-notion-icon');
         }
 
         // 确保 activeNoteId 合法
@@ -305,6 +298,46 @@
         const iconDiv = document.getElementById('page-icon');
         const statusDiv = document.getElementById('save-status');
         const noteListDiv = document.getElementById('note-list');
+
+        // ==== 垃圾回收机制：清理空文档 ====
+        function cleanupEmptyNotes(keepId) {
+            const validNotes = [];
+            notes.forEach(note => {
+                // 如果是我们正在切换去的笔记，或者刚新建的笔记，强制保留
+                if (note.id === keepId) {
+                    validNotes.push(note);
+                    return;
+                }
+                
+                let isEmpty = note.title.trim() === '';
+                const docStr = localStorage.getItem('mini-notion-doc-' + note.id);
+                
+                if (docStr) {
+                    try {
+                        const docData = JSON.parse(docStr);
+                        if (docData.blocks && docData.blocks.length > 0) {
+                            if (docData.blocks.length === 1 && docData.blocks[0].type === 'paragraph') {
+                                const text = docData.blocks[0].data.text || '';
+                                // 过滤空格和换行符
+                                if (text.replace(/&nbsp;/g, '').replace(/<br>/g, '').trim() !== '') {
+                                    isEmpty = false;
+                                }
+                            } else {
+                                isEmpty = false;
+                            }
+                        }
+                    } catch (e) {}
+                }
+                
+                if (!isEmpty) {
+                    validNotes.push(note);
+                } else {
+                    // 清理本地存储的废弃数据
+                    localStorage.removeItem('mini-notion-doc-' + note.id);
+                }
+            });
+            notes = validNotes;
+        }
 
         // 保存索引
         function saveNotesIndex() {
@@ -328,7 +361,6 @@
         // 渲染左侧边栏
         function renderSidebar() {
             noteListDiv.innerHTML = '';
-            // 按更新时间降序排序（最新的在最上面）
             const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
             
             sortedNotes.forEach(note => {
@@ -336,7 +368,7 @@
                 div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
                 div.onclick = () => switchNote(note.id);
                 
-                const titleStr = note.title.trim() === '' ? '无标题' : note.title;
+                const titleStr = note.title.trim() === '' ? '无标题笔记' : note.title;
                 
                 div.innerHTML = `
                     <div class="note-item-header">
@@ -350,7 +382,6 @@
             });
         }
 
-        // 显示保存动画
         function showSaveStatus() {
             statusDiv.classList.add('show');
             setTimeout(() => statusDiv.classList.remove('show'), 2000);
@@ -364,7 +395,8 @@
             
             editor = new EditorJS({
                 holder: 'editorjs',
-                placeholder: '或者点击这里直接开始打字... (选中文字会弹出设置菜单哦)',
+                // 让初始的空状态非常明显
+                placeholder: '在这里开始输入正文笔记... (选中文字可加粗/高亮)',
                 data: data,
                 tools: {
                     header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
@@ -377,22 +409,18 @@
                     messages: {
                         ui: {
                             "blockTunes": {
-                                "toggler": {
-                                    // 修复了重复和啰嗦的提示语
-                                    "Click to tune": "模块设置",
-                                    "or drag to move": "(拖拽可移动)" 
-                                }
+                                "toggler": { "Click to tune": "模块设置", "or drag to move": "(拖拽可移动)" }
                             },
                             "inlineToolbar": { "converter": { "Convert to": "转换为" } },
                             "toolbar": { "toolbox": { "Add": "添加组件" } }
                         },
                         toolNames: {
-                            "Text": "正文", "Heading": "标题", "List": "列表", 
-                            "Checklist": "待办清单", "Quote": "引用", "Marker": "高亮", 
-                            "Bold": "加粗", "Italic": "斜体", "Link": "链接"
+                            "Text": "正文笔记", "Heading": "大标题", "List": "圆点列表", 
+                            "Checklist": "待办清单", "Quote": "引用片段", "Marker": "高亮标记", 
+                            "Bold": "加粗", "Italic": "斜体", "Link": "插入链接"
                         },
                         blockTunes: {
-                            "delete": { "Delete": "删除模块" }, 
+                            "delete": { "Delete": "删除该模块" }, 
                             "moveUp": { "Move up": "向上移动" }, 
                             "moveDown": { "Move down": "向下移动" }
                         }
@@ -421,6 +449,23 @@
         async function switchNote(id) {
             if (activeNoteId === id && editor) return;
             
+            // 切换前先保存当前编辑器数据
+            if (editor) {
+                try {
+                    const outputData = await editor.save();
+                    localStorage.setItem('mini-notion-doc-' + activeNoteId, JSON.stringify(outputData));
+                } catch(e){}
+            }
+
+            // 切换前清理垃圾（除了即将要切换去的这个笔记）
+            cleanupEmptyNotes(id);
+            
+            // 如果清理后发现目标 ID 被删了（理论上不会），回退保护
+            if (!notes.find(n => n.id === id)) {
+                if(notes.length === 0) createNewNote();
+                else id = notes[0].id;
+            }
+
             activeNoteId = id;
             const note = notes.find(n => n.id === id);
             
@@ -436,6 +481,9 @@
 
         // 新建笔记
         function createNewNote() {
+            // 新建前清理一波以前产生的空文档
+            cleanupEmptyNotes(activeNoteId);
+
             const newId = Date.now().toString();
             const newNote = { id: newId, title: '', icon: '📄', updatedAt: Date.now() };
             notes.push(newNote);
@@ -445,12 +493,16 @@
         // 删除笔记
         function deleteNote(event, id) {
             event.stopPropagation();
-            if (confirm('确定要删除这篇文档吗？删除后无法恢复！')) {
+            if (confirm('确定要彻底删除这篇文档吗？')) {
                 notes = notes.filter(n => n.id !== id);
                 localStorage.removeItem('mini-notion-doc-' + id);
                 
-                if (activeNoteId === id) {
-                    switchNote(notes[0].id);
+                if (notes.length === 0) {
+                    createNewNote(); // 删空了就自动建一个新的
+                } else if (activeNoteId === id) {
+                    // 如果删的是当前看的，就跳到最新的一篇
+                    const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+                    switchNote(sortedNotes[0].id);
                 } else {
                     saveNotesIndex();
                     renderSidebar();
@@ -471,7 +523,7 @@
         });
 
         // 监听图标修改
-        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔', '🌈', '🔥', '📄', '📅', '🎉', '🏖️'];
+        const emojis = ['📄', '📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔', '🌈', '🔥', '📅', '🎉', '🏖️'];
         iconDiv.addEventListener('click', () => {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             iconDiv.textContent = randomEmoji;
@@ -505,7 +557,16 @@
             }, 50);
         }
 
-        // 页面首次加载
+        // ====== 页面首次加载 ======
+        // 进入页面前，先做一次全盘清理（保留当前记忆的最后那篇，防止它被误删）
+        cleanupEmptyNotes(activeNoteId);
+        if (notes.length === 0) {
+            // 如果所有文档都是空的被清掉了，就生成一篇崭新的
+            const newId = Date.now().toString();
+            notes.push({ id: newId, title: '', icon: '📄', updatedAt: Date.now() });
+            activeNoteId = newId;
+        }
+        
         renderSidebar();
         switchNote(activeNoteId);
     </script>
