@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的 Mini Notion</title>
-    
+
     <!-- 引入 Editor.js 核心库与插件 -->
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.6"></script>
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.8"></script>
@@ -14,26 +14,33 @@
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0"></script>
 
     <style>
-        /* 基础样式与布局重置 */
-        body { 
-            margin: 0; 
-            padding: 0; 
-            display: flex; 
-            height: 100vh; 
-            overflow: hidden; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background: #ffffff; 
-            color: #37352f; 
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #ffffff;
+            color: #37352f;
         }
 
-        /* 侧边栏样式 */
+        .mobile-overlay {
+            display: none;
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
         .sidebar {
             width: 280px;
             background: #f7f7f5;
             border-right: 1px solid #e8e8e3;
             display: flex;
             flex-direction: column;
-            transition: width 0.2s;
+            transition: width 0.2s, transform 0.25s ease;
+            z-index: 30;
         }
 
         .sidebar-header {
@@ -56,9 +63,12 @@
             transition: background 0.2s;
         }
 
-        .nav-back:hover { background: #e8e8e3; }
+        .nav-back:hover {
+            background: #e8e8e3;
+        }
 
-        .new-btn {
+        .new-btn,
+        .utility-btn {
             background: #ffffff;
             border: 1px solid #e8e8e3;
             padding: 10px 12px;
@@ -75,7 +85,33 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
 
-        .new-btn:hover { background: #f0f0ea; }
+        .new-btn:hover,
+        .utility-btn:hover {
+            background: #f0f0ea;
+        }
+
+        .utility-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .utility-btn {
+            justify-content: center;
+            font-size: 13px;
+            padding: 9px 10px;
+        }
+
+        .sidebar-hint {
+            color: #999;
+            font-size: 12px;
+            line-height: 1.6;
+            padding: 0 2px;
+        }
+
+        .file-input {
+            display: none;
+        }
 
         .note-list {
             flex: 1;
@@ -94,8 +130,10 @@
             position: relative;
         }
 
-        .note-item:hover { background: #e8e8e3; }
-        .note-item.active { background: #e8e8e3; }
+        .note-item:hover,
+        .note-item.active {
+            background: #e8e8e3;
+        }
 
         .note-item-header {
             display: flex;
@@ -127,10 +165,15 @@
             border-radius: 4px;
         }
 
-        .note-item:hover .delete-btn { display: block; }
-        .delete-btn:hover { background: #dcdcdc; color: #d9534f; }
+        .note-item:hover .delete-btn {
+            display: block;
+        }
 
-        /* 主内容区样式 */
+        .delete-btn:hover {
+            background: #dcdcdc;
+            color: #d9534f;
+        }
+
         .main-content {
             flex: 1;
             overflow-y: auto;
@@ -138,40 +181,49 @@
             background: #ffffff;
         }
 
-        .container { 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 80px 40px; 
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 40px;
         }
 
-        .page-header { margin-bottom: 10px; padding-left: 50px; }
-        
-        .page-icon { 
-            font-size: 78px; 
-            margin-bottom: 15px; 
-            cursor: pointer; 
-            display: inline-block; 
-            transition: transform 0.2s; 
-            user-select: none; 
+        .page-header {
+            margin-bottom: 10px;
+            padding-left: 50px;
+        }
+
+        .page-icon {
+            font-size: 78px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 0.2s;
+            user-select: none;
             border-radius: 12px;
             padding: 4px;
         }
-        .page-icon:hover { transform: scale(1.05); background: #f7f7f5; }
-        
-        .page-title { 
-            font-size: 40px; 
-            font-weight: 700; 
-            border: none; 
-            outline: none; 
-            width: 100%; 
-            background: transparent; 
-            color: #37352f; 
-            margin: 0; 
-            padding: 0; 
+
+        .page-icon:hover {
+            transform: scale(1.05);
+            background: #f7f7f5;
         }
-        .page-title::placeholder { color: #e0e0e0; }
-        
-        /* 快捷操作栏样式 */
+
+        .page-title {
+            font-size: 40px;
+            font-weight: 700;
+            border: none;
+            outline: none;
+            width: 100%;
+            background: transparent;
+            color: #37352f;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-title::placeholder {
+            color: #e0e0e0;
+        }
+
         .action-bar {
             display: flex;
             flex-wrap: wrap;
@@ -194,60 +246,201 @@
             gap: 6px;
         }
 
-        .action-btn:hover { background: #f7f7f5; color: #37352f; }
-        
-        /* 状态提示 */
-        .status { 
-            position: fixed; 
-            top: 20px; 
-            right: 30px; 
-            font-size: 12px; 
-            color: #787774; 
-            background: #ffffff; 
+        .action-btn:hover {
+            background: #f7f7f5;
+            color: #37352f;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            font-size: 12px;
+            color: #787774;
+            background: #ffffff;
             border: 1px solid #e8e8e3;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            padding: 6px 12px; 
-            border-radius: 20px; 
-            opacity: 0; 
-            transition: opacity 0.3s, transform 0.3s; 
+            padding: 6px 12px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
             transform: translateY(-10px);
             z-index: 100;
         }
-        .status.show { opacity: 1; transform: translateY(0); }
-        
-        /* 覆盖 Editor.js 样式 */
-        .codex-editor__redactor { padding-bottom: 150px !important; }
-        .ce-block__content, .ce-toolbar__content { max-width: 800px; }
-        .cdx-quote { border-left: 3px solid #37352f; padding-left: 14px; }
-        .help-text { color: #999; font-size: 13px; padding-left: 50px; margin-bottom: 15px; }
 
-        /* 给 placeholder 加入一点强调效果 */
+        .status.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .codex-editor__redactor {
+            padding-bottom: 150px !important;
+        }
+
+        .ce-block__content,
+        .ce-toolbar__content {
+            max-width: 800px;
+        }
+
+        .cdx-quote {
+            border-left: 3px solid #37352f;
+            padding-left: 14px;
+        }
+
+        .help-text {
+            color: #999;
+            font-size: 13px;
+            padding-left: 50px;
+            margin-bottom: 15px;
+            line-height: 1.7;
+        }
+
         .ce-paragraph[data-placeholder]:empty::before {
             color: #d1d1d1 !important;
             font-style: italic;
         }
 
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #c0c0c0; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c0c0c0;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                overflow: auto;
+                min-height: 100vh;
+                height: auto;
+            }
+
+            .mobile-overlay {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(55, 53, 47, 0.22);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.25s ease;
+                z-index: 20;
+            }
+
+            .mobile-overlay.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                position: fixed;
+                top: 14px;
+                left: 14px;
+                z-index: 40;
+                border: 1px solid #e8e8e3;
+                background: rgba(255,255,255,0.96);
+                color: #37352f;
+                padding: 10px 12px;
+                border-radius: 999px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: min(84vw, 320px);
+                max-width: 320px;
+                transform: translateX(-100%);
+                box-shadow: 18px 0 40px rgba(0,0,0,0.08);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                min-height: 100vh;
+            }
+
+            .container {
+                padding: 88px 18px 32px;
+            }
+
+            .page-header,
+            .action-bar,
+            .help-text {
+                padding-left: 0;
+            }
+
+            .page-title {
+                font-size: 32px;
+            }
+
+            .page-icon {
+                font-size: 62px;
+            }
+
+            .status {
+                top: 60px;
+                right: 16px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .utility-row {
+                grid-template-columns: 1fr;
+            }
+
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .help-text {
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="打开文档列表">☰ 文档</button>
+    <div class="mobile-overlay" id="mobile-overlay"></div>
 
-    <!-- 侧边栏：文档列表区 -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="index.html" class="nav-back">🏠 返回应用主页</a>
-            <button class="new-btn" onclick="createNewNote()">➕ 新建笔记文档</button>
+            <button class="new-btn" type="button" onclick="createNewNote()">➕ 新建笔记文档</button>
+            <div class="utility-row">
+                <button class="utility-btn" type="button" id="export-btn">⬇️ 导出备份</button>
+                <button class="utility-btn" type="button" id="import-btn">⬆️ 导入备份</button>
+            </div>
+            <div class="sidebar-hint">备份会把当前浏览器中的全部笔记标题和正文一起导出为 JSON 文件。</div>
+            <input class="file-input" type="file" id="import-file-input" accept="application/json,.json">
         </div>
-        <div class="note-list" id="note-list">
-            <!-- 动态生成的笔记列表 -->
-        </div>
+        <div class="note-list" id="note-list"></div>
     </div>
 
-    <!-- 主编辑区 -->
     <div class="main-content" id="main-scroll-area">
         <div class="status" id="save-status">☁️ 已自动保存到本地</div>
 
@@ -256,9 +449,9 @@
                 <div class="page-icon" id="page-icon" title="点击随机更换图标">📄</div>
                 <input type="text" class="page-title" id="page-title" placeholder="在这里输入文档标题..." autocomplete="off">
             </div>
-            
-            <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字：</div>
-            
+
+            <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字。现在也支持导出/导入整份本地备份了。</div>
+
             <div class="action-bar">
                 <button class="action-btn" onclick="addBlock('paragraph')">✍️ 记点笔记</button>
                 <button class="action-btn" onclick="addBlock('header')">📌 插入标题</button>
@@ -272,9 +465,10 @@
     </div>
 
     <script>
-        // 核心状态管理
         const NOTES_KEY = 'mini-notion-notes';
         const ACTIVE_ID_KEY = 'mini-notion-active-id';
+        const DOC_PREFIX = 'mini-notion-doc-';
+        const BACKUP_VERSION = 1;
 
         function safeParseJSON(value, fallback) {
             if (!value) return fallback;
@@ -291,6 +485,30 @@
             return { id, title: '', icon: '📄', updatedAt: Date.now() };
         }
 
+        function getDocStorageKey(noteId) {
+            return DOC_PREFIX + noteId;
+        }
+
+        function readStoredDoc(noteId) {
+            const storedDoc = safeParseJSON(localStorage.getItem(getDocStorageKey(noteId)), {});
+            return storedDoc && typeof storedDoc === 'object' ? storedDoc : {};
+        }
+
+        function persistDoc(noteId, data) {
+            localStorage.setItem(getDocStorageKey(noteId), JSON.stringify(data));
+        }
+
+        function clearAllStoredDocs() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i += 1) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(DOC_PREFIX)) {
+                    keys.push(key);
+                }
+            }
+            keys.forEach((key) => localStorage.removeItem(key));
+        }
+
         let notes = safeParseJSON(localStorage.getItem(NOTES_KEY), null);
         let activeNoteId = localStorage.getItem(ACTIVE_ID_KEY);
         let editor = null;
@@ -302,27 +520,53 @@
             activeNoteId = defaultNote.id;
         }
 
-        if (!notes.find(n => n.id === activeNoteId)) {
+        if (!notes.find((note) => note.id === activeNoteId)) {
             activeNoteId = notes[0].id;
         }
 
-        // DOM 元素引用
         const titleInput = document.getElementById('page-title');
         const iconDiv = document.getElementById('page-icon');
         const statusDiv = document.getElementById('save-status');
         const noteListDiv = document.getElementById('note-list');
+        const exportBtn = document.getElementById('export-btn');
+        const importBtn = document.getElementById('import-btn');
+        const importFileInput = document.getElementById('import-file-input');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const mobileOverlay = document.getElementById('mobile-overlay');
 
-        // ==== 垃圾回收机制：清理空文档 ====
+        function isMobileViewport() {
+            return window.matchMedia('(max-width: 900px)').matches;
+        }
+
+        function openSidebar() {
+            if (!isMobileViewport()) return;
+            sidebar.classList.add('open');
+            mobileOverlay.classList.add('show');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            mobileOverlay.classList.remove('show');
+        }
+
+        function showSaveStatus(message = '☁️ 已自动保存到本地') {
+            clearTimeout(statusTimer);
+            statusDiv.textContent = message;
+            statusDiv.classList.add('show');
+            statusTimer = setTimeout(() => statusDiv.classList.remove('show'), 2000);
+        }
+
         function cleanupEmptyNotes(keepId) {
             const validNotes = [];
-            notes.forEach(note => {
+            notes.forEach((note) => {
                 if (note.id === keepId) {
                     validNotes.push(note);
                     return;
                 }
 
                 let isEmpty = note.title.trim() === '';
-                const docData = safeParseJSON(localStorage.getItem('mini-notion-doc-' + note.id), null);
+                const docData = readStoredDoc(note.id);
 
                 if (docData && Array.isArray(docData.blocks) && docData.blocks.length > 0) {
                     if (docData.blocks.length === 1 && docData.blocks[0].type === 'paragraph') {
@@ -341,37 +585,34 @@
                 if (!isEmpty) {
                     validNotes.push(note);
                 } else {
-                    localStorage.removeItem('mini-notion-doc-' + note.id);
+                    localStorage.removeItem(getDocStorageKey(note.id));
                 }
             });
             notes = validNotes;
         }
 
-        // 保存索引
         function saveNotesIndex() {
             localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
             localStorage.setItem(ACTIVE_ID_KEY, activeNoteId);
         }
 
-        // 格式化时间戳
         function formatDate(timestamp) {
             const d = new Date(timestamp);
             const today = new Date();
             const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-            
-            const timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+
+            const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
             if (isToday) {
                 return `今天 ${timeStr}`;
             }
-            return `${d.getMonth()+1}月${d.getDate()}日 ${timeStr}`;
+            return `${d.getMonth() + 1}月${d.getDate()}日 ${timeStr}`;
         }
 
-        // 渲染左侧边栏
         function renderSidebar() {
             noteListDiv.innerHTML = '';
             const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
-            
-            sortedNotes.forEach(note => {
+
+            sortedNotes.forEach((note) => {
                 const div = document.createElement('div');
                 div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
                 div.onclick = () => switchNote(note.id);
@@ -408,13 +649,6 @@
             });
         }
 
-        function showSaveStatus() {
-            clearTimeout(statusTimer);
-            statusDiv.classList.add('show');
-            statusTimer = setTimeout(() => statusDiv.classList.remove('show'), 2000);
-        }
-
-        // 初始化编辑器
         async function initEditor(data, noteId) {
             if (editor) {
                 await editor.destroy();
@@ -424,7 +658,7 @@
             const currentEditor = new EditorJS({
                 holder: 'editorjs',
                 placeholder: '在这里开始输入正文笔记... (选中文字可加粗/高亮)',
-                data: data,
+                data,
                 tools: {
                     header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
                     list: { class: EditorjsList, inlineToolbar: true },
@@ -435,30 +669,36 @@
                 i18n: {
                     messages: {
                         ui: {
-                            "blockTunes": {
-                                "toggler": { "Click to tune": "模块设置", "or drag to move": "(拖拽可移动)" }
+                            blockTunes: {
+                                toggler: { 'Click to tune': '模块设置', 'or drag to move': '(拖拽可移动)' }
                             },
-                            "inlineToolbar": { "converter": { "Convert to": "转换为" } },
-                            "toolbar": { "toolbox": { "Add": "添加组件" } }
+                            inlineToolbar: { converter: { 'Convert to': '转换为' } },
+                            toolbar: { toolbox: { Add: '添加组件' } }
                         },
                         toolNames: {
-                            "Text": "正文笔记", "Heading": "大标题", "List": "圆点列表", 
-                            "Checklist": "待办清单", "Quote": "引用片段", "Marker": "高亮标记", 
-                            "Bold": "加粗", "Italic": "斜体", "Link": "插入链接"
+                            Text: '正文笔记',
+                            Heading: '大标题',
+                            List: '圆点列表',
+                            Checklist: '待办清单',
+                            Quote: '引用片段',
+                            Marker: '高亮标记',
+                            Bold: '加粗',
+                            Italic: '斜体',
+                            Link: '插入链接'
                         },
                         blockTunes: {
-                            "delete": { "Delete": "删除该模块" }, 
-                            "moveUp": { "Move up": "向上移动" }, 
-                            "moveDown": { "Move down": "向下移动" }
+                            delete: { Delete: '删除该模块' },
+                            moveUp: { 'Move up': '向上移动' },
+                            moveDown: { 'Move down': '向下移动' }
                         }
                     }
                 },
                 onChange: async () => {
                     try {
                         const outputData = await currentEditor.save();
-                        localStorage.setItem('mini-notion-doc-' + editorNoteId, JSON.stringify(outputData));
-                        
-                        const editedNote = notes.find(n => n.id === editorNoteId);
+                        persistDoc(editorNoteId, outputData);
+
+                        const editedNote = notes.find((note) => note.id === editorNoteId);
                         if (editedNote) {
                             editedNote.updatedAt = Date.now();
                             saveNotesIndex();
@@ -477,20 +717,19 @@
             editor = currentEditor;
         }
 
-        // 切换笔记
         async function switchNote(id) {
             if (activeNoteId === id && editor) return;
-            
+
             if (editor) {
                 try {
                     const outputData = await editor.save();
-                    localStorage.setItem('mini-notion-doc-' + activeNoteId, JSON.stringify(outputData));
-                } catch (e) {}
+                    persistDoc(activeNoteId, outputData);
+                } catch (error) {}
             }
 
             cleanupEmptyNotes(id);
-            
-            if (!notes.find(n => n.id === id)) {
+
+            if (!notes.find((note) => note.id === id)) {
                 if (notes.length === 0) {
                     const fallbackNote = createBlankNote();
                     notes.push(fallbackNote);
@@ -501,20 +740,21 @@
             }
 
             activeNoteId = id;
-            const note = notes.find(n => n.id === id);
-            
+            const note = notes.find((item) => item.id === id);
+
             titleInput.value = note.title;
             iconDiv.textContent = note.icon || '📄';
-            
+
             saveNotesIndex();
             renderSidebar();
-            
-            const storedDoc = safeParseJSON(localStorage.getItem('mini-notion-doc-' + id), {});
-            const docData = storedDoc && typeof storedDoc === 'object' ? storedDoc : {};
-            await initEditor(docData, id);
+
+            await initEditor(readStoredDoc(id), id);
+
+            if (isMobileViewport()) {
+                closeSidebar();
+            }
         }
 
-        // 新建笔记
         function createNewNote() {
             cleanupEmptyNotes(activeNoteId);
 
@@ -523,13 +763,12 @@
             switchNote(newNote.id);
         }
 
-        // 删除笔记
         function deleteNote(event, id) {
             event.stopPropagation();
             if (confirm('确定要彻底删除这篇文档吗？')) {
-                notes = notes.filter(n => n.id !== id);
-                localStorage.removeItem('mini-notion-doc-' + id);
-                
+                notes = notes.filter((note) => note.id !== id);
+                localStorage.removeItem(getDocStorageKey(id));
+
                 if (notes.length === 0) {
                     createNewNote();
                 } else if (activeNoteId === id) {
@@ -542,9 +781,130 @@
             }
         }
 
-        // 监听标题修改
+        function buildBackupPayload() {
+            cleanupEmptyNotes(activeNoteId);
+            const docs = {};
+            notes.forEach((note) => {
+                docs[note.id] = readStoredDoc(note.id);
+            });
+            return {
+                version: BACKUP_VERSION,
+                exportedAt: new Date().toISOString(),
+                source: 'mini-notion',
+                notes: notes.map((note) => ({ ...note })),
+                docs
+            };
+        }
+
+        function downloadTextFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportBackup() {
+            if (editor) {
+                try {
+                    const outputData = await editor.save();
+                    persistDoc(activeNoteId, outputData);
+                } catch (error) {}
+            }
+
+            saveNotesIndex();
+            renderSidebar();
+
+            const backup = buildBackupPayload();
+            const dateLabel = new Date().toISOString().slice(0, 10);
+            downloadTextFile(
+                `mini-notion-backup-${dateLabel}.json`,
+                JSON.stringify(backup, null, 2),
+                'application/json;charset=utf-8'
+            );
+            showSaveStatus('⬇️ 已导出 Mini Notion 备份');
+        }
+
+        function normalizeImportedBackup(rawBackup) {
+            if (!rawBackup || !Array.isArray(rawBackup.notes) || typeof rawBackup.docs !== 'object' || rawBackup.docs === null) {
+                return null;
+            }
+
+            const usedIds = new Set();
+            const normalizedItems = rawBackup.notes.map((rawNote, index) => {
+                const sourceId = String(rawNote?.id || `imported-${Date.now()}-${index}`);
+                let noteId = sourceId;
+                while (usedIds.has(noteId)) {
+                    noteId = `${sourceId}-${usedIds.size + 1}`;
+                }
+                usedIds.add(noteId);
+
+                return {
+                    sourceId,
+                    note: {
+                        id: noteId,
+                        title: typeof rawNote?.title === 'string' ? rawNote.title : '',
+                        icon: typeof rawNote?.icon === 'string' && rawNote.icon ? rawNote.icon : '📄',
+                        updatedAt: Number.isFinite(Number(rawNote?.updatedAt)) ? Number(rawNote.updatedAt) : Date.now()
+                    },
+                    doc: rawBackup.docs[sourceId] && typeof rawBackup.docs[sourceId] === 'object' ? rawBackup.docs[sourceId] : {}
+                };
+            });
+
+            if (normalizedItems.length === 0) {
+                const blankNote = createBlankNote();
+                return {
+                    notes: [blankNote],
+                    docs: { [blankNote.id]: {} }
+                };
+            }
+
+            const importedNotes = normalizedItems.map((item) => item.note);
+            const importedDocs = {};
+            normalizedItems.forEach((item) => {
+                importedDocs[item.note.id] = item.doc;
+            });
+
+            return {
+                notes: importedNotes,
+                docs: importedDocs
+            };
+        }
+
+        async function importBackupFile(file) {
+            const rawText = await file.text();
+            const parsed = safeParseJSON(rawText, null);
+            const normalized = normalizeImportedBackup(parsed);
+
+            if (!normalized) {
+                alert('这个文件不是可识别的 Mini Notion 备份。');
+                return;
+            }
+
+            const confirmed = window.confirm('导入会覆盖当前浏览器中的 Mini Notion 本地内容。建议你先导出一次现有备份。确定继续吗？');
+            if (!confirmed) {
+                return;
+            }
+
+            clearAllStoredDocs();
+            notes = normalized.notes;
+            Object.entries(normalized.docs).forEach(([noteId, doc]) => {
+                persistDoc(noteId, doc);
+            });
+
+            activeNoteId = notes[0].id;
+            saveNotesIndex();
+            renderSidebar();
+            await switchNote(activeNoteId);
+            showSaveStatus('⬆️ 备份已导入到当前浏览器');
+        }
+
         titleInput.addEventListener('input', () => {
-            const activeNote = notes.find(n => n.id === activeNoteId);
+            const activeNote = notes.find((note) => note.id === activeNoteId);
             if (activeNote) {
                 activeNote.title = titleInput.value;
                 activeNote.updatedAt = Date.now();
@@ -554,12 +914,11 @@
             }
         });
 
-        // 监听图标修改
         const emojis = ['📄', '📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔', '🌈', '🔥', '📅', '🎉', '🏖️'];
         iconDiv.addEventListener('click', () => {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             iconDiv.textContent = randomEmoji;
-            const activeNote = notes.find(n => n.id === activeNoteId);
+            const activeNote = notes.find((note) => note.id === activeNoteId);
             if (activeNote) {
                 activeNote.icon = randomEmoji;
                 activeNote.updatedAt = Date.now();
@@ -569,17 +928,16 @@
             }
         });
 
-        // 快捷插入按钮
         function addBlock(type) {
             if (!editor) return;
             let data = {};
             if (type === 'header') data = { text: '', level: 2 };
-            else if (type === 'checklist') data = { items: [{text: '', checked: false}] };
+            else if (type === 'checklist') data = { items: [{ text: '', checked: false }] };
             else if (type === 'list') data = { style: 'unordered', items: [] };
-            
+
             const index = editor.blocks.getBlocksCount();
             editor.blocks.insert(type, data, {}, index, true);
-            
+
             setTimeout(() => {
                 editor.caret.setToLastBlock('end');
                 document.getElementById('main-scroll-area').scrollTo({
@@ -589,14 +947,36 @@
             }, 50);
         }
 
-        // ====== 页面首次加载 ======
+        exportBtn.addEventListener('click', exportBackup);
+        importBtn.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+            await importBackupFile(file);
+        });
+
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+        mobileOverlay.addEventListener('click', closeSidebar);
+        window.addEventListener('resize', () => {
+            if (!isMobileViewport()) {
+                closeSidebar();
+            }
+        });
+
         cleanupEmptyNotes(activeNoteId);
         if (notes.length === 0) {
             const defaultNote = createBlankNote();
             notes.push(defaultNote);
             activeNoteId = defaultNote.id;
         }
-        
+
         renderSidebar();
         switchNote(activeNoteId);
     </script>
