@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 Mini Notion</title>
+    <!-- 引入 Editor.js 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #37352f; line-height: 1.5; }
+        .container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+        .page-header { margin-bottom: 20px; padding-left: 50px; }
+        .page-icon { font-size: 78px; margin-bottom: 10px; cursor: pointer; display: inline-block; transition: transform 0.2s; user-select: none; }
+        .page-icon:hover { transform: scale(1.1); }
+        .page-title { font-size: 40px; font-weight: 700; border: none; outline: none; width: 100%; background: transparent; color: #37352f; margin: 0; padding: 0; }
+        .page-title::placeholder { color: #e0e0e0; }
+        .status { position: fixed; top: 20px; right: 20px; font-size: 12px; color: #999; background: #f7f7f5; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: opacity 0.3s; z-index: 100;}
+        .status.show { opacity: 1; }
+        .codex-editor__redactor { padding-bottom: 100px !important; }
+        .ce-block__content, .ce-toolbar__content { max-width: 800px; }
+        .cdx-quote { border-left: 3px solid #37352f; padding-left: 14px; }
+        
+        .nav-back { position:fixed; top:20px; left:20px; text-decoration:none; background:#f7f7f5; padding:8px 16px; border-radius:8px; color:#333; z-index:1000; font-size:14px; transition: background 0.2s; }
+        .nav-back:hover { background: #e8e8e3; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="nav-back">🏠 返回主页</a>
+    <div class="status" id="save-status">已保存到本地</div>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
+            <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
+        </div>
+        <div id="editorjs"></div>
+    </div>
+
+    <script>
+        const SAVED_DATA_KEY = 'mini-notion-data';
+        const SAVED_TITLE_KEY = 'mini-notion-title';
+        const SAVED_ICON_KEY = 'mini-notion-icon';
+
+        const titleInput = document.getElementById('page-title');
+        const iconDiv = document.getElementById('page-icon');
+        const statusDiv = document.getElementById('save-status');
+
+        titleInput.value = localStorage.getItem(SAVED_TITLE_KEY) || '';
+        iconDiv.textContent = localStorage.getItem(SAVED_ICON_KEY) || '📝';
+
+        let initialData = {};
+        try {
+            const saved = localStorage.getItem(SAVED_DATA_KEY);
+            if (saved) {
+                initialData = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.error('加载本地数据失败', e);
+        }
+
+        function showSaveStatus() {
+            statusDiv.classList.add('show');
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 2000);
+        }
+
+        const editor = new EditorJS({
+            holder: 'editorjs',
+            placeholder: '点击这里开始输入... (选中文字可加粗/标记，左侧有加号+可添加组件)',
+            data: initialData,
+            tools: {
+                header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
+                list: { class: List, inlineToolbar: true, },
+                checklist: { class: Checklist, inlineToolbar: true, },
+                quote: { class: Quote, inlineToolbar: true, },
+                Marker: { class: Marker, shortcut: 'CMD+SHIFT+M', }
+            },
+            onChange: async () => {
+                try {
+                    const outputData = await editor.save();
+                    localStorage.setItem(SAVED_DATA_KEY, JSON.stringify(outputData));
+                    showSaveStatus();
+                } catch (error) {
+                    console.error('保存失败:', error);
+                }
+            }
+        });
+
+        titleInput.addEventListener('input', () => {
+            localStorage.setItem(SAVED_TITLE_KEY, titleInput.value);
+            showSaveStatus();
+        });
+
+        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔'];
+        iconDiv.addEventListener('click', () => {
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            iconDiv.textContent = randomEmoji;
+            localStorage.setItem(SAVED_ICON_KEY, randomEmoji);
+            showSaveStatus();
+        });
+    </script>
+</body>
+</html>

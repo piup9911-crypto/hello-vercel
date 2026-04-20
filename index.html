@@ -3,208 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的 Mini Notion</title>
-    <!-- 引入 Editor.js 核心库 -->
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
-    <!-- 引入一些常用的块工具，比如标题、列表 -->
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script>
-
+    <title>我的个人应用集</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
-            padding: 0;
-            background-color: #ffffff;
-            color: #37352f; /* Notion 的默认文字颜色 */
-            line-height: 1.5;
+            background: #f8f9fa;
+            color: #333;
         }
-
+        h1 {
+            margin-bottom: 2rem;
+            color: #2c3e50;
+        }
         .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 60px 20px;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-
-        /* 顶部标题区 */
-        .page-header {
-            margin-bottom: 20px;
-            padding-left: 50px; /* 和 Editor.js 内容对齐 */
+        .card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            width: 250px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 2px solid transparent;
         }
-
-        .page-icon {
-            font-size: 78px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            display: inline-block;
-            transition: transform 0.2s;
-            user-select: none;
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border-color: #ff6b6b;
         }
-
-        .page-icon:hover {
-            transform: scale(1.1);
+        .card:nth-child(2):hover {
+            border-color: #37352f;
         }
-
-        .page-title {
-            font-size: 40px;
-            font-weight: 700;
-            border: none;
-            outline: none;
-            width: 100%;
-            background: transparent;
-            color: #37352f;
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        p {
             margin: 0;
-            padding: 0;
-        }
-        
-        .page-title::placeholder {
-            color: #e0e0e0;
-        }
-
-        /* 状态提示 */
-        .status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            font-size: 12px;
-            color: #999;
-            background: #f7f7f5;
-            padding: 4px 8px;
-            border-radius: 4px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .status.show {
-            opacity: 1;
-        }
-
-        /* 覆盖一些 Editor.js 的默认样式让它更像 Notion */
-        .codex-editor__redactor {
-            padding-bottom: 100px !important; /* 底部留白 */
-        }
-        .ce-block__content, .ce-toolbar__content {
-            max-width: 800px;
-        }
-        
-        /* 简单美化一下引用块 */
-        .cdx-quote {
-            border-left: 3px solid #37352f;
-            padding-left: 14px;
+            color: #666;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
-    <div class="status" id="save-status">已保存到本地</div>
-
+    <h1>欢迎来到我的秘密岛屿 🏝️</h1>
     <div class="container">
-        <!-- 页面头部 -->
-        <div class="page-header">
-            <div class="page-icon" id="page-icon" title="点击随机更换图标">📝</div>
-            <input type="text" class="page-title" id="page-title" placeholder="无标题" autocomplete="off">
-        </div>
-
-        <!-- Editor.js 的容器 -->
-        <div id="editorjs"></div>
+        <a href="magic.html" class="card">
+            <div class="icon">✨</div>
+            <h2>魔法实验室</h2>
+            <p>包含 3D 悬浮卡片、粒子特效与鼠标拖尾的趣味交互页面</p>
+        </a>
+        <a href="notion.html" class="card">
+            <div class="icon">📝</div>
+            <h2>Mini Notion</h2>
+            <p>基于本地存储的无干扰极简编辑器</p>
+        </a>
     </div>
-
-    <script>
-        // 1. 初始化数据
-        const SAVED_DATA_KEY = 'mini-notion-data';
-        const SAVED_TITLE_KEY = 'mini-notion-title';
-        const SAVED_ICON_KEY = 'mini-notion-icon';
-
-        const titleInput = document.getElementById('page-title');
-        const iconDiv = document.getElementById('page-icon');
-        const statusDiv = document.getElementById('save-status');
-
-        // 恢复标题和图标
-        titleInput.value = localStorage.getItem(SAVED_TITLE_KEY) || '';
-        iconDiv.textContent = localStorage.getItem(SAVED_ICON_KEY) || '📝';
-
-        // 尝试从本地存储加载内容
-        let initialData = {};
-        try {
-            const saved = localStorage.getItem(SAVED_DATA_KEY);
-            if (saved) {
-                initialData = JSON.parse(saved);
-            }
-        } catch (e) {
-            console.error('加载本地数据失败', e);
-        }
-
-        // 显示保存状态的动画
-        function showSaveStatus() {
-            statusDiv.classList.add('show');
-            setTimeout(() => {
-                statusDiv.classList.remove('show');
-            }, 2000);
-        }
-
-        // 2. 初始化 Editor.js
-        const editor = new EditorJS({
-            holder: 'editorjs',
-            placeholder: '点击这里开始输入... (选中文字可加粗/标记，左侧有加号+可添加组件)',
-            data: initialData,
-            
-            // 配置支持的块（像 Notion 一样）
-            tools: {
-                header: {
-                    class: Header,
-                    inlineToolbar: true,
-                    config: {
-                        placeholder: '输入标题',
-                        levels: [1, 2, 3],
-                        defaultLevel: 2
-                    }
-                },
-                list: {
-                    class: List,
-                    inlineToolbar: true,
-                },
-                checklist: {
-                    class: Checklist,
-                    inlineToolbar: true,
-                },
-                quote: {
-                    class: Quote,
-                    inlineToolbar: true,
-                },
-                Marker: {
-                    class: Marker,
-                    shortcut: 'CMD+SHIFT+M',
-                }
-            },
-
-            // 当内容发生改变时自动保存
-            onChange: async () => {
-                try {
-                    const outputData = await editor.save();
-                    localStorage.setItem(SAVED_DATA_KEY, JSON.stringify(outputData));
-                    showSaveStatus();
-                } catch (error) {
-                    console.error('保存失败:', error);
-                }
-            }
-        });
-
-        // 3. 监听标题的改变并保存
-        titleInput.addEventListener('input', () => {
-            localStorage.setItem(SAVED_TITLE_KEY, titleInput.value);
-            showSaveStatus();
-        });
-
-        // 4. 一个好玩的小功能：点击图标随机更换 Emoji
-        const emojis = ['📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔'];
-        iconDiv.addEventListener('click', () => {
-            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            iconDiv.textContent = randomEmoji;
-            localStorage.setItem(SAVED_ICON_KEY, randomEmoji);
-            showSaveStatus();
-        });
-    </script>
 </body>
 </html>
