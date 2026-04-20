@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云端登录</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="shared/supabase-auth.js"></script>
+    <style>
+        :root {
+            --bg: #f8f5ff;
+            --card: rgba(255, 255, 255, 0.88);
+            --card-strong: rgba(255, 255, 255, 0.96);
+            --text: #2f2940;
+            --muted: #7d738f;
+            --line: #e7dff4;
+            --primary: #8b5cf6;
+            --primary-strong: #7c3aed;
+            --danger: #dc2626;
+            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: var(--text);
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.36), transparent 24%),
+                linear-gradient(160deg, #fcfaff 0%, #f8f5ff 48%, #f6fbff 100%);
+        }
+
+        .shell {
+            width: min(100%, 980px);
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            gap: 22px;
+            align-items: stretch;
+        }
+
+        .panel {
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            background: var(--card);
+        }
+
+        .story {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        h1 {
+            margin: 18px 0 14px;
+            font-size: clamp(34px, 5vw, 52px);
+            line-height: 1.08;
+        }
+
+        .lead {
+            color: var(--muted);
+            line-height: 1.8;
+            font-size: 15px;
+            max-width: 42ch;
+        }
+
+        .story-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .story-card {
+            border-radius: 22px;
+            padding: 18px 18px 16px;
+            background: var(--card-strong);
+            border: 1px solid var(--line);
+        }
+
+        .story-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .story-card-body {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.75;
+        }
+
+        .login {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .login-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .login-title {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.2;
+        }
+
+        .login-subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .home-link {
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.8);
+            white-space: nowrap;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.92);
+            color: var(--text);
+            padding: 15px 16px;
+            font: inherit;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input:focus {
+            border-color: rgba(139, 92, 246, 0.42);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
+        }
+
+        .submit-btn,
+        .ghost-btn {
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .submit-btn:hover,
+        .ghost-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .submit-btn {
+            width: 100%;
+            margin-top: 18px;
+            border-radius: 18px;
+            padding: 14px 16px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
+            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        .feedback {
+            margin-top: 14px;
+            min-height: 24px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .feedback.error {
+            color: var(--danger);
+        }
+
+        .feedback.success {
+            color: var(--primary-strong);
+        }
+
+        .helper-box {
+            margin-top: 18px;
+            border-radius: 20px;
+            padding: 16px 18px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .helper-box strong {
+            color: var(--text);
+        }
+
+        .quick-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .ghost-btn {
+            padding: 11px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--line);
+            color: var(--text);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 840px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .story,
+            .login {
+                padding: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <section class="panel story">
+            <div>
+                <div class="eyebrow">☁️ 云端同步入口</div>
+                <h1>把你的 Mini Notion 和秘密日记，接到只属于你的云端。</h1>
+                <div class="lead">
+                    登录成功后，文字内容会保存在 Supabase 里，不再依赖单一浏览器本地存储。
+                    以后你要换设备、换浏览器，或者再加图片存储，都能继续往下长。
+                </div>
+                <div class="story-grid">
+                    <div class="story-card">
+                        <div class="story-card-title">现在这一步会做什么</div>
+                        <div class="story-card-body">
+                            这里只负责把你带进云端会话。真正的数据读写，会在 Mini Notion 和秘密日记页面里自动接管。
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-card-title">如果你以前写过本地内容</div>
+                        <div class="story-card-body">
+                            登录后打开对应页面，就能看到“导入本地旧数据”按钮，把旧浏览器里的内容迁到 Supabase。
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-card-title">如果这里提示没配置好</div>
+                        <div class="story-card-body">
+                            通常只是 Vercel 里还没填 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY`，不是你的账号坏了。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel login">
+            <div class="login-header">
+                <div>
+                    <h2 class="login-title">登录云端</h2>
+                    <div class="login-subtitle">
+                        建议只给自己建一个账号。账号建好后，平时直接在这里登录就可以了。
+                    </div>
+                </div>
+                <a class="home-link" href="index.html">返回主页</a>
+            </div>
+
+            <form id="login-form">
+                <div class="field">
+                    <label for="email">邮箱</label>
+                    <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="field">
+                    <label for="password">密码</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" placeholder="输入你自己设置的密码" required>
+                </div>
+
+                <button class="submit-btn" id="submit-btn" type="submit">进入我的云端空间</button>
+                <div class="feedback" id="feedback"></div>
+            </form>
+
+            <div class="helper-box">
+                <strong>第一次登录前的小提醒：</strong><br>
+                这个页面默认只做“登录”，不公开放注册。最稳妥的做法是你先去 Supabase Dashboard 的
+                <code>Authentication &gt; Users</code> 里手动创建一个自己的邮箱账号，再回来登录。
+            </div>
+
+            <div class="quick-links">
+                <a class="ghost-btn" href="notion.html">打开 Mini Notion</a>
+                <a class="ghost-btn" href="secret-diary.html">打开秘密日记</a>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submit-btn');
+        const feedback = document.getElementById('feedback');
+
+        function setFeedback(message, type) {
+            feedback.textContent = message || '';
+            feedback.className = `feedback ${type || ''}`.trim();
+        }
+
+        async function redirectIfAlreadySignedIn() {
+            if (!window.AppAuth) {
+                throw new Error('Supabase 认证脚本没有成功加载。');
+            }
+
+            const authState = await window.AppAuth.getSession();
+            if (authState.session) {
+                window.location.href = window.AppAuth.readReturnTo('/notion.html');
+            }
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setFeedback('', '');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '正在验证...';
+
+            try {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                const result = await window.AppAuth.signInWithPassword(email, password);
+
+                if (result.error) {
+                    throw result.error;
+                }
+
+                setFeedback('登录成功，正在带你回到云端页面...', 'success');
+                window.location.href = window.AppAuth.readReturnTo('/notion.html');
+            } catch (error) {
+                console.error('登录失败：', error);
+                setFeedback(window.AppAuth.humanizeError(error), 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '进入我的云端空间';
+            }
+        });
+
+        void redirectIfAlreadySignedIn().catch((error) => {
+            console.error('登录页初始化失败：', error);
+            setFeedback(window.AppAuth.humanizeError(error), 'error');
+        });
+    </script>
+</body>
+</html>

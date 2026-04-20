@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@1.6.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6"></script>
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="shared/supabase-auth.js"></script>
 
     <style>
         body {
@@ -100,6 +102,11 @@
             justify-content: center;
             font-size: 13px;
             padding: 9px 10px;
+        }
+
+        .utility-btn-wide {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
         }
 
         .sidebar-hint {
@@ -430,19 +437,22 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="index.html" class="nav-back">🏠 返回应用主页</a>
-            <button class="new-btn" type="button" onclick="createNewNote()">➕ 新建笔记文档</button>
+            <button class="new-btn" type="button" id="new-note-btn">➕ 新建笔记文档</button>
             <div class="utility-row">
                 <button class="utility-btn" type="button" id="export-btn">⬇️ 导出备份</button>
                 <button class="utility-btn" type="button" id="import-btn">⬆️ 导入备份</button>
+                <button class="utility-btn utility-btn-wide" type="button" id="migrate-btn" hidden>☁️ 导入本地旧数据</button>
+                <button class="utility-btn utility-btn-wide" type="button" id="signout-btn">↩ 退出云端登录</button>
             </div>
-            <div class="sidebar-hint">备份会把当前浏览器中的全部笔记标题和正文一起导出为 JSON 文件。</div>
+            <div class="sidebar-hint" id="cloud-status">登录后，当前笔记会自动同步到 Supabase 云端。</div>
+            <div class="sidebar-hint" id="auth-email"></div>
             <input class="file-input" type="file" id="import-file-input" accept="application/json,.json">
         </div>
         <div class="note-list" id="note-list"></div>
     </div>
 
     <div class="main-content" id="main-scroll-area">
-        <div class="status" id="save-status">☁️ 已自动保存到本地</div>
+        <div class="status" id="save-status">☁️ 正在连接云端</div>
 
         <div class="container">
             <div class="page-header">
@@ -450,535 +460,20 @@
                 <input type="text" class="page-title" id="page-title" placeholder="在这里输入文档标题..." autocomplete="off">
             </div>
 
-            <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字。现在也支持导出/导入整份本地备份了。</div>
+            <div class="help-text">💡 提示：点击下方按钮可快捷插入，或在下方空白处直接打字。现在会自动同步到云端，也支持导出/导入整份 JSON 备份。</div>
 
             <div class="action-bar">
-                <button class="action-btn" onclick="addBlock('paragraph')">✍️ 记点笔记</button>
-                <button class="action-btn" onclick="addBlock('header')">📌 插入标题</button>
-                <button class="action-btn" onclick="addBlock('checklist')">✅ 待办清单</button>
-                <button class="action-btn" onclick="addBlock('list')">⚫ 圆点列表</button>
-                <button class="action-btn" onclick="addBlock('quote')">💬 引用金句</button>
+                <button class="action-btn" type="button" data-block-type="paragraph">✍️ 记点笔记</button>
+                <button class="action-btn" type="button" data-block-type="header">📌 插入标题</button>
+                <button class="action-btn" type="button" data-block-type="checklist">✅ 待办清单</button>
+                <button class="action-btn" type="button" data-block-type="list">⚫ 圆点列表</button>
+                <button class="action-btn" type="button" data-block-type="quote">💬 引用金句</button>
             </div>
 
             <div id="editorjs"></div>
         </div>
     </div>
 
-    <script>
-        const NOTES_KEY = 'mini-notion-notes';
-        const ACTIVE_ID_KEY = 'mini-notion-active-id';
-        const DOC_PREFIX = 'mini-notion-doc-';
-        const BACKUP_VERSION = 1;
-
-        function safeParseJSON(value, fallback) {
-            if (!value) return fallback;
-            try {
-                const parsed = JSON.parse(value);
-                return parsed ?? fallback;
-            } catch (error) {
-                console.warn('本地数据解析失败，已回退默认值。', error);
-                return fallback;
-            }
-        }
-
-        function createBlankNote(id = Date.now().toString()) {
-            return { id, title: '', icon: '📄', updatedAt: Date.now() };
-        }
-
-        function getDocStorageKey(noteId) {
-            return DOC_PREFIX + noteId;
-        }
-
-        function readStoredDoc(noteId) {
-            const storedDoc = safeParseJSON(localStorage.getItem(getDocStorageKey(noteId)), {});
-            return storedDoc && typeof storedDoc === 'object' ? storedDoc : {};
-        }
-
-        function persistDoc(noteId, data) {
-            localStorage.setItem(getDocStorageKey(noteId), JSON.stringify(data));
-        }
-
-        function clearAllStoredDocs() {
-            const keys = [];
-            for (let i = 0; i < localStorage.length; i += 1) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(DOC_PREFIX)) {
-                    keys.push(key);
-                }
-            }
-            keys.forEach((key) => localStorage.removeItem(key));
-        }
-
-        let notes = safeParseJSON(localStorage.getItem(NOTES_KEY), null);
-        let activeNoteId = localStorage.getItem(ACTIVE_ID_KEY);
-        let editor = null;
-        let statusTimer = null;
-
-        if (!Array.isArray(notes) || notes.length === 0) {
-            const defaultNote = createBlankNote();
-            notes = [defaultNote];
-            activeNoteId = defaultNote.id;
-        }
-
-        if (!notes.find((note) => note.id === activeNoteId)) {
-            activeNoteId = notes[0].id;
-        }
-
-        const titleInput = document.getElementById('page-title');
-        const iconDiv = document.getElementById('page-icon');
-        const statusDiv = document.getElementById('save-status');
-        const noteListDiv = document.getElementById('note-list');
-        const exportBtn = document.getElementById('export-btn');
-        const importBtn = document.getElementById('import-btn');
-        const importFileInput = document.getElementById('import-file-input');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-
-        function isMobileViewport() {
-            return window.matchMedia('(max-width: 900px)').matches;
-        }
-
-        function openSidebar() {
-            if (!isMobileViewport()) return;
-            sidebar.classList.add('open');
-            mobileOverlay.classList.add('show');
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            mobileOverlay.classList.remove('show');
-        }
-
-        function showSaveStatus(message = '☁️ 已自动保存到本地') {
-            clearTimeout(statusTimer);
-            statusDiv.textContent = message;
-            statusDiv.classList.add('show');
-            statusTimer = setTimeout(() => statusDiv.classList.remove('show'), 2000);
-        }
-
-        function cleanupEmptyNotes(keepId) {
-            const validNotes = [];
-            notes.forEach((note) => {
-                if (note.id === keepId) {
-                    validNotes.push(note);
-                    return;
-                }
-
-                let isEmpty = note.title.trim() === '';
-                const docData = readStoredDoc(note.id);
-
-                if (docData && Array.isArray(docData.blocks) && docData.blocks.length > 0) {
-                    if (docData.blocks.length === 1 && docData.blocks[0].type === 'paragraph') {
-                        const text = (docData.blocks[0].data?.text || '')
-                            .replace(/&nbsp;/g, '')
-                            .replace(/<br>/g, '')
-                            .trim();
-                        if (text !== '') {
-                            isEmpty = false;
-                        }
-                    } else {
-                        isEmpty = false;
-                    }
-                }
-
-                if (!isEmpty) {
-                    validNotes.push(note);
-                } else {
-                    localStorage.removeItem(getDocStorageKey(note.id));
-                }
-            });
-            notes = validNotes;
-        }
-
-        function saveNotesIndex() {
-            localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
-            localStorage.setItem(ACTIVE_ID_KEY, activeNoteId);
-        }
-
-        function formatDate(timestamp) {
-            const d = new Date(timestamp);
-            const today = new Date();
-            const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-
-            const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-            if (isToday) {
-                return `今天 ${timeStr}`;
-            }
-            return `${d.getMonth() + 1}月${d.getDate()}日 ${timeStr}`;
-        }
-
-        function renderSidebar() {
-            noteListDiv.innerHTML = '';
-            const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
-
-            sortedNotes.forEach((note) => {
-                const div = document.createElement('div');
-                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
-                div.onclick = () => switchNote(note.id);
-
-                const header = document.createElement('div');
-                header.className = 'note-item-header';
-
-                const iconSpan = document.createElement('span');
-                iconSpan.textContent = note.icon || '📄';
-
-                const titleSpan = document.createElement('span');
-                titleSpan.textContent = note.title.trim() === '' ? '无标题笔记' : note.title;
-
-                header.appendChild(iconSpan);
-                header.appendChild(titleSpan);
-
-                const timeDiv = document.createElement('div');
-                timeDiv.className = 'note-item-time';
-                timeDiv.textContent = `编辑于 ${formatDate(note.updatedAt)}`;
-
-                div.appendChild(header);
-                div.appendChild(timeDiv);
-
-                if (notes.length > 1) {
-                    const deleteBtn = document.createElement('div');
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.title = '删除文档';
-                    deleteBtn.textContent = '🗑️';
-                    deleteBtn.onclick = (event) => deleteNote(event, note.id);
-                    div.appendChild(deleteBtn);
-                }
-
-                noteListDiv.appendChild(div);
-            });
-        }
-
-        async function initEditor(data, noteId) {
-            if (editor) {
-                await editor.destroy();
-            }
-
-            const editorNoteId = noteId;
-            const currentEditor = new EditorJS({
-                holder: 'editorjs',
-                placeholder: '在这里开始输入正文笔记... (选中文字可加粗/高亮)',
-                data,
-                tools: {
-                    header: { class: Header, inlineToolbar: true, config: { placeholder: '输入标题', levels: [1, 2, 3], defaultLevel: 2 } },
-                    list: { class: EditorjsList, inlineToolbar: true },
-                    checklist: { class: Checklist, inlineToolbar: true },
-                    quote: { class: Quote, inlineToolbar: true },
-                    marker: { class: Marker, shortcut: 'CMD+SHIFT+M' }
-                },
-                i18n: {
-                    messages: {
-                        ui: {
-                            blockTunes: {
-                                toggler: { 'Click to tune': '模块设置', 'or drag to move': '(拖拽可移动)' }
-                            },
-                            inlineToolbar: { converter: { 'Convert to': '转换为' } },
-                            toolbar: { toolbox: { Add: '添加组件' } }
-                        },
-                        toolNames: {
-                            Text: '正文笔记',
-                            Heading: '大标题',
-                            List: '圆点列表',
-                            Checklist: '待办清单',
-                            Quote: '引用片段',
-                            Marker: '高亮标记',
-                            Bold: '加粗',
-                            Italic: '斜体',
-                            Link: '插入链接'
-                        },
-                        blockTunes: {
-                            delete: { Delete: '删除该模块' },
-                            moveUp: { 'Move up': '向上移动' },
-                            moveDown: { 'Move down': '向下移动' }
-                        }
-                    }
-                },
-                onChange: async () => {
-                    try {
-                        const outputData = await currentEditor.save();
-                        persistDoc(editorNoteId, outputData);
-
-                        const editedNote = notes.find((note) => note.id === editorNoteId);
-                        if (editedNote) {
-                            editedNote.updatedAt = Date.now();
-                            saveNotesIndex();
-                            renderSidebar();
-                        }
-
-                        if (activeNoteId === editorNoteId) {
-                            showSaveStatus();
-                        }
-                    } catch (error) {
-                        console.error('保存失败:', error);
-                    }
-                }
-            });
-
-            editor = currentEditor;
-        }
-
-        async function switchNote(id) {
-            if (activeNoteId === id && editor) return;
-
-            if (editor) {
-                try {
-                    const outputData = await editor.save();
-                    persistDoc(activeNoteId, outputData);
-                } catch (error) {}
-            }
-
-            cleanupEmptyNotes(id);
-
-            if (!notes.find((note) => note.id === id)) {
-                if (notes.length === 0) {
-                    const fallbackNote = createBlankNote();
-                    notes.push(fallbackNote);
-                    id = fallbackNote.id;
-                } else {
-                    id = notes[0].id;
-                }
-            }
-
-            activeNoteId = id;
-            const note = notes.find((item) => item.id === id);
-
-            titleInput.value = note.title;
-            iconDiv.textContent = note.icon || '📄';
-
-            saveNotesIndex();
-            renderSidebar();
-
-            await initEditor(readStoredDoc(id), id);
-
-            if (isMobileViewport()) {
-                closeSidebar();
-            }
-        }
-
-        function createNewNote() {
-            cleanupEmptyNotes(activeNoteId);
-
-            const newNote = createBlankNote();
-            notes.push(newNote);
-            switchNote(newNote.id);
-        }
-
-        function deleteNote(event, id) {
-            event.stopPropagation();
-            if (confirm('确定要彻底删除这篇文档吗？')) {
-                notes = notes.filter((note) => note.id !== id);
-                localStorage.removeItem(getDocStorageKey(id));
-
-                if (notes.length === 0) {
-                    createNewNote();
-                } else if (activeNoteId === id) {
-                    const sortedNotes = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
-                    switchNote(sortedNotes[0].id);
-                } else {
-                    saveNotesIndex();
-                    renderSidebar();
-                }
-            }
-        }
-
-        function buildBackupPayload() {
-            cleanupEmptyNotes(activeNoteId);
-            const docs = {};
-            notes.forEach((note) => {
-                docs[note.id] = readStoredDoc(note.id);
-            });
-            return {
-                version: BACKUP_VERSION,
-                exportedAt: new Date().toISOString(),
-                source: 'mini-notion',
-                notes: notes.map((note) => ({ ...note })),
-                docs
-            };
-        }
-
-        function downloadTextFile(filename, content, mimeType) {
-            const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
-        async function exportBackup() {
-            if (editor) {
-                try {
-                    const outputData = await editor.save();
-                    persistDoc(activeNoteId, outputData);
-                } catch (error) {}
-            }
-
-            saveNotesIndex();
-            renderSidebar();
-
-            const backup = buildBackupPayload();
-            const dateLabel = new Date().toISOString().slice(0, 10);
-            downloadTextFile(
-                `mini-notion-backup-${dateLabel}.json`,
-                JSON.stringify(backup, null, 2),
-                'application/json;charset=utf-8'
-            );
-            showSaveStatus('⬇️ 已导出 Mini Notion 备份');
-        }
-
-        function normalizeImportedBackup(rawBackup) {
-            if (!rawBackup || !Array.isArray(rawBackup.notes) || typeof rawBackup.docs !== 'object' || rawBackup.docs === null) {
-                return null;
-            }
-
-            const usedIds = new Set();
-            const normalizedItems = rawBackup.notes.map((rawNote, index) => {
-                const sourceId = String(rawNote?.id || `imported-${Date.now()}-${index}`);
-                let noteId = sourceId;
-                while (usedIds.has(noteId)) {
-                    noteId = `${sourceId}-${usedIds.size + 1}`;
-                }
-                usedIds.add(noteId);
-
-                return {
-                    sourceId,
-                    note: {
-                        id: noteId,
-                        title: typeof rawNote?.title === 'string' ? rawNote.title : '',
-                        icon: typeof rawNote?.icon === 'string' && rawNote.icon ? rawNote.icon : '📄',
-                        updatedAt: Number.isFinite(Number(rawNote?.updatedAt)) ? Number(rawNote.updatedAt) : Date.now()
-                    },
-                    doc: rawBackup.docs[sourceId] && typeof rawBackup.docs[sourceId] === 'object' ? rawBackup.docs[sourceId] : {}
-                };
-            });
-
-            if (normalizedItems.length === 0) {
-                const blankNote = createBlankNote();
-                return {
-                    notes: [blankNote],
-                    docs: { [blankNote.id]: {} }
-                };
-            }
-
-            const importedNotes = normalizedItems.map((item) => item.note);
-            const importedDocs = {};
-            normalizedItems.forEach((item) => {
-                importedDocs[item.note.id] = item.doc;
-            });
-
-            return {
-                notes: importedNotes,
-                docs: importedDocs
-            };
-        }
-
-        async function importBackupFile(file) {
-            const rawText = await file.text();
-            const parsed = safeParseJSON(rawText, null);
-            const normalized = normalizeImportedBackup(parsed);
-
-            if (!normalized) {
-                alert('这个文件不是可识别的 Mini Notion 备份。');
-                return;
-            }
-
-            const confirmed = window.confirm('导入会覆盖当前浏览器中的 Mini Notion 本地内容。建议你先导出一次现有备份。确定继续吗？');
-            if (!confirmed) {
-                return;
-            }
-
-            clearAllStoredDocs();
-            notes = normalized.notes;
-            Object.entries(normalized.docs).forEach(([noteId, doc]) => {
-                persistDoc(noteId, doc);
-            });
-
-            activeNoteId = notes[0].id;
-            saveNotesIndex();
-            renderSidebar();
-            await switchNote(activeNoteId);
-            showSaveStatus('⬆️ 备份已导入到当前浏览器');
-        }
-
-        titleInput.addEventListener('input', () => {
-            const activeNote = notes.find((note) => note.id === activeNoteId);
-            if (activeNote) {
-                activeNote.title = titleInput.value;
-                activeNote.updatedAt = Date.now();
-                saveNotesIndex();
-                renderSidebar();
-                showSaveStatus();
-            }
-        });
-
-        const emojis = ['📄', '📝', '🚀', '💡', '🌟', '🦄', '🎯', '🎨', '📚', '☕', '🎮', '🪴', '🐱', '🎸', '🍔', '🌈', '🔥', '📅', '🎉', '🏖️'];
-        iconDiv.addEventListener('click', () => {
-            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            iconDiv.textContent = randomEmoji;
-            const activeNote = notes.find((note) => note.id === activeNoteId);
-            if (activeNote) {
-                activeNote.icon = randomEmoji;
-                activeNote.updatedAt = Date.now();
-                saveNotesIndex();
-                renderSidebar();
-                showSaveStatus();
-            }
-        });
-
-        function addBlock(type) {
-            if (!editor) return;
-            let data = {};
-            if (type === 'header') data = { text: '', level: 2 };
-            else if (type === 'checklist') data = { items: [{ text: '', checked: false }] };
-            else if (type === 'list') data = { style: 'unordered', items: [] };
-
-            const index = editor.blocks.getBlocksCount();
-            editor.blocks.insert(type, data, {}, index, true);
-
-            setTimeout(() => {
-                editor.caret.setToLastBlock('end');
-                document.getElementById('main-scroll-area').scrollTo({
-                    top: document.getElementById('main-scroll-area').scrollHeight,
-                    behavior: 'smooth'
-                });
-            }, 50);
-        }
-
-        exportBtn.addEventListener('click', exportBackup);
-        importBtn.addEventListener('click', () => importFileInput.click());
-        importFileInput.addEventListener('change', async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (!file) return;
-            await importBackupFile(file);
-        });
-
-        sidebarToggle.addEventListener('click', () => {
-            if (sidebar.classList.contains('open')) {
-                closeSidebar();
-            } else {
-                openSidebar();
-            }
-        });
-        mobileOverlay.addEventListener('click', closeSidebar);
-        window.addEventListener('resize', () => {
-            if (!isMobileViewport()) {
-                closeSidebar();
-            }
-        });
-
-        cleanupEmptyNotes(activeNoteId);
-        if (notes.length === 0) {
-            const defaultNote = createBlankNote();
-            notes.push(defaultNote);
-            activeNoteId = defaultNote.id;
-        }
-
-        renderSidebar();
-        switchNote(activeNoteId);
-    </script>
+    <script src="shared/notion-app.js"></script>
 </body>
 </html>

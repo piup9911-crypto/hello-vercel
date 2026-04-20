@@ -62,6 +62,29 @@
             color: #666;
             line-height: 1.5;
         }
+        .cloud-entry {
+            position: fixed;
+            top: 20px;
+            right: 22px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: #37352f;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(55,53,47,0.08);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cloud-entry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(0,0,0,0.1);
+        }
         .secret-trigger {
             position: fixed;
             right: 22px;
@@ -98,6 +121,10 @@
             transform: translateY(-1px);
         }
         @media (max-width: 720px) {
+            .cloud-entry {
+                top: 16px;
+                right: 16px;
+            }
             .secret-trigger {
                 right: 16px;
                 bottom: 16px;
@@ -106,6 +133,7 @@
     </style>
 </head>
 <body>
+    <a href="login.html" class="cloud-entry">☁️ 云端登录</a>
     <h1>欢迎来到我的秘密岛屿 🏝️</h1>
     <div class="container">
         <a href="magic.html" class="card">
@@ -116,7 +144,7 @@
         <a href="notion.html" class="card">
             <div class="icon">📝</div>
             <h2>Mini Notion</h2>
-            <p>基于本地存储的无干扰极简编辑器</p>
+            <p>已经升级为云端同步版的无干扰极简编辑器</p>
         </a>
     </div>
     <a href="secret-diary.html" class="secret-trigger" aria-label="打开秘密日记" title="打开秘密日记">
