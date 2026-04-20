@@ -1,5 +1,5 @@
 (function () {
-  const LOGIN_PATH = "/login.html";
+  const LOGIN_PATH = "/index.html";
   let configPromise = null;
   let clientPromise = null;
 

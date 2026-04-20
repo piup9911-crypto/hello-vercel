@@ -3,152 +3,591 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的个人应用集</title>
+    <title>秘密岛屿</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="shared/supabase-auth.js"></script>
     <style>
+        :root {
+            --bg: #f8f5ff;
+            --panel: rgba(255, 255, 255, 0.9);
+            --panel-strong: rgba(255, 255, 255, 0.96);
+            --text: #2f2940;
+            --muted: #7d738f;
+            --line: #e7dff4;
+            --primary: #8b5cf6;
+            --primary-strong: #7c3aed;
+            --danger: #dc2626;
+            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
             margin: 0;
-            background: #f8f9fa;
-            color: #333;
+            min-height: 100vh;
             padding: 24px;
+            color: var(--text);
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.36), transparent 24%),
+                linear-gradient(160deg, #fcfaff 0%, #f8f5ff 48%, #f6fbff 100%);
         }
+
+        .shell {
+            width: min(100%, 1120px);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+            gap: 22px;
+            align-items: stretch;
+        }
+
+        .panel {
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            background: var(--panel);
+        }
+
+        .story,
+        .auth-panel {
+            padding: 30px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
         h1 {
-            margin-bottom: 2rem;
-            color: #2c3e50;
-            text-align: center;
+            margin: 18px 0 14px;
+            font-size: clamp(34px, 5vw, 56px);
+            line-height: 1.08;
         }
-        .container {
-            display: flex;
-            gap: 2rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 980px;
+
+        .lead {
+            color: var(--muted);
+            line-height: 1.8;
+            font-size: 15px;
+            max-width: 44ch;
         }
-        .card {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-            text-align: center;
+
+        .story-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .story-card {
+            border-radius: 22px;
+            padding: 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+        }
+
+        .story-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .story-card-body {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.75;
+        }
+
+        .app-grid {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .app-card {
             text-decoration: none;
             color: inherit;
-            width: 250px;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: 2px solid transparent;
+            padding: 18px;
+            border-radius: 22px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-            border-color: #ff6b6b;
+
+        .app-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(139, 92, 246, 0.28);
+            box-shadow: 0 18px 36px rgba(139, 92, 246, 0.12);
         }
-        .card:nth-child(2):hover {
-            border-color: #37352f;
+
+        .app-icon {
+            font-size: 30px;
+            margin-bottom: 10px;
         }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
+
+        .app-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
         }
-        h2 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.5rem;
+
+        .app-body {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
         }
-        p {
+
+        .auth-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .auth-title {
             margin: 0;
-            color: #666;
-            line-height: 1.5;
+            font-size: 28px;
+            line-height: 1.2;
         }
-        .cloud-entry {
-            position: fixed;
-            top: 20px;
-            right: 22px;
+
+        .auth-subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .status-chip {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 10px 14px;
             border-radius: 999px;
-            text-decoration: none;
-            color: #37352f;
-            background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(55,53,47,0.08);
-            box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-            backdrop-filter: blur(10px);
-            font-size: 14px;
-            font-weight: 600;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--muted);
+            font-size: 13px;
+            white-space: nowrap;
         }
-        .cloud-entry:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 30px rgba(0,0,0,0.1);
+
+        .field {
+            display: grid;
+            gap: 8px;
+            margin-top: 14px;
         }
-        .secret-trigger {
-            position: fixed;
-            right: 22px;
-            bottom: 20px;
-            width: 42px;
-            height: 42px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #c4b5fd;
-            background: rgba(255,255,255,0.42);
-            border: 1px solid rgba(196,181,253,0.28);
-            box-shadow: 0 10px 24px rgba(139,92,246,0.08);
-            backdrop-filter: blur(10px);
-            opacity: 0.42;
-            transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            font-size: 14px;
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
-        .secret-trigger:hover {
-            opacity: 0.95;
-            transform: translateY(-2px);
-            box-shadow: 0 14px 30px rgba(139,92,246,0.14);
-            border-color: rgba(139,92,246,0.48);
-        }
-        .secret-trigger:focus-visible {
-            opacity: 1;
+
+        input {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.92);
+            color: var(--text);
+            padding: 15px 16px;
+            font: inherit;
             outline: none;
-            box-shadow: 0 0 0 4px rgba(139,92,246,0.12), 0 14px 30px rgba(139,92,246,0.16);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        .secret-dot {
-            line-height: 1;
+
+        input:focus {
+            border-color: rgba(139, 92, 246, 0.42);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
+        }
+
+        .submit-btn,
+        .ghost-btn,
+        .signout-btn {
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .submit-btn:hover,
+        .ghost-btn:hover,
+        .signout-btn:hover {
             transform: translateY(-1px);
         }
-        @media (max-width: 720px) {
-            .cloud-entry {
-                top: 16px;
-                right: 16px;
+
+        .submit-btn {
+            width: 100%;
+            margin-top: 18px;
+            border-radius: 18px;
+            padding: 14px 16px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
+            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        .feedback {
+            margin-top: 14px;
+            min-height: 24px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .feedback.error {
+            color: var(--danger);
+        }
+
+        .feedback.success {
+            color: var(--primary-strong);
+        }
+
+        .helper-box,
+        .member-box {
+            margin-top: 18px;
+            border-radius: 20px;
+            padding: 16px 18px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .helper-box strong,
+        .member-email {
+            color: var(--text);
+        }
+
+        .member-box {
+            display: grid;
+            gap: 10px;
+        }
+
+        .portal-links {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .ghost-btn,
+        .signout-btn {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--line);
+            color: var(--text);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .continue-wrap {
+            margin-top: 18px;
+        }
+
+        .continue-hint {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 920px) {
+            .shell {
+                grid-template-columns: 1fr;
             }
-            .secret-trigger {
-                right: 16px;
-                bottom: 16px;
+
+            .story,
+            .auth-panel {
+                padding: 22px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 16px;
+            }
+
+            .app-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-chip {
+                width: 100%;
+                justify-content: center;
             }
         }
     </style>
 </head>
 <body>
-    <a href="login.html" class="cloud-entry">☁️ 云端登录</a>
-    <h1>欢迎来到我的秘密岛屿 🏝️</h1>
-    <div class="container">
-        <a href="magic.html" class="card">
-            <div class="icon">✨</div>
-            <h2>魔法实验室</h2>
-            <p>包含 3D 悬浮卡片、粒子特效与鼠标拖尾的趣味交互页面</p>
-        </a>
-        <a href="notion.html" class="card">
-            <div class="icon">📝</div>
-            <h2>Mini Notion</h2>
-            <p>已经升级为云端同步版的无干扰极简编辑器</p>
-        </a>
+    <div class="shell">
+        <section class="panel story">
+            <div>
+                <div class="eyebrow">☁️ 直接登录的首页</div>
+                <h1>你现在打开的，就是通往你云端空间的主页面。</h1>
+                <div class="lead">
+                    不再单独绕去一个云端门户。登录以后，你会直接留在首页，Mini Notion 和秘密日记都从这里进入，
+                    两边的数据也都会自动写进 Supabase。
+                </div>
+                <div class="story-grid">
+                    <div class="story-card">
+                        <div class="story-card-title">Mini Notion</div>
+                        <div class="story-card-body">
+                            笔记已经改成云端同步版，刷新页面或换设备后也能继续读写同一份内容。
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-card-title">秘密日记</div>
+                        <div class="story-card-body">
+                            日记现在也会写进 `secret_diary_entries` 这张云端表，不再只留在单一浏览器里。
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-card-title">旧数据迁移</div>
+                        <div class="story-card-body">
+                            如果你以前在本机写过内容，登录后页面里会继续显示“导入本地旧数据”的按钮。
+                        </div>
+                    </div>
+                </div>
+                <div class="app-grid">
+                    <a class="app-card" href="notion.html">
+                        <div class="app-icon">📝</div>
+                        <div class="app-title">Mini Notion</div>
+                        <div class="app-body">无干扰极简编辑器，已接到你的云端账号。</div>
+                    </a>
+                    <a class="app-card" href="secret-diary.html">
+                        <div class="app-icon">🤍</div>
+                        <div class="app-title">秘密日记</div>
+                        <div class="app-body">私密内容也会保存到云端，只有你的账号能读写。</div>
+                    </a>
+                    <a class="app-card" href="magic.html">
+                        <div class="app-icon">✨</div>
+                        <div class="app-title">魔法实验室</div>
+                        <div class="app-body">保留你原来那片轻松一点的小乐园，不受登录流程影响。</div>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel auth-panel">
+            <div class="auth-header">
+                <div>
+                    <h2 class="auth-title">登录云端首页</h2>
+                    <div class="auth-subtitle" id="auth-subtitle">
+                        用你刚刚在 Supabase 里建好的账号登录，登录后就直接从这里进入笔记和日记。
+                    </div>
+                </div>
+                <div class="status-chip" id="top-status">准备连接云端</div>
+            </div>
+
+            <div id="guest-view">
+                <form id="login-form">
+                    <div class="field">
+                        <label for="email">邮箱</label>
+                        <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="password">密码</label>
+                        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="输入你自己设置的密码" required>
+                    </div>
+
+                    <button class="submit-btn" id="submit-btn" type="submit">进入我的首页</button>
+                    <div class="feedback" id="feedback"></div>
+                </form>
+
+                <div class="helper-box">
+                    <strong>现在这个首页就是登录入口：</strong><br>
+                    未登录时，你会在这里输入账号密码。登录成功后，首页会直接变成你的个人云端入口，不再另外绕去一个独立门户。
+                </div>
+            </div>
+
+            <div id="member-view" hidden>
+                <div class="member-box">
+                    <div>当前已经连上你的云端账号。</div>
+                    <div class="member-email" id="member-email">账号：--</div>
+                    <div>Mini Notion 和秘密日记现在都会跟着这个账号保存到 Supabase。</div>
+                </div>
+
+                <div class="continue-wrap" id="continue-wrap" hidden>
+                    <a class="ghost-btn" id="continue-btn" href="/notion.html">继续前往刚才的页面</a>
+                    <div class="continue-hint" id="continue-hint"></div>
+                </div>
+
+                <div class="portal-links">
+                    <a class="ghost-btn" href="notion.html">📝 打开 Mini Notion</a>
+                    <a class="ghost-btn" href="secret-diary.html">🤍 打开秘密日记</a>
+                    <a class="ghost-btn" href="magic.html">✨ 打开魔法实验室</a>
+                    <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
+                </div>
+            </div>
+        </section>
     </div>
-    <a href="secret-diary.html" class="secret-trigger" aria-label="打开秘密日记" title="打开秘密日记">
-        <span class="secret-dot">✦</span>
-    </a>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submit-btn');
+        const feedback = document.getElementById('feedback');
+        const guestView = document.getElementById('guest-view');
+        const memberView = document.getElementById('member-view');
+        const memberEmail = document.getElementById('member-email');
+        const signoutBtn = document.getElementById('signout-btn');
+        const topStatus = document.getElementById('top-status');
+        const continueWrap = document.getElementById('continue-wrap');
+        const continueBtn = document.getElementById('continue-btn');
+        const continueHint = document.getElementById('continue-hint');
+        const authSubtitle = document.getElementById('auth-subtitle');
+        const params = new URLSearchParams(window.location.search);
+
+        function setFeedback(message, type) {
+            feedback.textContent = message || '';
+            feedback.className = `feedback ${type || ''}`.trim();
+        }
+
+        function getReturnTarget() {
+            return window.AppAuth.readReturnTo('/index.html');
+        }
+
+        function getFriendlyTarget(path) {
+            if (path.startsWith('/notion.html')) {
+                return 'Mini Notion';
+            }
+
+            if (path.startsWith('/secret-diary.html')) {
+                return '秘密日记';
+            }
+
+            if (path.startsWith('/magic.html')) {
+                return '魔法实验室';
+            }
+
+            return '刚才的页面';
+        }
+
+        function showGuestState() {
+            guestView.hidden = false;
+            memberView.hidden = true;
+            topStatus.textContent = '等待你登录';
+            authSubtitle.textContent = '用你刚刚在 Supabase 里建好的账号登录，登录后就直接从这里进入笔记和日记。';
+        }
+
+        function showMemberState(user) {
+            guestView.hidden = true;
+            memberView.hidden = false;
+            memberEmail.textContent = `账号：${user && user.email ? user.email : '已登录'}`;
+            topStatus.textContent = '云端已连接';
+            authSubtitle.textContent = '现在首页已经变成你的个人入口了，可以直接从这里进入云端内容。';
+
+            const target = getReturnTarget();
+            const hasExplicitReturnTo = params.has('returnTo') && target !== '/index.html';
+
+            continueWrap.hidden = !hasExplicitReturnTo;
+
+            if (hasExplicitReturnTo) {
+                continueBtn.href = target;
+                continueHint.textContent = `你刚才想打开的是“${getFriendlyTarget(target)}”。`;
+            }
+        }
+
+        async function bootstrap() {
+            if (!window.AppAuth) {
+                throw new Error('Supabase 认证脚本没有成功加载。');
+            }
+
+            const authState = await window.AppAuth.getSession();
+
+            if (authState.session) {
+                showMemberState(authState.user);
+                return;
+            }
+
+            showGuestState();
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setFeedback('', '');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '正在验证...';
+
+            try {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                const result = await window.AppAuth.signInWithPassword(email, password);
+
+                if (result.error) {
+                    throw result.error;
+                }
+
+                const target = getReturnTarget();
+                const hasExplicitReturnTo = params.has('returnTo') && target !== '/index.html';
+
+                if (hasExplicitReturnTo) {
+                    setFeedback(`登录成功，正在带你前往${getFriendlyTarget(target)}...`, 'success');
+                    window.location.href = target;
+                    return;
+                }
+
+                const authState = await window.AppAuth.getSession();
+                showMemberState(authState.user);
+                setFeedback('登录成功，现在首页已经切换成你的云端入口。', 'success');
+                window.history.replaceState({}, '', '/index.html');
+            } catch (error) {
+                console.error('首页登录失败：', error);
+                setFeedback(window.AppAuth.humanizeError(error), 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '进入我的首页';
+            }
+        });
+
+        signoutBtn.addEventListener('click', async () => {
+            try {
+                await window.AppAuth.signOut();
+                window.location.href = '/index.html';
+            } catch (error) {
+                console.error('退出登录失败：', error);
+                setFeedback(window.AppAuth.humanizeError(error), 'error');
+            }
+        });
+
+        void bootstrap().catch((error) => {
+            console.error('首页初始化失败：', error);
+            showGuestState();
+            topStatus.textContent = '云端暂时不可用';
+            setFeedback(window.AppAuth.humanizeError(error), 'error');
+        });
+    </script>
 </body>
 </html>
