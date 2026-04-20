@@ -80,7 +80,7 @@
             <input type="text" class="page-title" id="page-title" placeholder="给你的笔记起个酷名字吧..." autocomplete="off">
         </div>
         
-        <div class="help-text">💡 提示：点击下方按钮可以快速插入内容，或者在空白处直接打字：</div>
+        <div class="help-text">💡 提示：点击下方按钮可以快速插入内容，立刻开始打字：</div>
         
         <!-- 快捷操作栏 -->
         <div class="action-bar">
@@ -158,16 +158,20 @@
                 data = { style: 'unordered', items: [] };
             }
             
-            // 在编辑器末尾插入新块
-            editor.blocks.insert(type, data);
+            // 获取当前块数量，以便插入到最后
+            const index = editor.blocks.getBlocksCount();
             
-            // 滚动到最下面，体验更好
+            // 第五个参数设置为 true，代表插入后需要获取焦点
+            editor.blocks.insert(type, data, {}, index, true);
+            
+            // 确保光标强制聚焦到新插入的块，并且页面滚动过去
             setTimeout(() => {
+                editor.caret.setToLastBlock('end');
                 window.scrollTo({
                     top: document.body.scrollHeight,
                     behavior: 'smooth'
                 });
-            }, 100);
+            }, 50);
         }
 
         titleInput.addEventListener('input', () => {
