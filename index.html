@@ -15,16 +15,19 @@
             margin: 0;
             background: #f8f9fa;
             color: #333;
+            padding: 24px;
         }
         h1 {
             margin-bottom: 2rem;
             color: #2c3e50;
+            text-align: center;
         }
         .container {
             display: flex;
             gap: 2rem;
             flex-wrap: wrap;
             justify-content: center;
+            max-width: 980px;
         }
         .card {
             background: white;
@@ -45,6 +48,9 @@
         }
         .card:nth-child(2):hover {
             border-color: #37352f;
+        }
+        .card:nth-child(3):hover {
+            border-color: #8b5cf6;
         }
         .icon {
             font-size: 4rem;
@@ -73,6 +79,11 @@
             <div class="icon">📝</div>
             <h2>Mini Notion</h2>
             <p>基于本地存储的无干扰极简编辑器</p>
+        </a>
+        <a href="secret-diary.html" class="card">
+            <div class="icon">🤍</div>
+            <h2>秘密日记</h2>
+            <p>写给自己看的私密房间，支持本地保存、心情标签、搜索与导出</p>
         </a>
     </div>
 </body>
