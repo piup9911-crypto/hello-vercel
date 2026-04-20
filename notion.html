@@ -134,6 +134,51 @@
                 quote: { class: Quote, inlineToolbar: true },
                 marker: { class: Marker, shortcut: 'CMD+SHIFT+M' }
             },
+            // 添加 i18n 中文配置
+            i18n: {
+                messages: {
+                    ui: {
+                        "blockTunes": {
+                            "toggler": {
+                                "Click to tune": "点击调整设置",
+                                "or drag to move": "或拖动以移动"
+                            },
+                        },
+                        "inlineToolbar": {
+                            "converter": {
+                                "Convert to": "转换为"
+                            }
+                        },
+                        "toolbar": {
+                            "toolbox": {
+                                "Add": "添加组件"
+                            }
+                        }
+                    },
+                    toolNames: {
+                        "Text": "正文",
+                        "Heading": "标题",
+                        "List": "列表",
+                        "Checklist": "待办清单",
+                        "Quote": "引用",
+                        "Marker": "高亮",
+                        "Bold": "加粗",
+                        "Italic": "斜体",
+                        "Link": "链接",
+                    },
+                    blockTunes: {
+                        "delete": {
+                            "Delete": "删除"
+                        },
+                        "moveUp": {
+                            "Move up": "上移"
+                        },
+                        "moveDown": {
+                            "Move down": "下移"
+                        }
+                    }
+                }
+            },
             onChange: async () => {
                 try {
                     const outputData = await editor.save();
