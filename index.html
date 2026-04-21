@@ -389,6 +389,11 @@
                         <div class="app-title">秘密日记</div>
                         <div class="app-body">私密内容也会保存到云端，只有你的账号能读写。</div>
                     </a>
+                    <a class="app-card" href="memory.html">
+                        <div class="app-icon">☁️</div>
+                        <div class="app-title">共享记忆</div>
+                        <div class="app-body">查看、确认和整理 CLI 与 Telegram 共用的共同经历记忆库。</div>
+                    </a>
                     <a class="app-card" href="magic.html">
                         <div class="app-icon">✨</div>
                         <div class="app-title">魔法实验室</div>
@@ -447,6 +452,7 @@
                     <a class="ghost-btn" href="notion.html">📝 打开 Mini Notion</a>
                     <a class="ghost-btn" href="secret-diary.html">🤍 打开秘密日记</a>
                     <a class="ghost-btn" href="magic.html">✨ 打开魔法实验室</a>
+                    <a class="ghost-btn" href="memory.html">☁️ 打开共享记忆</a>
                     <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
                 </div>
             </div>
@@ -490,6 +496,10 @@
 
             if (path.startsWith('/magic.html')) {
                 return '魔法实验室';
+            }
+
+            if (path.startsWith('/memory.html')) {
+                return '共享记忆';
             }
 
             return '刚才的页面';
