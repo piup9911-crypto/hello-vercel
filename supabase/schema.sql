@@ -110,3 +110,45 @@ on public.secret_diary_entries
 for delete
 to authenticated
 using (auth.uid() = user_id);
+
+create table if not exists public.agent_shared_memory (
+  memory_key text primary key,
+  content text not null default '',
+  updated_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+insert into public.agent_shared_memory (memory_key, content)
+values ('primary', '')
+on conflict (memory_key) do nothing;
+
+drop trigger if exists agent_shared_memory_set_updated_at on public.agent_shared_memory;
+create trigger agent_shared_memory_set_updated_at
+before update on public.agent_shared_memory
+for each row
+execute function public.set_updated_at();
+
+alter table public.agent_shared_memory enable row level security;
+
+drop policy if exists "Authenticated users can read shared memory" on public.agent_shared_memory;
+create policy "Authenticated users can read shared memory"
+on public.agent_shared_memory
+for select
+to authenticated
+using (true);
+
+drop policy if exists "Authenticated users can insert shared memory" on public.agent_shared_memory;
+create policy "Authenticated users can insert shared memory"
+on public.agent_shared_memory
+for insert
+to authenticated
+with check (true);
+
+drop policy if exists "Authenticated users can update shared memory" on public.agent_shared_memory;
+create policy "Authenticated users can update shared memory"
+on public.agent_shared_memory
+for update
+to authenticated
+using (true)
+with check (true);

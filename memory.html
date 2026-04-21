@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>共享记忆</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="shared/supabase-auth.js"></script>
+    <style>
+        :root {
+            --bg: #f8f5ff;
+            --panel: rgba(255, 255, 255, 0.9);
+            --panel-strong: rgba(255, 255, 255, 0.96);
+            --text: #2f2940;
+            --muted: #7d738f;
+            --line: #e7dff4;
+            --primary: #8b5cf6;
+            --primary-strong: #7c3aed;
+            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
+            --danger: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--text);
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.36), transparent 24%),
+                linear-gradient(160deg, #fcfaff 0%, #f8f5ff 48%, #f6fbff 100%);
+        }
+
+        .shell {
+            width: min(100%, 1040px);
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        .panel {
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            background: var(--panel);
+            padding: 28px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1.08;
+        }
+
+        .lead {
+            max-width: 56ch;
+            color: var(--muted);
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .meta-card {
+            border-radius: 20px;
+            padding: 16px 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+        }
+
+        .meta-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .meta-value {
+            margin-top: 8px;
+            font-size: 15px;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+
+        .editor {
+            display: grid;
+            gap: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 360px;
+            resize: vertical;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            padding: 18px 20px;
+            font: inherit;
+            line-height: 1.8;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.94);
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        textarea:focus {
+            border-color: rgba(139, 92, 246, 0.42);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .primary-btn,
+        .ghost-btn {
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 18px;
+            padding: 13px 18px;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .primary-btn:hover,
+        .ghost-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .primary-btn {
+            color: white;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
+            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--line);
+            color: var(--text);
+        }
+
+        .feedback {
+            min-height: 24px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--muted);
+        }
+
+        .feedback.error {
+            color: var(--danger);
+        }
+
+        .feedback.success {
+            color: var(--primary-strong);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 16px;
+            }
+
+            .panel {
+                padding: 22px;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <section class="panel">
+            <div class="topbar">
+                <div class="eyebrow">共享记忆</div>
+                <a class="ghost-btn" href="index.html">返回首页</a>
+            </div>
+            <h1>这份内容会同时喂给 Telegram bridge 和 Gemini CLI。</h1>
+            <div class="lead">
+                把这里当成你想让两个入口长期共享的“稳定记忆层”。
+                比如称呼偏好、长期项目背景、正在推进的重点、希望它保持的语气和关系感，都可以写在这里。
+            </div>
+            <div class="meta-grid">
+                <div class="meta-card">
+                    <div class="meta-label">当前账号</div>
+                    <div class="meta-value" id="user-email">正在识别…</div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-label">最近云端更新时间</div>
+                    <div class="meta-value" id="updated-at">尚未读取</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel editor">
+            <textarea id="memory-input" placeholder="例如：默认叫我什么、我们的长期关系设定、最近在做的项目、不要忘记的偏好……"></textarea>
+            <div class="actions">
+                <button class="primary-btn" id="save-btn" type="button">保存到云端</button>
+                <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
+            </div>
+            <div class="feedback" id="feedback"></div>
+        </section>
+    </div>
+
+    <script>
+        const userEmail = document.getElementById("user-email");
+        const updatedAt = document.getElementById("updated-at");
+        const memoryInput = document.getElementById("memory-input");
+        const saveBtn = document.getElementById("save-btn");
+        const reloadBtn = document.getElementById("reload-btn");
+        const feedback = document.getElementById("feedback");
+
+        let accessToken = "";
+
+        function setFeedback(message, type) {
+            feedback.textContent = message || "";
+            feedback.className = `feedback ${type || ""}`.trim();
+        }
+
+        function formatTime(value) {
+            if (!value) return "尚未同步";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return new Intl.DateTimeFormat("zh-CN", {
+                dateStyle: "medium",
+                timeStyle: "short"
+            }).format(date);
+        }
+
+        async function loadMemory() {
+            setFeedback("", "");
+            reloadBtn.disabled = true;
+
+            try {
+                const response = await fetch("/api/shared-memory", {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: "application/json"
+                    },
+                    cache: "no-store"
+                });
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || "读取共享记忆失败。");
+                }
+
+                memoryInput.value = payload.content || "";
+                updatedAt.textContent = formatTime(payload.updatedAt);
+                setFeedback("已经从云端拿到最新版共享记忆。", "success");
+            } catch (error) {
+                setFeedback(
+                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                    "error"
+                );
+            } finally {
+                reloadBtn.disabled = false;
+            }
+        }
+
+        async function saveMemory() {
+            setFeedback("", "");
+            saveBtn.disabled = true;
+            saveBtn.textContent = "正在保存…";
+
+            try {
+                const response = await fetch("/api/shared-memory", {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        content: memoryInput.value
+                    })
+                });
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || "保存共享记忆失败。");
+                }
+
+                updatedAt.textContent = formatTime(payload.updatedAt);
+                setFeedback("共享记忆已经写到云端了。", "success");
+            } catch (error) {
+                setFeedback(
+                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                    "error"
+                );
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "保存到云端";
+            }
+        }
+
+        async function bootstrap() {
+            if (!window.AppAuth) {
+                throw new Error("Supabase 认证脚本没有加载成功。");
+            }
+
+            const authState = await window.AppAuth.requireUser();
+            if (authState.redirected) {
+                return;
+            }
+
+            accessToken = authState.session ? authState.session.access_token : "";
+            userEmail.textContent = authState.user && authState.user.email ? authState.user.email : "已登录";
+            await loadMemory();
+        }
+
+        saveBtn.addEventListener("click", saveMemory);
+        reloadBtn.addEventListener("click", loadMemory);
+
+        bootstrap().catch((error) => {
+            setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
+        });
+    </script>
+</body>
+</html>
