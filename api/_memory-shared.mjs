@@ -149,11 +149,19 @@ export async function listMemoryEntries(config, options = {}) {
   }
 
   const query = clauses.length > 0 ? `&${clauses.join("&")}` : "";
-  const rows = await callSupabase(
-    config,
-    `/rest/v1/${MEMORY_ENTRIES_TABLE}?select=id,fingerprint,source_channel,source_ref,summary,detail,reason,confidence,status,metadata,created_at,updated_at,reviewed_at&order=updated_at.desc${query}`
-  );
-  return Array.isArray(rows) ? rows : [];
+  try {
+    const rows = await callSupabase(
+      config,
+      `/rest/v1/${MEMORY_ENTRIES_TABLE}?select=id,fingerprint,source_channel,source_ref,summary,detail,reason,confidence,status,metadata,created_at,updated_at,reviewed_at&order=updated_at.desc${query}`
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
+    if (message.includes(`Could not find the table 'public.${MEMORY_ENTRIES_TABLE}'`)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function upsertMemoryEntries(config, entries, userId) {
