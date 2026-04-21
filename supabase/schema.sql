@@ -152,3 +152,58 @@ for update
 to authenticated
 using (true)
 with check (true);
+
+create table if not exists public.agent_memory_entries (
+  id uuid primary key default gen_random_uuid(),
+  fingerprint text not null unique,
+  source_channel text not null default '',
+  source_ref text not null default '',
+  summary text not null,
+  detail text not null default '',
+  reason text not null default '',
+  confidence numeric(4, 3),
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'edited', 'rejected')),
+  metadata jsonb not null default '{}'::jsonb,
+  created_by uuid references auth.users (id) on delete set null,
+  reviewed_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  reviewed_at timestamptz
+);
+
+create index if not exists agent_memory_entries_status_updated_idx
+  on public.agent_memory_entries (status, updated_at desc);
+
+create index if not exists agent_memory_entries_source_idx
+  on public.agent_memory_entries (source_channel, source_ref, updated_at desc);
+
+drop trigger if exists agent_memory_entries_set_updated_at on public.agent_memory_entries;
+create trigger agent_memory_entries_set_updated_at
+before update on public.agent_memory_entries
+for each row
+execute function public.set_updated_at();
+
+alter table public.agent_memory_entries enable row level security;
+
+drop policy if exists "Authenticated users can read memory entries" on public.agent_memory_entries;
+create policy "Authenticated users can read memory entries"
+on public.agent_memory_entries
+for select
+to authenticated
+using (true);
+
+drop policy if exists "Authenticated users can insert memory entries" on public.agent_memory_entries;
+create policy "Authenticated users can insert memory entries"
+on public.agent_memory_entries
+for insert
+to authenticated
+with check (true);
+
+drop policy if exists "Authenticated users can update memory entries" on public.agent_memory_entries;
+create policy "Authenticated users can update memory entries"
+on public.agent_memory_entries
+for update
+to authenticated
+using (true)
+with check (true);

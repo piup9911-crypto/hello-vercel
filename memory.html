@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>共享记忆</title>
+    <title>共享记忆控制台</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="shared/supabase-auth.js"></script>
     <style>
@@ -16,8 +16,9 @@
             --line: #e7dff4;
             --primary: #8b5cf6;
             --primary-strong: #7c3aed;
-            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
+            --success: #0f9d58;
             --danger: #dc2626;
+            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
         }
 
         * {
@@ -37,7 +38,7 @@
         }
 
         .shell {
-            width: min(100%, 1040px);
+            width: min(100%, 1120px);
             margin: 0 auto;
             display: grid;
             gap: 20px;
@@ -74,6 +75,55 @@
             font-weight: 600;
         }
 
+        .ghost-btn,
+        .primary-btn,
+        .danger-btn,
+        .success-btn {
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 18px;
+            padding: 12px 16px;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .ghost-btn:hover,
+        .primary-btn:hover,
+        .danger-btn:hover,
+        .success-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--line);
+            color: var(--text);
+        }
+
+        .primary-btn {
+            color: white;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
+            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
+        }
+
+        .success-btn {
+            background: rgba(15, 157, 88, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(15, 157, 88, 0.18);
+        }
+
+        .danger-btn {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.16);
+        }
+
         h1 {
             margin: 18px 0 12px;
             font-size: clamp(30px, 5vw, 48px);
@@ -81,7 +131,7 @@
         }
 
         .lead {
-            max-width: 56ch;
+            max-width: 60ch;
             color: var(--muted);
             line-height: 1.8;
             font-size: 15px;
@@ -89,7 +139,7 @@
 
         .meta-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
             margin-top: 22px;
         }
@@ -115,68 +165,50 @@
             word-break: break-word;
         }
 
-        .editor {
-            display: grid;
-            gap: 14px;
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
         }
 
-        textarea {
+        .section-title {
+            margin: 0;
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .section-note {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        textarea,
+        input {
             width: 100%;
-            min-height: 360px;
-            resize: vertical;
-            border-radius: 22px;
+            border-radius: 18px;
             border: 1px solid var(--line);
-            padding: 18px 20px;
-            font: inherit;
-            line-height: 1.8;
-            color: var(--text);
             background: rgba(255, 255, 255, 0.94);
+            color: var(--text);
+            padding: 14px 16px;
+            font: inherit;
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
-        textarea:focus {
+        textarea {
+            min-height: 220px;
+            resize: vertical;
+            line-height: 1.8;
+        }
+
+        textarea:focus,
+        input:focus {
             border-color: rgba(139, 92, 246, 0.42);
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
-        }
-
-        .actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .primary-btn,
-        .ghost-btn {
-            border: none;
-            cursor: pointer;
-            font: inherit;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            border-radius: 18px;
-            padding: 13px 18px;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-        }
-
-        .primary-btn:hover,
-        .ghost-btn:hover {
-            transform: translateY(-1px);
-        }
-
-        .primary-btn {
-            color: white;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
-            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
-        }
-
-        .ghost-btn {
-            background: rgba(255, 255, 255, 0.86);
-            border: 1px solid var(--line);
-            color: var(--text);
         }
 
         .feedback {
@@ -194,7 +226,54 @@
             color: var(--primary-strong);
         }
 
-        @media (max-width: 720px) {
+        .cards {
+            display: grid;
+            gap: 14px;
+        }
+
+        .memory-card {
+            border-radius: 22px;
+            padding: 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+            display: grid;
+            gap: 12px;
+        }
+
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .tiny {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary-strong);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .empty {
+            border-radius: 18px;
+            padding: 18px;
+            border: 1px dashed var(--line);
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        @media (max-width: 820px) {
             body {
                 padding: 16px;
             }
@@ -203,7 +282,8 @@
                 padding: 22px;
             }
 
-            .meta-grid {
+            .meta-grid,
+            .memory-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -213,13 +293,12 @@
     <div class="shell">
         <section class="panel">
             <div class="topbar">
-                <div class="eyebrow">共享记忆</div>
+                <div class="eyebrow">共享记忆控制台</div>
                 <a class="ghost-btn" href="index.html">返回首页</a>
             </div>
-            <h1>这份内容会同时喂给 Telegram bridge 和 Gemini CLI。</h1>
+            <h1>人格可以分流，但共同经历应该有同一份记忆库。</h1>
             <div class="lead">
-                把这里当成你想让两个入口长期共享的“稳定记忆层”。
-                比如称呼偏好、长期项目背景、正在推进的重点、希望它保持的语气和关系感，都可以写在这里。
+                这里分成两层：上面的“手动共享记忆”是你明确想让两个入口长期知道的内容；下面的“待确认记忆”是模型从 CLI / Telegram 互动里自动提议的候选，只有你确认后才会进入正式共享记忆库。
             </div>
             <div class="meta-grid">
                 <div class="meta-card">
@@ -230,32 +309,68 @@
                     <div class="meta-label">最近云端更新时间</div>
                     <div class="meta-value" id="updated-at">尚未读取</div>
                 </div>
+                <div class="meta-card">
+                    <div class="meta-label">当前状态</div>
+                    <div class="meta-value" id="memory-count">待载入…</div>
+                </div>
             </div>
         </section>
 
-        <section class="panel editor">
-            <textarea id="memory-input" placeholder="例如：默认叫我什么、我们的长期关系设定、最近在做的项目、不要忘记的偏好……"></textarea>
-            <div class="actions">
-                <button class="primary-btn" id="save-btn" type="button">保存到云端</button>
+        <section class="panel">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">手动共享记忆</h2>
+                    <div class="section-note">适合写长期稳定的共同背景、梗、重要关系信息，或者你明确想让两个入口都记住的话。</div>
+                </div>
+                <button class="primary-btn" id="save-btn" type="button">保存手动共享记忆</button>
+            </div>
+            <textarea id="manual-memory" placeholder="例如：我们已经一起折腾过 Telegram bridge；你在 Telegram 上更像陪伴聊天，在 CLI 上更像做事搭档。"></textarea>
+            <div class="feedback" id="manual-feedback"></div>
+        </section>
+
+        <section class="panel">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">待确认记忆</h2>
+                    <div class="section-note">这里是模型自动提议写入的共同经历候选。你可以直接批准、修改后批准，或者拒绝。</div>
+                </div>
                 <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
             </div>
-            <div class="feedback" id="feedback"></div>
+            <div class="cards" id="pending-list"></div>
+        </section>
+
+        <section class="panel">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">已确认记忆</h2>
+                    <div class="section-note">这部分会被本地同步器打包下发给 CLI 和 Telegram。</div>
+                </div>
+            </div>
+            <div class="cards" id="approved-list"></div>
         </section>
     </div>
 
     <script>
         const userEmail = document.getElementById("user-email");
         const updatedAt = document.getElementById("updated-at");
-        const memoryInput = document.getElementById("memory-input");
+        const memoryCount = document.getElementById("memory-count");
+        const manualMemory = document.getElementById("manual-memory");
         const saveBtn = document.getElementById("save-btn");
         const reloadBtn = document.getElementById("reload-btn");
-        const feedback = document.getElementById("feedback");
+        const manualFeedback = document.getElementById("manual-feedback");
+        const pendingList = document.getElementById("pending-list");
+        const approvedList = document.getElementById("approved-list");
 
         let accessToken = "";
+        let bundle = {
+            content: "",
+            approvedEntries: [],
+            pendingEntries: []
+        };
 
-        function setFeedback(message, type) {
-            feedback.textContent = message || "";
-            feedback.className = `feedback ${type || ""}`.trim();
+        function setFeedback(node, message, type) {
+            node.textContent = message || "";
+            node.className = `feedback ${type || ""}`.trim();
         }
 
         function formatTime(value) {
@@ -268,30 +383,99 @@
             }).format(date);
         }
 
-        async function loadMemory() {
-            setFeedback("", "");
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function updateSummary() {
+            memoryCount.textContent = `待确认 ${bundle.pendingEntries.length} 条，已确认 ${bundle.approvedEntries.length} 条`;
+        }
+
+        function renderApproved() {
+            if (!bundle.approvedEntries.length) {
+                approvedList.innerHTML = '<div class="empty">还没有已确认记忆。等你批准几条以后，这里就会慢慢长出你们共同的历史。</div>';
+                return;
+            }
+
+            approvedList.innerHTML = bundle.approvedEntries.map((entry) => `
+                <article class="memory-card">
+                    <div class="status-chip">${escapeHtml(entry.status || "approved")}</div>
+                    <div><strong>${escapeHtml(entry.summary || "")}</strong></div>
+                    <div>${escapeHtml(entry.detail || "")}</div>
+                    <div class="tiny">来源：${escapeHtml(entry.source_channel || "unknown")} · 更新时间：${escapeHtml(formatTime(entry.updated_at))}</div>
+                </article>
+            `).join("");
+        }
+
+        function renderPending() {
+            if (!bundle.pendingEntries.length) {
+                pendingList.innerHTML = '<div class="empty">目前没有待确认记忆。等 CLI / Telegram 自动提议后，这里会出现新的候选。</div>';
+                return;
+            }
+
+            pendingList.innerHTML = bundle.pendingEntries.map((entry) => `
+                <article class="memory-card" data-entry-id="${escapeHtml(entry.id)}">
+                    <div class="status-chip">pending</div>
+                    <div class="memory-grid">
+                        <div>
+                            <div class="tiny">一句话总结</div>
+                            <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
+                        </div>
+                        <div>
+                            <div class="tiny">为什么值得记住</div>
+                            <input class="reason-input" value="${escapeHtml(entry.reason || "")}">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="tiny">更完整说明</div>
+                        <textarea class="detail-input">${escapeHtml(entry.detail || "")}</textarea>
+                    </div>
+                    <div class="tiny">来源：${escapeHtml(entry.source_channel || "unknown")} · 置信度：${escapeHtml(entry.confidence == null ? "?" : String(entry.confidence))} · 更新时间：${escapeHtml(formatTime(entry.updated_at))}</div>
+                    <div class="actions">
+                        <button class="success-btn" data-action="approve" type="button">批准</button>
+                        <button class="primary-btn" data-action="edit" type="button">修改后批准</button>
+                        <button class="danger-btn" data-action="reject" type="button">拒绝</button>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        async function fetchBundle() {
+            const response = await fetch("/api/shared-memory", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/json"
+                },
+                cache: "no-store"
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || "读取共享记忆失败。");
+            }
+            return payload;
+        }
+
+        async function loadAll() {
+            setFeedback(manualFeedback, "", "");
             reloadBtn.disabled = true;
 
             try {
-                const response = await fetch("/api/shared-memory", {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        Accept: "application/json"
-                    },
-                    cache: "no-store"
-                });
-                const payload = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(payload.error || "读取共享记忆失败。");
-                }
-
-                memoryInput.value = payload.content || "";
-                updatedAt.textContent = formatTime(payload.updatedAt);
-                setFeedback("已经从云端拿到最新版共享记忆。", "success");
+                bundle = await fetchBundle();
+                manualMemory.value = bundle.content || "";
+                updatedAt.textContent = formatTime(bundle.updatedAt);
+                updateSummary();
+                renderPending();
+                renderApproved();
+                setFeedback(manualFeedback, "已经读取到最新的共享记忆和待确认候选。", "success");
             } catch (error) {
                 setFeedback(
+                    manualFeedback,
                     window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
                     "error"
                 );
@@ -300,8 +484,8 @@
             }
         }
 
-        async function saveMemory() {
-            setFeedback("", "");
+        async function saveManualMemory() {
+            setFeedback(manualFeedback, "", "");
             saveBtn.disabled = true;
             saveBtn.textContent = "正在保存…";
 
@@ -314,27 +498,99 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        content: memoryInput.value
+                        content: manualMemory.value
                     })
                 });
                 const payload = await response.json();
-
                 if (!response.ok) {
                     throw new Error(payload.error || "保存共享记忆失败。");
                 }
-
                 updatedAt.textContent = formatTime(payload.updatedAt);
-                setFeedback("共享记忆已经写到云端了。", "success");
+                setFeedback(manualFeedback, "手动共享记忆已经写到云端了。", "success");
             } catch (error) {
                 setFeedback(
+                    manualFeedback,
                     window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
                     "error"
                 );
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = "保存到云端";
+                saveBtn.textContent = "保存手动共享记忆";
             }
         }
+
+        async function patchEntry(id, payload) {
+            const response = await fetch("/api/memory-entries", {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    id,
+                    ...payload
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "更新记忆失败。");
+            }
+
+            return result.entry;
+        }
+
+        pendingList.addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-action]");
+            if (!button) return;
+
+            const card = button.closest("[data-entry-id]");
+            if (!card) return;
+
+            const id = card.dataset.entryId;
+            const summary = card.querySelector(".summary-input").value.trim();
+            const detail = card.querySelector(".detail-input").value.trim();
+            const reason = card.querySelector(".reason-input").value.trim();
+            const action = button.dataset.action;
+
+            button.disabled = true;
+
+            try {
+                if (action === "approve") {
+                    await patchEntry(id, {
+                        summary,
+                        detail,
+                        reason,
+                        status: "approved"
+                    });
+                } else if (action === "edit") {
+                    await patchEntry(id, {
+                        summary,
+                        detail,
+                        reason,
+                        status: "edited"
+                    });
+                } else if (action === "reject") {
+                    await patchEntry(id, {
+                        summary,
+                        detail,
+                        reason,
+                        status: "rejected"
+                    });
+                }
+
+                await loadAll();
+            } catch (error) {
+                setFeedback(
+                    manualFeedback,
+                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                    "error"
+                );
+            } finally {
+                button.disabled = false;
+            }
+        });
 
         async function bootstrap() {
             if (!window.AppAuth) {
@@ -348,14 +604,18 @@
 
             accessToken = authState.session ? authState.session.access_token : "";
             userEmail.textContent = authState.user && authState.user.email ? authState.user.email : "已登录";
-            await loadMemory();
+            await loadAll();
         }
 
-        saveBtn.addEventListener("click", saveMemory);
-        reloadBtn.addEventListener("click", loadMemory);
+        saveBtn.addEventListener("click", saveManualMemory);
+        reloadBtn.addEventListener("click", loadAll);
 
         bootstrap().catch((error) => {
-            setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
+            setFeedback(
+                manualFeedback,
+                window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                "error"
+            );
         });
     </script>
 </body>
