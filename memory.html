@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>共享记忆控制台</title>
+    <title>鍏变韩璁板繂鎺у埗鍙?/title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="shared/supabase-auth.js"></script>
     <style>
@@ -287,12 +287,87 @@
             color: var(--primary);
         }
 
+        .hidden {
+            display: none !important;
+        }
+
         .empty {
             border-radius: 20px;
             border: 1px dashed var(--line);
             padding: 18px;
             color: var(--muted);
             line-height: 1.8;
+        }
+
+        .entry-panel {
+            display: grid;
+            gap: 10px;
+        }
+
+        .entry-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: var(--panel-strong);
+            padding: 18px;
+        }
+
+        .approved-card-hint {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .approved-summary-input[readonly] {
+            cursor: default;
+            background: rgba(255, 255, 255, 0.82);
+        }
+
+        .approved-editor-actions {
+            display: none;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .memory-card.editing .approved-editor-actions {
+            display: flex;
+        }
+
+        .memory-card.editing .approved-card-hint {
+            display: none;
+        }
+
+        .sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(31, 24, 56, 0.28);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 18px;
+            z-index: 30;
+        }
+
+        .sheet-panel {
+            width: min(100%, 560px);
+            border-radius: 24px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .sheet-actions {
+            display: grid;
+            gap: 10px;
         }
 
         @media (max-width: 820px) {
@@ -315,25 +390,24 @@
     <div class="shell">
         <section class="panel">
             <div class="topbar">
-                <div class="eyebrow">共享记忆控制台</div>
-                <a class="ghost-btn" href="index.html">返回首页</a>
+                <div class="eyebrow">鍏变韩璁板繂鎺у埗鍙?/div>
+                <a class="ghost-btn" href="index.html">杩斿洖棣栭〉</a>
             </div>
-            <h1>保留少量长期记忆，再配一条当前摘要。</h1>
+            <h1>淇濈暀灏戦噺闀挎湡璁板繂锛屽啀閰嶄竴鏉″綋鍓嶆憳瑕併€?/h1>
             <div class="lead">
-                这版会更接近 ChatGPT / RikkaHub 风格。长期记忆只保留稳定偏好、人物信息和关系信息；当前正在发生的事只保留一条滚动摘要，不再把每段聊天都拆成很多词条。
-            </div>
+                杩欑増浼氭洿鎺ヨ繎 ChatGPT / RikkaHub 椋庢牸銆傞暱鏈熻蹇嗗彧淇濈暀绋冲畾鍋忓ソ銆佷汉鐗╀俊鎭拰鍏崇郴淇℃伅锛涘綋鍓嶆鍦ㄥ彂鐢熺殑浜嬪彧淇濈暀涓€鏉℃粴鍔ㄦ憳瑕侊紝涓嶅啀鎶婃瘡娈佃亰澶╅兘鎷嗘垚寰堝璇嶆潯銆?            </div>
             <div class="meta-grid">
                 <div class="meta-card">
-                    <div class="meta-label">当前账号</div>
-                    <div class="meta-value" id="user-email">正在识别…</div>
+                    <div class="meta-label">褰撳墠璐﹀彿</div>
+                    <div class="meta-value" id="user-email">姝ｅ湪璇嗗埆鈥?/div>
                 </div>
                 <div class="meta-card">
-                    <div class="meta-label">最近云端更新时间</div>
-                    <div class="meta-value" id="updated-at">尚未读取</div>
+                    <div class="meta-label">鏈€杩戜簯绔洿鏂版椂闂?/div>
+                    <div class="meta-value" id="updated-at">灏氭湭璇诲彇</div>
                 </div>
                 <div class="meta-card">
-                    <div class="meta-label">当前状态</div>
-                    <div class="meta-value" id="memory-count">正在加载…</div>
+                    <div class="meta-label">褰撳墠鐘舵€?/div>
+                    <div class="meta-value" id="memory-count">姝ｅ湪鍔犺浇鈥?/div>
                 </div>
             </div>
         </section>
@@ -341,22 +415,22 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2>手动共享记忆</h2>
-                    <div class="section-note">这里适合写你明确想让 CLI 和 Telegram 长期都记住的核心背景。</div>
+                    <h2>鎵嬪姩鍏变韩璁板繂</h2>
+                    <div class="section-note">杩欓噷閫傚悎鍐欎綘鏄庣‘鎯宠 CLI 鍜?Telegram 闀挎湡閮借浣忕殑鏍稿績鑳屾櫙銆?/div>
                 </div>
-                <button class="primary-btn" id="save-btn" type="button">保存手动共享记忆</button>
+                <button class="primary-btn" id="save-btn" type="button">淇濆瓨鎵嬪姩鍏变韩璁板繂</button>
             </div>
-            <textarea id="manual-memory" placeholder="例如：我们已经一起折腾过 Telegram bridge；Telegram 上更像陪伴聊天，CLI 上更像一起做事。"></textarea>
+            <textarea id="manual-memory" placeholder="渚嬪锛氭垜浠凡缁忎竴璧锋姌鑵捐繃 Telegram bridge锛汿elegram 涓婃洿鍍忛櫔浼磋亰澶╋紝CLI 涓婃洿鍍忎竴璧峰仛浜嬨€?></textarea>
             <div class="feedback" id="manual-feedback"></div>
         </section>
 
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2>待确认记忆</h2>
-                    <div class="section-note">这里只保留真正值得留下的长期记忆候选，或一条新的当前摘要候选。</div>
+                    <h2>寰呯‘璁よ蹇?/h2>
+                    <div class="section-note">杩欓噷鍙繚鐣欑湡姝ｅ€煎緱鐣欎笅鐨勯暱鏈熻蹇嗗€欓€夛紝鎴栦竴鏉℃柊鐨勫綋鍓嶆憳瑕佸€欓€夈€?/div>
                 </div>
-                <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
+                <button class="ghost-btn" id="reload-btn" type="button">閲嶆柊璇诲彇</button>
             </div>
             <div class="cards" id="pending-list"></div>
         </section>
@@ -364,12 +438,37 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2>已确认记忆</h2>
-                    <div class="section-note">同步器会把这些内容打包下发给 CLI 和 Telegram。</div>
+                    <h2>宸茬‘璁よ蹇嗗叆鍙?/h2>
+                    <div class="section-note">宸茬‘璁よ蹇嗘敹杩涜繖涓叆鍙ｉ噷銆傛墦寮€鍚庯紝闀挎寜鏌愪竴鏉¤蹇嗗彲浠ョ紪杈戞垨鍒犻櫎銆?/div>
                 </div>
+                <button class="ghost-btn" id="approved-toggle-btn" type="button">鎵撳紑宸茬‘璁よ蹇?/button>
+            </div>
+        </section>
+
+        <section class="panel hidden" id="approved-section">
+            <div class="section-header">
+                <div>
+                    <h2>宸茬‘璁よ蹇?/h2>
+                    <div class="section-note">鍚屾鍣ㄤ細鎶婅繖浜涘唴瀹规墦鍖呬笅鍙戠粰 CLI 鍜?Telegram銆?/div>
+                </div>
+                <button class="ghost-btn" id="approved-close-btn" type="button">鏀惰捣</button>
             </div>
             <div class="cards" id="approved-list"></div>
         </section>
+    </div>
+
+    <div class="sheet-backdrop hidden" id="approved-action-sheet" aria-hidden="true">
+        <div class="sheet-panel">
+            <div>
+                <h2>宸茬‘璁よ蹇嗘搷浣?/h2>
+                <div class="section-note">闀挎寜鏌愪竴鏉″凡纭璁板繂鍚庯紝鍦ㄨ繖閲岄€夋嫨缂栬緫鎴栧垹闄ゃ€?/div>
+            </div>
+            <div class="sheet-actions">
+                <button class="primary-btn" id="approved-sheet-edit-btn" type="button">缂栬緫杩欐潯璁板繂</button>
+                <button class="danger-btn" id="approved-sheet-delete-btn" type="button">鍒犻櫎杩欐潯璁板繂</button>
+                <button class="ghost-btn" id="approved-sheet-cancel-btn" type="button">鍙栨秷</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -382,6 +481,13 @@
         const manualFeedback = document.getElementById("manual-feedback");
         const pendingList = document.getElementById("pending-list");
         const approvedList = document.getElementById("approved-list");
+        const approvedSection = document.getElementById("approved-section");
+        const approvedToggleBtn = document.getElementById("approved-toggle-btn");
+        const approvedCloseBtn = document.getElementById("approved-close-btn");
+        const approvedActionSheet = document.getElementById("approved-action-sheet");
+        const approvedSheetEditBtn = document.getElementById("approved-sheet-edit-btn");
+        const approvedSheetDeleteBtn = document.getElementById("approved-sheet-delete-btn");
+        const approvedSheetCancelBtn = document.getElementById("approved-sheet-cancel-btn");
 
         let accessToken = "";
         let bundle = {
@@ -389,6 +495,9 @@
             approvedEntries: [],
             pendingEntries: []
         };
+        let approvedActionTargetId = "";
+        let approvedLongPressTimer = null;
+        let approvedPointerCard = null;
 
         function setFeedback(node, message, type) {
             node.textContent = message || "";
@@ -396,7 +505,7 @@
         }
 
         function formatTime(value) {
-            if (!value) return "尚未同步";
+            if (!value) return "灏氭湭鍚屾";
             const date = new Date(value);
             if (Number.isNaN(date.getTime())) return value;
             return new Intl.DateTimeFormat("zh-CN", {
@@ -442,18 +551,27 @@
             return segments.join(" | ");
         }
 
-        function renderCard(entry, badge) {
+        function renderApprovedCard(entry, badge) {
             return `
-                <article class="memory-card">
+                <article class="memory-card" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
                     <div class="row">
                         <div class="status-chip">${escapeHtml(badge)}</div>
                         <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
                     </div>
                     <div>
                         <div class="tiny">Memory</div>
-                        <textarea class="memory-textarea readonly" data-max-lines="20" rows="1" readonly>${escapeHtml(entry.summary || "")}</textarea>
+                        <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly>${escapeHtml(entry.summary || "")}</textarea>
                     </div>
-                    <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
+                    <div class="row">
+                        <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
+                        <div class="approved-card-hint">闀挎寜杩欐潯璁板繂鍙紪杈戞垨鍒犻櫎</div>
+                    </div>
+                    <div class="approved-editor-actions">
+                        <div class="row">
+                            <button class="primary-btn" data-action="save-approved" type="button">淇濆瓨缂栬緫</button>
+                            <button class="ghost-btn" data-action="cancel-approved" type="button">鍙栨秷</button>
+                        </div>
+                    </div>
                 </article>
             `;
         }
@@ -556,21 +674,21 @@
             if (currentSummary) {
                 sections.push(`
                     <div class="tiny">Rolling Summary</div>
-                    <div class="cards">${renderCard(currentSummary, "Current Summary")}</div>
+                    <div class="cards">${renderApprovedCard(currentSummary, "Current Summary")}</div>
                 `);
             }
 
             if (importantEventEntries.length > 0) {
                 sections.push(`
                     <div class="tiny">Important Event Archive</div>
-                    <div class="cards">${importantEventEntries.map((entry) => renderCard(entry, "Saved Event")).join("")}</div>
+                    <div class="cards">${importantEventEntries.map((entry) => renderApprovedCard(entry, "Saved Event")).join("")}</div>
                 `);
             }
 
             if (preferenceEntries.length > 0) {
                 sections.push(`
                     <div class="tiny">Long-Term Preference Memory</div>
-                    <div class="cards">${preferenceEntries.map((entry) => renderCard(entry, "Saved Memory")).join("")}</div>
+                    <div class="cards">${preferenceEntries.map((entry) => renderApprovedCard(entry, "Saved Memory")).join("")}</div>
                 `);
             }
 
@@ -710,6 +828,118 @@
             return result.entry;
         }
 
+        function setApprovedSectionOpen(open) {
+            approvedSection.classList.toggle("hidden", !open);
+            approvedToggleBtn.textContent = open ? "已打开已确认记忆" : "打开已确认记忆";
+        }
+
+        function closeApprovedActionSheet() {
+            approvedActionTargetId = "";
+            approvedActionSheet.classList.add("hidden");
+            approvedActionSheet.setAttribute("aria-hidden", "true");
+        }
+
+        function openApprovedActionSheet(card) {
+            approvedActionTargetId = card.dataset.approvedEntryId || "";
+            approvedActionSheet.classList.remove("hidden");
+            approvedActionSheet.setAttribute("aria-hidden", "false");
+        }
+
+        function clearApprovedLongPress() {
+            if (approvedLongPressTimer) {
+                clearTimeout(approvedLongPressTimer);
+                approvedLongPressTimer = null;
+            }
+            approvedPointerCard = null;
+        }
+
+        function beginApprovedEdit(card) {
+            if (!card) return;
+            const textarea = card.querySelector(".approved-summary-input");
+            if (!textarea) return;
+            card.classList.add("editing");
+            if (!card.dataset.originalSummary) {
+                card.dataset.originalSummary = textarea.value;
+            }
+            textarea.readOnly = false;
+            textarea.classList.remove("readonly");
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            autoResizeTextarea(textarea);
+        }
+
+        function cancelApprovedEdit(card) {
+            if (!card) return;
+            const textarea = card.querySelector(".approved-summary-input");
+            if (!textarea) return;
+            if (card.dataset.originalSummary != null) {
+                textarea.value = card.dataset.originalSummary;
+            }
+            textarea.readOnly = true;
+            textarea.classList.add("readonly");
+            card.classList.remove("editing");
+            delete card.dataset.originalSummary;
+            autoResizeTextarea(textarea);
+        }
+
+        async function saveApprovedEdit(card) {
+            const id = card.dataset.approvedEntryId;
+            const metadata = card.dataset.approvedEntryMeta
+                ? JSON.parse(decodeURIComponent(card.dataset.approvedEntryMeta))
+                : {};
+            const memoryKind = card.dataset.approvedEntryKind === "current_summary"
+                ? "current_summary"
+                : card.dataset.approvedEntryKind === "important_event"
+                    ? "important_event"
+                    : "preference_memory";
+            const summary = card.querySelector(".approved-summary-input").value.trim();
+            const nextMetaByKind = memoryKind === "current_summary"
+                ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
+                : memoryKind === "important_event"
+                    ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
+                    : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
+
+            await patchEntry(id, {
+                summary,
+                detail: "",
+                reason: "",
+                metadata: {
+                    ...metadata,
+                    ...nextMetaByKind
+                },
+                status: "edited"
+            });
+        }
+
+        async function deleteApprovedEntry(card) {
+            const id = card.dataset.approvedEntryId;
+            const metadata = card.dataset.approvedEntryMeta
+                ? JSON.parse(decodeURIComponent(card.dataset.approvedEntryMeta))
+                : {};
+            const memoryKind = card.dataset.approvedEntryKind === "current_summary"
+                ? "current_summary"
+                : card.dataset.approvedEntryKind === "important_event"
+                    ? "important_event"
+                    : "preference_memory";
+            const summary = card.querySelector(".approved-summary-input").value.trim();
+            const nextMetaByKind = memoryKind === "current_summary"
+                ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
+                : memoryKind === "important_event"
+                    ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
+                    : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
+
+            await patchEntry(id, {
+                summary,
+                detail: "",
+                reason: "",
+                metadata: {
+                    ...metadata,
+                    ...nextMetaByKind
+                },
+                status: "rejected"
+            });
+        }
+
         pendingList.addEventListener("click", async (event) => {
             const button = event.target.closest("button[data-action]");
             if (!button) return;
@@ -769,6 +999,110 @@
             autoResizeTextarea(textarea);
         });
 
+        approvedList.addEventListener("input", (event) => {
+            const textarea = event.target.closest("textarea[data-max-lines]");
+            if (!textarea) return;
+            autoResizeTextarea(textarea);
+        });
+
+        approvedList.addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-action]");
+            if (!button) return;
+
+            const card = button.closest("[data-approved-entry-id]");
+            if (!card) return;
+
+            button.disabled = true;
+
+            try {
+                if (button.dataset.action === "save-approved") {
+                    await saveApprovedEdit(card);
+                    await loadAll();
+                } else if (button.dataset.action === "cancel-approved") {
+                    cancelApprovedEdit(card);
+                }
+            } catch (error) {
+                setFeedback(
+                    manualFeedback,
+                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                    "error"
+                );
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        approvedList.addEventListener("pointerdown", (event) => {
+            const card = event.target.closest("[data-approved-entry-id]");
+            if (!card) return;
+            if (event.target.closest("button")) return;
+            if (card.classList.contains("editing")) return;
+            clearApprovedLongPress();
+            approvedPointerCard = card;
+            approvedLongPressTimer = setTimeout(() => {
+                if (approvedPointerCard === card) {
+                    openApprovedActionSheet(card);
+                }
+                clearApprovedLongPress();
+            }, 420);
+        });
+
+        approvedList.addEventListener("pointerup", clearApprovedLongPress);
+        approvedList.addEventListener("pointerleave", clearApprovedLongPress);
+        approvedList.addEventListener("pointercancel", clearApprovedLongPress);
+        approvedList.addEventListener("contextmenu", (event) => {
+            const card = event.target.closest("[data-approved-entry-id]");
+            if (!card) return;
+            event.preventDefault();
+            openApprovedActionSheet(card);
+        });
+
+        approvedToggleBtn.addEventListener("click", () => {
+            setApprovedSectionOpen(true);
+            approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        approvedCloseBtn.addEventListener("click", () => {
+            setApprovedSectionOpen(false);
+        });
+
+        approvedActionSheet.addEventListener("click", (event) => {
+            if (event.target === approvedActionSheet) {
+                closeApprovedActionSheet();
+            }
+        });
+
+        approvedSheetCancelBtn.addEventListener("click", closeApprovedActionSheet);
+
+        approvedSheetEditBtn.addEventListener("click", () => {
+            const card = approvedActionTargetId
+                ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
+                : null;
+            closeApprovedActionSheet();
+            if (card) {
+                beginApprovedEdit(card);
+            }
+        });
+
+        approvedSheetDeleteBtn.addEventListener("click", async () => {
+            const card = approvedActionTargetId
+                ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
+                : null;
+            closeApprovedActionSheet();
+            if (!card) return;
+
+            try {
+                await deleteApprovedEntry(card);
+                await loadAll();
+            } catch (error) {
+                setFeedback(
+                    manualFeedback,
+                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
+                    "error"
+                );
+            }
+        });
+
         window.addEventListener("resize", () => {
             resizeAllMemoryTextareas(pendingList);
             resizeAllMemoryTextareas(approvedList);
@@ -803,3 +1137,4 @@
     </script>
 </body>
 </html>
+
