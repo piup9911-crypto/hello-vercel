@@ -492,17 +492,13 @@
             return segments.join(" · ");
         }
 
-        function updateSummary() {
-            memoryCount.textContent = `待确认 ${bundle.pendingEntries.length} 条，已确认 ${bundle.approvedEntries.length} 条`;
+        function isCurrentEventEntry(entry) {
+            const meta = readEntryMeta(entry);
+            return meta.timeScope === "current" || meta.eventStatus === "ongoing";
         }
 
-        function renderApproved() {
-            if (!bundle.approvedEntries.length) {
-                approvedList.innerHTML = '<div class="empty">还没有已确认记忆。等你批准几条以后，这里就会慢慢长出你们共同的历史。</div>';
-                return;
-            }
-
-            approvedList.innerHTML = bundle.approvedEntries.map((entry) => `
+        function renderApprovedCard(entry) {
+            return `
                 <article class="memory-card">
                     <div class="memory-head">
                         <div class="status-chip">${escapeHtml(memoryTypeLabel(readEntryMeta(entry).memoryType || readEntryMeta(entry).category))}</div>
@@ -516,16 +512,11 @@
                     ` : ""}
                     <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                 </article>
-            `).join("");
+            `;
         }
 
-        function renderPending() {
-            if (!bundle.pendingEntries.length) {
-                pendingList.innerHTML = '<div class="empty">目前没有待确认记忆。等 CLI / Telegram 自动提议后，这里会出现新的候选。</div>';
-                return;
-            }
-
-            pendingList.innerHTML = bundle.pendingEntries.map((entry) => `
+        function renderPendingCard(entry) {
+            return `
                 <article class="memory-card" data-entry-id="${escapeHtml(entry.id)}" data-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
                     <div class="memory-head">
                         <div class="status-chip">pending</div>
@@ -557,7 +548,65 @@
                         <button class="danger-btn" data-action="reject" type="button">拒绝</button>
                     </div>
                 </article>
-            `).join("");
+            `;
+        }
+
+        function updateSummary() {
+            memoryCount.textContent = `待确认 ${bundle.pendingEntries.length} 条，已确认 ${bundle.approvedEntries.length} 条`;
+        }
+
+        function renderApproved() {
+            if (!bundle.approvedEntries.length) {
+                approvedList.innerHTML = '<div class="empty">还没有已确认记忆。等你批准几条以后，这里就会慢慢长出你们共同的历史。</div>';
+                return;
+            }
+
+            const currentEntries = bundle.approvedEntries.filter(isCurrentEventEntry);
+            const longTermEntries = bundle.approvedEntries.filter((entry) => !isCurrentEventEntry(entry));
+            const sections = [];
+
+            if (currentEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">当前事件摘要</div>
+                    <div class="cards">${currentEntries.map(renderApprovedCard).join("")}</div>
+                `);
+            }
+
+            if (longTermEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">长期记忆</div>
+                    <div class="cards">${longTermEntries.map(renderApprovedCard).join("")}</div>
+                `);
+            }
+
+            approvedList.innerHTML = sections.join("");
+        }
+
+        function renderPending() {
+            if (!bundle.pendingEntries.length) {
+                pendingList.innerHTML = '<div class="empty">目前没有待确认记忆。等 CLI / Telegram 自动提议后，这里会出现新的候选。</div>';
+                return;
+            }
+
+            const currentEntries = bundle.pendingEntries.filter(isCurrentEventEntry);
+            const longTermEntries = bundle.pendingEntries.filter((entry) => !isCurrentEventEntry(entry));
+            const sections = [];
+
+            if (currentEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">当前事件摘要候选</div>
+                    <div class="cards">${currentEntries.map(renderPendingCard).join("")}</div>
+                `);
+            }
+
+            if (longTermEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">长期记忆候选</div>
+                    <div class="cards">${longTermEntries.map(renderPendingCard).join("")}</div>
+                `);
+            }
+
+            pendingList.innerHTML = sections.join("");
         }
 
         async function fetchBundle() {
