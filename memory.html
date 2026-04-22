@@ -205,6 +205,19 @@
             line-height: 1.8;
         }
 
+        .memory-textarea {
+            min-height: 0;
+            resize: none;
+            overflow-y: hidden;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .memory-textarea.readonly {
+            background: rgba(255, 255, 255, 0.82);
+        }
+
         textarea:focus,
         input:focus,
         select:focus {
@@ -421,7 +434,6 @@
 
         function buildMetaLine(entry) {
             const segments = [
-                getMemoryKind(entry) === "current_summary" ? "Current Summary" : "Long-Term Memory",
                 `Source: ${entry.source_channel || "unknown"}`,
                 `Time: ${formatTime(entry.updated_at || readEntryMeta(entry).updatedAt)}`
             ];
@@ -438,7 +450,10 @@
                         <div class="status-chip">${escapeHtml(badge)}</div>
                         <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
                     </div>
-                    <div><strong>${escapeHtml(entry.summary || "")}</strong></div>
+                    <div>
+                        <div class="tiny">Memory</div>
+                        <textarea class="memory-textarea readonly" data-max-lines="20" rows="1" readonly>${escapeHtml(entry.summary || "")}</textarea>
+                    </div>
                     <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                 </article>
             `;
@@ -446,7 +461,7 @@
 
         function renderPendingCard(entry) {
             const memoryKind = getMemoryKind(entry);
-            const kindBadge = memoryKind === "current_summary" ? "Current Summary Candidate" : "Long-Term Candidate";
+            const kindBadge = memoryKind === "current_summary" ? "Pending Summary" : "Pending Memory";
 
             return `
                 <article
@@ -461,10 +476,10 @@
                     </div>
                     <div>
                         <div class="tiny">Memory</div>
-                        <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
+                        <textarea class="summary-input memory-textarea" data-max-lines="15" rows="1">${escapeHtml(entry.summary || "")}</textarea>
                     </div>
                     <div class="row">
-                        <div class="tiny">Keep only one short memory line.</div>
+                        <div class="tiny">Auto-wrap is on. The box grows with content, up to 15 lines here.</div>
                         <div class="row">
                             <button class="success-btn" data-action="approve" type="button">Approve</button>
                             <button class="primary-btn" data-action="edit" type="button">Approve After Edit</button>
@@ -481,6 +496,34 @@
 
         function getLongTermEntries(entries) {
             return (entries || []).filter((entry) => getMemoryKind(entry) !== "current_summary");
+        }
+
+        function autoResizeTextarea(node, fallbackMaxLines) {
+            if (!node) return;
+            const maxLines = Number(node.dataset.maxLines || fallbackMaxLines || 15);
+            const style = window.getComputedStyle(node);
+            const lineHeight = Number.parseFloat(style.lineHeight) || 24;
+            const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+            const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+            const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+            const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+            const maxHeight =
+                (lineHeight * maxLines) +
+                paddingTop +
+                paddingBottom +
+                borderTop +
+                borderBottom;
+
+            node.style.height = "auto";
+            const nextHeight = Math.min(node.scrollHeight, maxHeight);
+            node.style.height = `${nextHeight}px`;
+            node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
+        }
+
+        function resizeAllMemoryTextareas(root = document) {
+            root.querySelectorAll("textarea[data-max-lines]").forEach((node) => {
+                autoResizeTextarea(node);
+            });
         }
 
         function updateSummary() {
@@ -510,11 +553,12 @@
             if (longTermEntries.length > 0) {
                 sections.push(`
                     <div class="tiny">Long-Term Memory</div>
-                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, "Long-Term Memory")).join("")}</div>
+                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, "Saved Memory")).join("")}</div>
                 `);
             }
 
             approvedList.innerHTML = sections.join("");
+            resizeAllMemoryTextareas(approvedList);
         }
 
         function renderPending() {
@@ -542,6 +586,7 @@
             }
 
             pendingList.innerHTML = sections.join("");
+            resizeAllMemoryTextareas(pendingList);
         }
 
         async function fetchBundle() {
@@ -688,6 +733,17 @@
             } finally {
                 button.disabled = false;
             }
+        });
+
+        pendingList.addEventListener("input", (event) => {
+            const textarea = event.target.closest("textarea[data-max-lines]");
+            if (!textarea) return;
+            autoResizeTextarea(textarea);
+        });
+
+        window.addEventListener("resize", () => {
+            resizeAllMemoryTextareas(pendingList);
+            resizeAllMemoryTextareas(approvedList);
         });
 
         async function bootstrap() {
