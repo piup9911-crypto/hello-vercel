@@ -407,30 +407,10 @@
                 : {};
         }
 
-        function splitHighlights(raw) {
-            return String(raw || "")
-                .split(/\s*\|\s*/g)
-                .map((item) => item.trim())
-                .filter(Boolean)
-                .slice(0, 3);
-        }
-
-        function getHighlights(entry) {
-            const meta = readEntryMeta(entry);
-            if (Array.isArray(meta.keyPoints) && meta.keyPoints.length > 0) {
-                return meta.keyPoints
-                    .map((item) => String(item || "").trim())
-                    .filter(Boolean)
-                    .slice(0, 3);
-            }
-            return splitHighlights(entry.detail || "");
-        }
-
         function getMemoryKind(entry) {
             const meta = readEntryMeta(entry);
             if (
                 meta.memoryKind === "current_summary" ||
-                meta.memoryType === "current_summary" ||
                 meta.timeScope === "current" ||
                 meta.eventStatus === "ongoing"
             ) {
@@ -439,31 +419,9 @@
             return "long_term";
         }
 
-        function getMemoryType(entry) {
-            if (getMemoryKind(entry) === "current_summary") {
-                return "current_summary";
-            }
-            const meta = readEntryMeta(entry);
-            const raw = String(meta.memoryType || meta.category || "").trim();
-            if (["identity", "preference", "relationship"].includes(raw)) {
-                return raw;
-            }
-            return "preference";
-        }
-
-        function memoryTypeLabel(type) {
-            const labels = {
-                identity: "Identity",
-                preference: "Preference",
-                relationship: "Relationship",
-                current_summary: "Current Summary"
-            };
-            return labels[type] || "Long-Term Memory";
-        }
-
         function buildMetaLine(entry) {
             const segments = [
-                memoryTypeLabel(getMemoryType(entry)),
+                getMemoryKind(entry) === "current_summary" ? "Current Summary" : "Long-Term Memory",
                 `Source: ${entry.source_channel || "unknown"}`,
                 `Time: ${formatTime(entry.updated_at || readEntryMeta(entry).updatedAt)}`
             ];
@@ -474,7 +432,6 @@
         }
 
         function renderCard(entry, badge) {
-            const highlights = getHighlights(entry);
             return `
                 <article class="memory-card">
                     <div class="row">
@@ -482,11 +439,6 @@
                         <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
                     </div>
                     <div><strong>${escapeHtml(entry.summary || "")}</strong></div>
-                    ${highlights.length ? `
-                        <div class="tags">
-                            ${highlights.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("")}
-                        </div>
-                    ` : ""}
                     <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                 </article>
             `;
@@ -494,10 +446,7 @@
 
         function renderPendingCard(entry) {
             const memoryKind = getMemoryKind(entry);
-            const memoryType = getMemoryType(entry);
-            const highlights = getHighlights(entry).join(" | ");
             const kindBadge = memoryKind === "current_summary" ? "Current Summary Candidate" : "Long-Term Candidate";
-            const typeLabel = memoryKind === "current_summary" ? "Current Summary" : "Memory Type";
 
             return `
                 <article
@@ -510,33 +459,12 @@
                         <div class="status-chip">${escapeHtml(kindBadge)}</div>
                         <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                     </div>
-                    <div class="memory-grid">
-                        ${memoryKind === "current_summary" ? `
-                            <div>
-                                <div class="tiny">${escapeHtml(typeLabel)}</div>
-                                <input value="Current Summary" disabled>
-                            </div>
-                        ` : `
-                            <div>
-                                <div class="tiny">${escapeHtml(typeLabel)}</div>
-                                <select class="memory-type-input">
-                                    ${["identity", "preference", "relationship"].map((type) => `
-                                        <option value="${escapeHtml(type)}" ${memoryType === type ? "selected" : ""}>${escapeHtml(memoryTypeLabel(type))}</option>
-                                    `).join("")}
-                                </select>
-                            </div>
-                        `}
-                        <div>
-                            <div class="tiny">Memory</div>
-                            <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
-                        </div>
-                    </div>
                     <div>
-                        <div class="tiny">Highlights</div>
-                        <input class="detail-input" value="${escapeHtml(highlights)}" placeholder="Optional. Use | to separate a few key points.">
+                        <div class="tiny">Memory</div>
+                        <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
                     </div>
                     <div class="row">
-                        <div class="tiny">Keep it lightweight: one short memory plus a few key points is enough.</div>
+                        <div class="tiny">Keep only one short memory line.</div>
                         <div class="row">
                             <button class="success-btn" data-action="approve" type="button">Approve</button>
                             <button class="primary-btn" data-action="edit" type="button">Approve After Edit</button>
@@ -582,7 +510,7 @@
             if (longTermEntries.length > 0) {
                 sections.push(`
                     <div class="tiny">Long-Term Memory</div>
-                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, memoryTypeLabel(getMemoryType(entry)))).join("")}</div>
+                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, "Long-Term Memory")).join("")}</div>
                 `);
             }
 
@@ -724,13 +652,7 @@
                 ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
                 : {};
             const memoryKind = card.dataset.entryKind === "current_summary" ? "current_summary" : "long_term";
-            const typeInput = card.querySelector(".memory-type-input");
-            const memoryType = memoryKind === "current_summary"
-                ? "current_summary"
-                : (typeInput ? typeInput.value.trim() : "preference");
             const summary = card.querySelector(".summary-input").value.trim();
-            const detail = card.querySelector(".detail-input").value.trim();
-            const keyPoints = splitHighlights(detail);
             const action = button.dataset.action;
 
             button.disabled = true;
@@ -739,16 +661,13 @@
                 const nextMetadata = {
                     ...metadata,
                     memoryKind,
-                    memoryType,
-                    category: memoryKind === "current_summary" ? "current_summary" : memoryType,
-                    keyPoints,
                     timeScope: memoryKind === "current_summary" ? "current" : "stable",
                     eventStatus: memoryKind === "current_summary" ? "ongoing" : "none"
                 };
 
                 await patchEntry(id, {
                     summary,
-                    detail,
+                    detail: "",
                     reason: "",
                     metadata: nextMetadata,
                     status:
