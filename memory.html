@@ -8,17 +8,17 @@
     <script src="shared/supabase-auth.js"></script>
     <style>
         :root {
-            --bg: #f8f5ff;
-            --panel: rgba(255, 255, 255, 0.9);
-            --panel-strong: rgba(255, 255, 255, 0.96);
+            --bg: #f6f3ff;
+            --panel: rgba(255, 255, 255, 0.92);
+            --panel-strong: rgba(255, 255, 255, 0.98);
             --text: #2f2940;
-            --muted: #7d738f;
-            --line: #e7dff4;
-            --primary: #8b5cf6;
-            --primary-strong: #7c3aed;
+            --muted: #746a88;
+            --line: #e8def6;
+            --primary: #7c5cff;
+            --primary-soft: rgba(124, 92, 255, 0.12);
             --success: #0f9d58;
             --danger: #dc2626;
-            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
+            --shadow: 0 24px 60px rgba(73, 48, 128, 0.14);
         }
 
         * {
@@ -32,13 +32,13 @@
             color: var(--text);
             font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
             background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 32%),
-                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.36), transparent 24%),
-                linear-gradient(160deg, #fcfaff 0%, #f8f5ff 48%, #f6fbff 100%);
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.28), transparent 24%),
+                linear-gradient(160deg, #fcfbff 0%, #f6f3ff 48%, #f8fcff 100%);
         }
 
         .shell {
-            width: min(100%, 1120px);
+            width: min(100%, 1100px);
             margin: 0 auto;
             display: grid;
             gap: 20px;
@@ -46,56 +46,192 @@
 
         .panel {
             border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            background: var(--panel);
             box-shadow: var(--shadow);
             backdrop-filter: blur(18px);
-            background: var(--panel);
             padding: 28px;
         }
 
-        .topbar {
+        .topbar,
+        .section-header,
+        .row {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
         }
 
-        .eyebrow {
+        .eyebrow,
+        .chip,
+        .tag,
+        .status-chip {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
             width: fit-content;
-            padding: 8px 14px;
             border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .eyebrow {
+            padding: 8px 14px;
             background: rgba(255, 255, 255, 0.82);
             border: 1px solid var(--line);
             color: var(--muted);
             font-size: 13px;
-            font-weight: 600;
+        }
+
+        .chip,
+        .tag {
+            padding: 6px 10px;
+            background: rgba(47, 41, 64, 0.06);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .status-chip {
+            padding: 7px 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-size: 12px;
+        }
+
+        h1 {
+            margin: 18px 0 10px;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1.08;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .lead,
+        .section-note,
+        .tiny {
+            color: var(--muted);
+            line-height: 1.75;
+        }
+
+        .lead {
+            max-width: 64ch;
+            font-size: 15px;
+        }
+
+        .section-note,
+        .tiny {
+            font-size: 14px;
+        }
+
+        .meta-grid,
+        .memory-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .meta-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-top: 22px;
+        }
+
+        .memory-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .meta-card,
+        .memory-card {
+            border-radius: 22px;
+            padding: 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+        }
+
+        .meta-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .meta-value {
+            margin-top: 8px;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+
+        .cards {
+            display: grid;
+            gap: 14px;
+        }
+
+        .memory-card {
+            display: grid;
+            gap: 12px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        textarea,
+        input,
+        select,
+        button {
+            font: inherit;
+        }
+
+        textarea,
+        input,
+        select {
+            width: 100%;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--text);
+            padding: 14px 16px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        textarea {
+            min-height: 220px;
+            resize: vertical;
+            line-height: 1.8;
+        }
+
+        textarea:focus,
+        input:focus,
+        select:focus {
+            border-color: rgba(124, 92, 255, 0.44);
+            box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.08);
         }
 
         .ghost-btn,
         .primary-btn,
-        .danger-btn,
-        .success-btn {
+        .success-btn,
+        .danger-btn {
             border: none;
             cursor: pointer;
-            font: inherit;
-            text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             border-radius: 18px;
             padding: 12px 16px;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
 
         .ghost-btn:hover,
         .primary-btn:hover,
-        .danger-btn:hover,
-        .success-btn:hover {
+        .success-btn:hover,
+        .danger-btn:hover {
             transform: translateY(-1px);
         }
 
@@ -107,9 +243,9 @@
 
         .primary-btn {
             color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, #af8cff 100%);
+            box-shadow: 0 14px 30px rgba(124, 92, 255, 0.24);
             font-weight: 700;
-            background: linear-gradient(135deg, var(--primary) 0%, #b084ff 100%);
-            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.24);
         }
 
         .success-btn {
@@ -124,100 +260,10 @@
             border: 1px solid rgba(220, 38, 38, 0.16);
         }
 
-        h1 {
-            margin: 18px 0 12px;
-            font-size: clamp(30px, 5vw, 48px);
-            line-height: 1.08;
-        }
-
-        .lead {
-            max-width: 60ch;
-            color: var(--muted);
-            line-height: 1.8;
-            font-size: 15px;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-            margin-top: 22px;
-        }
-
-        .meta-card {
-            border-radius: 20px;
-            padding: 16px 18px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-        }
-
-        .meta-label {
-            font-size: 12px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .meta-value {
-            margin-top: 8px;
-            font-size: 15px;
-            line-height: 1.7;
-            word-break: break-word;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-        }
-
-        .section-title {
-            margin: 0;
-            font-size: 22px;
-            line-height: 1.2;
-        }
-
-        .section-note {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.7;
-        }
-
-        textarea,
-        input,
-        select {
-            width: 100%;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.94);
-            color: var(--text);
-            padding: 14px 16px;
-            font: inherit;
-            outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        textarea {
-            min-height: 220px;
-            resize: vertical;
-            line-height: 1.8;
-        }
-
-        textarea:focus,
-        input:focus,
-        select:focus {
-            border-color: rgba(139, 92, 246, 0.42);
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
-        }
-
         .feedback {
             min-height: 24px;
-            font-size: 14px;
-            line-height: 1.7;
             color: var(--muted);
+            line-height: 1.7;
         }
 
         .feedback.error {
@@ -225,90 +271,13 @@
         }
 
         .feedback.success {
-            color: var(--primary-strong);
-        }
-
-        .cards {
-            display: grid;
-            gap: 14px;
-        }
-
-        .memory-card {
-            border-radius: 22px;
-            padding: 18px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-            display: grid;
-            gap: 12px;
-        }
-
-        .memory-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .memory-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .memory-stack {
-            display: grid;
-            gap: 10px;
-        }
-
-        .memory-tags {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .mini-chip {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: fit-content;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(47, 41, 64, 0.06);
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .tiny {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.6;
-        }
-
-        .status-chip {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: fit-content;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(139, 92, 246, 0.1);
-            color: var(--primary-strong);
-            font-size: 12px;
-            font-weight: 700;
+            color: var(--primary);
         }
 
         .empty {
-            border-radius: 18px;
-            padding: 18px;
+            border-radius: 20px;
             border: 1px dashed var(--line);
+            padding: 18px;
             color: var(--muted);
             line-height: 1.8;
         }
@@ -336,9 +305,9 @@
                 <div class="eyebrow">共享记忆控制台</div>
                 <a class="ghost-btn" href="index.html">返回首页</a>
             </div>
-            <h1>人格可以分流，但共同经历应该有同一份记忆库。</h1>
+            <h1>保留少量长期记忆，再配一条当前摘要。</h1>
             <div class="lead">
-                这里分成两层：上面的“手动共享记忆”是你明确想让两个入口长期知道的内容；下面的“待确认记忆”是模型从 CLI / Telegram 互动里自动提议的候选，只有你确认后才会进入正式共享记忆库。
+                这版会更接近 ChatGPT / RikkaHub 风格。长期记忆只保留稳定偏好、人物信息和关系信息；当前正在发生的事只保留一条滚动摘要，不再把每段聊天都拆成很多词条。
             </div>
             <div class="meta-grid">
                 <div class="meta-card">
@@ -351,7 +320,7 @@
                 </div>
                 <div class="meta-card">
                     <div class="meta-label">当前状态</div>
-                    <div class="meta-value" id="memory-count">待载入…</div>
+                    <div class="meta-value" id="memory-count">正在加载…</div>
                 </div>
             </div>
         </section>
@@ -359,20 +328,20 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2 class="section-title">手动共享记忆</h2>
-                    <div class="section-note">适合写长期稳定的共同背景、梗、重要关系信息，或者你明确想让两个入口都记住的话。</div>
+                    <h2>手动共享记忆</h2>
+                    <div class="section-note">这里适合写你明确想让 CLI 和 Telegram 长期都记住的核心背景。</div>
                 </div>
                 <button class="primary-btn" id="save-btn" type="button">保存手动共享记忆</button>
             </div>
-            <textarea id="manual-memory" placeholder="例如：我们已经一起折腾过 Telegram bridge；你在 Telegram 上更像陪伴聊天，在 CLI 上更像做事搭档。"></textarea>
+            <textarea id="manual-memory" placeholder="例如：我们已经一起折腾过 Telegram bridge；Telegram 上更像陪伴聊天，CLI 上更像一起做事。"></textarea>
             <div class="feedback" id="manual-feedback"></div>
         </section>
 
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2 class="section-title">待确认记忆</h2>
-                    <div class="section-note">这里是模型自动提议写入的共同经历候选。你可以直接批准、修改后批准，或者拒绝。</div>
+                    <h2>待确认记忆</h2>
+                    <div class="section-note">这里只保留真正值得留下的长期记忆候选，或一条新的当前摘要候选。</div>
                 </div>
                 <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
             </div>
@@ -382,8 +351,8 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2 class="section-title">已确认记忆</h2>
-                    <div class="section-note">这部分会被本地同步器打包下发给 CLI 和 Telegram。</div>
+                    <h2>已确认记忆</h2>
+                    <div class="section-note">同步器会把这些内容打包下发给 CLI 和 Telegram。</div>
                 </div>
             </div>
             <div class="cards" id="approved-list"></div>
@@ -438,76 +407,84 @@
                 : {};
         }
 
-        function memoryTypeLabel(type) {
-            const labels = {
-                profile: "人物信息",
-                preference: "用户喜好",
-                relationship: "关系记忆",
-                event: "事件总结",
-                project: "项目进展",
-                recurring_bit: "反复梗"
-            };
-            return labels[type] || "其他记忆";
+        function splitHighlights(raw) {
+            return String(raw || "")
+                .split(/\s*\|\s*/g)
+                .map((item) => item.trim())
+                .filter(Boolean)
+                .slice(0, 3);
         }
 
-        function timeScopeLabel(value) {
-            const labels = {
-                stable: "长期",
-                current: "当前",
-                past: "过去"
-            };
-            return labels[value] || "";
-        }
-
-        function eventStatusLabel(value) {
-            const labels = {
-                ongoing: "进行中",
-                settled: "已沉淀",
-                none: ""
-            };
-            return labels[value] || "";
-        }
-
-        function getKeyPoints(entry) {
+        function getHighlights(entry) {
             const meta = readEntryMeta(entry);
             if (Array.isArray(meta.keyPoints) && meta.keyPoints.length > 0) {
-                return meta.keyPoints.filter(Boolean);
+                return meta.keyPoints
+                    .map((item) => String(item || "").trim())
+                    .filter(Boolean)
+                    .slice(0, 3);
             }
-            return String(entry.detail || "")
-                .split("｜")
-                .map((item) => item.trim())
-                .filter(Boolean);
+            return splitHighlights(entry.detail || "");
+        }
+
+        function getMemoryKind(entry) {
+            const meta = readEntryMeta(entry);
+            if (
+                meta.memoryKind === "current_summary" ||
+                meta.memoryType === "current_summary" ||
+                meta.timeScope === "current" ||
+                meta.eventStatus === "ongoing"
+            ) {
+                return "current_summary";
+            }
+            return "long_term";
+        }
+
+        function getMemoryType(entry) {
+            if (getMemoryKind(entry) === "current_summary") {
+                return "current_summary";
+            }
+            const meta = readEntryMeta(entry);
+            const raw = String(meta.memoryType || meta.category || "").trim();
+            if (["identity", "preference", "relationship"].includes(raw)) {
+                return raw;
+            }
+            return "preference";
+        }
+
+        function memoryTypeLabel(type) {
+            const labels = {
+                identity: "Identity",
+                preference: "Preference",
+                relationship: "Relationship",
+                current_summary: "Current Summary"
+            };
+            return labels[type] || "Long-Term Memory";
         }
 
         function buildMetaLine(entry) {
-            const meta = readEntryMeta(entry);
             const segments = [
-                memoryTypeLabel(meta.memoryType || meta.category),
-                timeScopeLabel(meta.timeScope),
-                eventStatusLabel(meta.eventStatus),
-                `来源：${entry.source_channel || "unknown"}`,
-                `时间：${formatTime(entry.updated_at)}`,
-                `置信度：${entry.confidence == null ? "?" : String(entry.confidence)}`
-            ].filter(Boolean);
-            return segments.join(" · ");
+                memoryTypeLabel(getMemoryType(entry)),
+                `Source: ${entry.source_channel || "unknown"}`,
+                `Time: ${formatTime(entry.updated_at || readEntryMeta(entry).updatedAt)}`
+            ];
+            if (entry.confidence != null) {
+                segments.push(`Confidence: ${Number(entry.confidence).toFixed(2)}`);
+            }
+            return segments.join(" | ");
         }
 
-        function isCurrentEventEntry(entry) {
-            const meta = readEntryMeta(entry);
-            return meta.timeScope === "current" || meta.eventStatus === "ongoing";
-        }
-
-        function renderApprovedCard(entry) {
+        function renderCard(entry, badge) {
+            const highlights = getHighlights(entry);
             return `
                 <article class="memory-card">
-                    <div class="memory-head">
-                        <div class="status-chip">${escapeHtml(memoryTypeLabel(readEntryMeta(entry).memoryType || readEntryMeta(entry).category))}</div>
+                    <div class="row">
+                        <div class="status-chip">${escapeHtml(badge)}</div>
                         <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
                     </div>
                     <div><strong>${escapeHtml(entry.summary || "")}</strong></div>
-                    ${getKeyPoints(entry).length ? `
-                        <div class="memory-tags">
-                            ${getKeyPoints(entry).map((point) => `<span class="mini-chip">${escapeHtml(point)}</span>`).join("")}
+                    ${highlights.length ? `
+                        <div class="tags">
+                            ${highlights.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("")}
                         </div>
                     ` : ""}
                     <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
@@ -516,66 +493,96 @@
         }
 
         function renderPendingCard(entry) {
+            const memoryKind = getMemoryKind(entry);
+            const memoryType = getMemoryType(entry);
+            const highlights = getHighlights(entry).join(" | ");
+            const kindBadge = memoryKind === "current_summary" ? "Current Summary Candidate" : "Long-Term Candidate";
+            const typeLabel = memoryKind === "current_summary" ? "Current Summary" : "Memory Type";
+
             return `
-                <article class="memory-card" data-entry-id="${escapeHtml(entry.id)}" data-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
-                    <div class="memory-head">
-                        <div class="status-chip">pending</div>
+                <article
+                    class="memory-card"
+                    data-entry-id="${escapeHtml(entry.id)}"
+                    data-entry-kind="${escapeHtml(memoryKind)}"
+                    data-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}"
+                >
+                    <div class="row">
+                        <div class="status-chip">${escapeHtml(kindBadge)}</div>
                         <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                     </div>
                     <div class="memory-grid">
+                        ${memoryKind === "current_summary" ? `
+                            <div>
+                                <div class="tiny">${escapeHtml(typeLabel)}</div>
+                                <input value="Current Summary" disabled>
+                            </div>
+                        ` : `
+                            <div>
+                                <div class="tiny">${escapeHtml(typeLabel)}</div>
+                                <select class="memory-type-input">
+                                    ${["identity", "preference", "relationship"].map((type) => `
+                                        <option value="${escapeHtml(type)}" ${memoryType === type ? "selected" : ""}>${escapeHtml(memoryTypeLabel(type))}</option>
+                                    `).join("")}
+                                </select>
+                            </div>
+                        `}
                         <div>
-                            <div class="tiny">记忆类型</div>
-                            <select class="memory-type-input">
-                                ${["profile", "preference", "relationship", "event", "project", "recurring_bit"].map((type) => `
-                                    <option value="${escapeHtml(type)}" ${(readEntryMeta(entry).memoryType || readEntryMeta(entry).category) === type ? "selected" : ""}>${escapeHtml(memoryTypeLabel(type))}</option>
-                                `).join("")}
-                            </select>
-                        </div>
-                        <div>
-                            <div class="tiny">记忆内容</div>
+                            <div class="tiny">Memory</div>
                             <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
                         </div>
                     </div>
-                    <div class="memory-stack">
-                        <div>
-                            <div class="tiny">重点信息</div>
-                            <input class="detail-input" value="${escapeHtml(getKeyPoints(entry).join("｜"))}" placeholder="用 ｜ 分隔几个重点">
-                        </div>
+                    <div>
+                        <div class="tiny">Highlights</div>
+                        <input class="detail-input" value="${escapeHtml(highlights)}" placeholder="Optional. Use | to separate a few key points.">
                     </div>
-                    <div class="actions">
-                        <button class="success-btn" data-action="approve" type="button">批准</button>
-                        <button class="primary-btn" data-action="edit" type="button">修改后批准</button>
-                        <button class="danger-btn" data-action="reject" type="button">拒绝</button>
+                    <div class="row">
+                        <div class="tiny">Keep it lightweight: one short memory plus a few key points is enough.</div>
+                        <div class="row">
+                            <button class="success-btn" data-action="approve" type="button">Approve</button>
+                            <button class="primary-btn" data-action="edit" type="button">Approve After Edit</button>
+                            <button class="danger-btn" data-action="reject" type="button">Reject</button>
+                        </div>
                     </div>
                 </article>
             `;
         }
 
+        function getCurrentSummaryEntry(entries) {
+            return (entries || []).find((entry) => getMemoryKind(entry) === "current_summary") || null;
+        }
+
+        function getLongTermEntries(entries) {
+            return (entries || []).filter((entry) => getMemoryKind(entry) !== "current_summary");
+        }
+
         function updateSummary() {
-            memoryCount.textContent = `待确认 ${bundle.pendingEntries.length} 条，已确认 ${bundle.approvedEntries.length} 条`;
+            const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
+            const longTermCount = getLongTermEntries(bundle.approvedEntries).length;
+            memoryCount.textContent = `Pending ${bundle.pendingEntries.length} | Long-term ${longTermCount} | Current summary ${currentSummary ? "1" : "0"}`;
         }
 
         function renderApproved() {
-            if (!bundle.approvedEntries.length) {
-                approvedList.innerHTML = '<div class="empty">还没有已确认记忆。等你批准几条以后，这里就会慢慢长出你们共同的历史。</div>';
+            const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
+            const longTermEntries = getLongTermEntries(bundle.approvedEntries);
+
+            if (!currentSummary && longTermEntries.length === 0) {
+                approvedList.innerHTML = '<div class="empty">No approved memory yet. This page keeps only a small long-term memory set and one rolling current summary.</div>';
                 return;
             }
 
-            const currentEntries = bundle.approvedEntries.filter(isCurrentEventEntry);
-            const longTermEntries = bundle.approvedEntries.filter((entry) => !isCurrentEventEntry(entry));
             const sections = [];
 
-            if (currentEntries.length > 0) {
+            if (currentSummary) {
                 sections.push(`
-                    <div class="tiny">当前事件摘要</div>
-                    <div class="cards">${currentEntries.map(renderApprovedCard).join("")}</div>
+                    <div class="tiny">Current Summary</div>
+                    <div class="cards">${renderCard(currentSummary, "Current Summary")}</div>
                 `);
             }
 
             if (longTermEntries.length > 0) {
                 sections.push(`
-                    <div class="tiny">长期记忆</div>
-                    <div class="cards">${longTermEntries.map(renderApprovedCard).join("")}</div>
+                    <div class="tiny">Long-Term Memory</div>
+                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, memoryTypeLabel(getMemoryType(entry)))).join("")}</div>
                 `);
             }
 
@@ -584,24 +591,24 @@
 
         function renderPending() {
             if (!bundle.pendingEntries.length) {
-                pendingList.innerHTML = '<div class="empty">目前没有待确认记忆。等 CLI / Telegram 自动提议后，这里会出现新的候选。</div>';
+                pendingList.innerHTML = '<div class="empty">No pending candidates right now. The system is now more conservative and only suggests durable long-term memory or one current summary.</div>';
                 return;
             }
 
-            const currentEntries = bundle.pendingEntries.filter(isCurrentEventEntry);
-            const longTermEntries = bundle.pendingEntries.filter((entry) => !isCurrentEventEntry(entry));
+            const currentSummary = getCurrentSummaryEntry(bundle.pendingEntries);
+            const longTermEntries = getLongTermEntries(bundle.pendingEntries);
             const sections = [];
 
-            if (currentEntries.length > 0) {
+            if (currentSummary) {
                 sections.push(`
-                    <div class="tiny">当前事件摘要候选</div>
-                    <div class="cards">${currentEntries.map(renderPendingCard).join("")}</div>
+                    <div class="tiny">Current Summary Candidate</div>
+                    <div class="cards">${renderPendingCard(currentSummary)}</div>
                 `);
             }
 
             if (longTermEntries.length > 0) {
                 sections.push(`
-                    <div class="tiny">长期记忆候选</div>
+                    <div class="tiny">Long-Term Memory Candidates</div>
                     <div class="cards">${longTermEntries.map(renderPendingCard).join("")}</div>
                 `);
             }
@@ -620,7 +627,7 @@
             });
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || "读取共享记忆失败。");
+                throw new Error(payload.error || "Failed to load shared memory.");
             }
             return payload;
         }
@@ -636,7 +643,7 @@
                 updateSummary();
                 renderPending();
                 renderApproved();
-                setFeedback(manualFeedback, "已经读取到最新的共享记忆和待确认候选。", "success");
+                setFeedback(manualFeedback, "Loaded the latest shared memory and review candidates.", "success");
             } catch (error) {
                 setFeedback(
                     manualFeedback,
@@ -651,7 +658,7 @@
         async function saveManualMemory() {
             setFeedback(manualFeedback, "", "");
             saveBtn.disabled = true;
-            saveBtn.textContent = "正在保存…";
+            saveBtn.textContent = "Saving...";
 
             try {
                 const response = await fetch("/api/shared-memory", {
@@ -667,10 +674,10 @@
                 });
                 const payload = await response.json();
                 if (!response.ok) {
-                    throw new Error(payload.error || "保存共享记忆失败。");
+                    throw new Error(payload.error || "Failed to save shared memory.");
                 }
                 updatedAt.textContent = formatTime(payload.updatedAt);
-                setFeedback(manualFeedback, "手动共享记忆已经写到云端了。", "success");
+                setFeedback(manualFeedback, "Manual shared memory has been saved to the cloud.", "success");
             } catch (error) {
                 setFeedback(
                     manualFeedback,
@@ -679,7 +686,7 @@
                 );
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = "保存手动共享记忆";
+                saveBtn.textContent = "Save Manual Shared Memory";
             }
         }
 
@@ -699,7 +706,7 @@
 
             const result = await response.json();
             if (!response.ok) {
-                throw new Error(result.error || "更新记忆失败。");
+                throw new Error(result.error || "Failed to update memory.");
             }
 
             return result.entry;
@@ -716,13 +723,14 @@
             const metadata = card.dataset.entryMeta
                 ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
                 : {};
-            const memoryType = card.querySelector(".memory-type-input").value.trim();
+            const memoryKind = card.dataset.entryKind === "current_summary" ? "current_summary" : "long_term";
+            const typeInput = card.querySelector(".memory-type-input");
+            const memoryType = memoryKind === "current_summary"
+                ? "current_summary"
+                : (typeInput ? typeInput.value.trim() : "preference");
             const summary = card.querySelector(".summary-input").value.trim();
             const detail = card.querySelector(".detail-input").value.trim();
-            const keyPoints = detail
-                .split("｜")
-                .map((item) => item.trim())
-                .filter(Boolean);
+            const keyPoints = splitHighlights(detail);
             const action = button.dataset.action;
 
             button.disabled = true;
@@ -730,36 +738,26 @@
             try {
                 const nextMetadata = {
                     ...metadata,
+                    memoryKind,
                     memoryType,
-                    category: memoryType,
-                    keyPoints
+                    category: memoryKind === "current_summary" ? "current_summary" : memoryType,
+                    keyPoints,
+                    timeScope: memoryKind === "current_summary" ? "current" : "stable",
+                    eventStatus: memoryKind === "current_summary" ? "ongoing" : "none"
                 };
 
-                if (action === "approve") {
-                    await patchEntry(id, {
-                        summary,
-                        detail,
-                        reason: "",
-                        metadata: nextMetadata,
-                        status: "approved"
-                    });
-                } else if (action === "edit") {
-                    await patchEntry(id, {
-                        summary,
-                        detail,
-                        reason: "",
-                        metadata: nextMetadata,
-                        status: "edited"
-                    });
-                } else if (action === "reject") {
-                    await patchEntry(id, {
-                        summary,
-                        detail,
-                        reason: "",
-                        metadata: nextMetadata,
-                        status: "rejected"
-                    });
-                }
+                await patchEntry(id, {
+                    summary,
+                    detail,
+                    reason: "",
+                    metadata: nextMetadata,
+                    status:
+                        action === "approve"
+                            ? "approved"
+                            : action === "edit"
+                                ? "edited"
+                                : "rejected"
+                });
 
                 await loadAll();
             } catch (error) {
@@ -775,7 +773,7 @@
 
         async function bootstrap() {
             if (!window.AppAuth) {
-                throw new Error("Supabase 认证脚本没有加载成功。");
+                throw new Error("Supabase auth script failed to load.");
             }
 
             const authState = await window.AppAuth.requireUser();
@@ -784,7 +782,8 @@
             }
 
             accessToken = authState.session ? authState.session.access_token : "";
-            userEmail.textContent = authState.user && authState.user.email ? authState.user.email : "已登录";
+            userEmail.textContent =
+                authState.user && authState.user.email ? authState.user.email : "Signed in";
             await loadAll();
         }
 
