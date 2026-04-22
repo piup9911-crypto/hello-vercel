@@ -422,14 +422,13 @@
 
         function getMemoryKind(entry) {
             const meta = readEntryMeta(entry);
-            if (
-                meta.memoryKind === "current_summary" ||
-                meta.timeScope === "current" ||
-                meta.eventStatus === "ongoing"
-            ) {
+            if (meta.memoryKind === "important_event" || meta.retention === "archive" || meta.eventStatus === "archived") {
+                return "important_event";
+            }
+            if (meta.memoryKind === "current_summary" || meta.timeScope === "current" || meta.eventStatus === "ongoing") {
                 return "current_summary";
             }
-            return "long_term";
+            return "preference_memory";
         }
 
         function buildMetaLine(entry) {
@@ -461,7 +460,12 @@
 
         function renderPendingCard(entry) {
             const memoryKind = getMemoryKind(entry);
-            const kindBadge = memoryKind === "current_summary" ? "Pending Summary" : "Pending Memory";
+            const kindBadge =
+                memoryKind === "current_summary"
+                    ? "Rolling Summary"
+                    : memoryKind === "important_event"
+                        ? "Important Event"
+                        : "Preference Memory";
 
             return `
                 <article
@@ -494,8 +498,12 @@
             return (entries || []).find((entry) => getMemoryKind(entry) === "current_summary") || null;
         }
 
-        function getLongTermEntries(entries) {
-            return (entries || []).filter((entry) => getMemoryKind(entry) !== "current_summary");
+        function getImportantEventEntries(entries) {
+            return (entries || []).filter((entry) => getMemoryKind(entry) === "important_event");
+        }
+
+        function getPreferenceEntries(entries) {
+            return (entries || []).filter((entry) => getMemoryKind(entry) === "preference_memory");
         }
 
         function autoResizeTextarea(node, fallbackMaxLines) {
@@ -528,16 +536,18 @@
 
         function updateSummary() {
             const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
-            const longTermCount = getLongTermEntries(bundle.approvedEntries).length;
-            memoryCount.textContent = `Pending ${bundle.pendingEntries.length} | Long-term ${longTermCount} | Current summary ${currentSummary ? "1" : "0"}`;
+            const eventCount = getImportantEventEntries(bundle.approvedEntries).length;
+            const preferenceCount = getPreferenceEntries(bundle.approvedEntries).length;
+            memoryCount.textContent = `Pending ${bundle.pendingEntries.length} | Preferences ${preferenceCount} | Events ${eventCount} | Rolling summary ${currentSummary ? "1" : "0"}`;
         }
 
         function renderApproved() {
             const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
-            const longTermEntries = getLongTermEntries(bundle.approvedEntries);
+            const importantEventEntries = getImportantEventEntries(bundle.approvedEntries);
+            const preferenceEntries = getPreferenceEntries(bundle.approvedEntries);
 
-            if (!currentSummary && longTermEntries.length === 0) {
-                approvedList.innerHTML = '<div class="empty">No approved memory yet. This page keeps only a small long-term memory set and one rolling current summary.</div>';
+            if (!currentSummary && importantEventEntries.length === 0 && preferenceEntries.length === 0) {
+                approvedList.innerHTML = '<div class="empty">No approved memory yet. This page now keeps one rolling summary, an important event archive, and a small long-term preference memory set.</div>';
                 return;
             }
 
@@ -545,15 +555,22 @@
 
             if (currentSummary) {
                 sections.push(`
-                    <div class="tiny">Current Summary</div>
+                    <div class="tiny">Rolling Summary</div>
                     <div class="cards">${renderCard(currentSummary, "Current Summary")}</div>
                 `);
             }
 
-            if (longTermEntries.length > 0) {
+            if (importantEventEntries.length > 0) {
                 sections.push(`
-                    <div class="tiny">Long-Term Memory</div>
-                    <div class="cards">${longTermEntries.map((entry) => renderCard(entry, "Saved Memory")).join("")}</div>
+                    <div class="tiny">Important Event Archive</div>
+                    <div class="cards">${importantEventEntries.map((entry) => renderCard(entry, "Saved Event")).join("")}</div>
+                `);
+            }
+
+            if (preferenceEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">Long-Term Preference Memory</div>
+                    <div class="cards">${preferenceEntries.map((entry) => renderCard(entry, "Saved Memory")).join("")}</div>
                 `);
             }
 
@@ -563,25 +580,33 @@
 
         function renderPending() {
             if (!bundle.pendingEntries.length) {
-                pendingList.innerHTML = '<div class="empty">No pending candidates right now. The system is now more conservative and only suggests durable long-term memory or one current summary.</div>';
+                pendingList.innerHTML = '<div class="empty">No pending candidates right now. The system is now more conservative and only suggests one rolling summary, important archived events, or durable preference memory.</div>';
                 return;
             }
 
             const currentSummary = getCurrentSummaryEntry(bundle.pendingEntries);
-            const longTermEntries = getLongTermEntries(bundle.pendingEntries);
+            const importantEventEntries = getImportantEventEntries(bundle.pendingEntries);
+            const preferenceEntries = getPreferenceEntries(bundle.pendingEntries);
             const sections = [];
 
             if (currentSummary) {
                 sections.push(`
-                    <div class="tiny">Current Summary Candidate</div>
+                    <div class="tiny">Rolling Summary Candidate</div>
                     <div class="cards">${renderPendingCard(currentSummary)}</div>
                 `);
             }
 
-            if (longTermEntries.length > 0) {
+            if (importantEventEntries.length > 0) {
                 sections.push(`
-                    <div class="tiny">Long-Term Memory Candidates</div>
-                    <div class="cards">${longTermEntries.map(renderPendingCard).join("")}</div>
+                    <div class="tiny">Important Event Candidates</div>
+                    <div class="cards">${importantEventEntries.map(renderPendingCard).join("")}</div>
+                `);
+            }
+
+            if (preferenceEntries.length > 0) {
+                sections.push(`
+                    <div class="tiny">Long-Term Preference Candidates</div>
+                    <div class="cards">${preferenceEntries.map(renderPendingCard).join("")}</div>
                 `);
             }
 
@@ -703,11 +728,14 @@
             button.disabled = true;
 
             try {
+                const nextMetaByKind = memoryKind === "current_summary"
+                    ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
+                    : memoryKind === "important_event"
+                        ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
+                        : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
                 const nextMetadata = {
                     ...metadata,
-                    memoryKind,
-                    timeScope: memoryKind === "current_summary" ? "current" : "stable",
-                    eventStatus: memoryKind === "current_summary" ? "ongoing" : "none"
+                    ...nextMetaByKind
                 };
 
                 await patchEntry(id, {
