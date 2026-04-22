@@ -187,7 +187,8 @@
         }
 
         textarea,
-        input {
+        input,
+        select {
             width: 100%;
             border-radius: 18px;
             border: 1px solid var(--line);
@@ -206,7 +207,8 @@
         }
 
         textarea:focus,
-        input:focus {
+        input:focus,
+        select:focus {
             border-color: rgba(139, 92, 246, 0.42);
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.08);
         }
@@ -240,10 +242,48 @@
             gap: 12px;
         }
 
+        .memory-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .memory-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
+        }
+
+        .memory-stack {
+            display: grid;
+            gap: 10px;
+        }
+
+        .memory-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mini-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(47, 41, 64, 0.06);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .tiny {
@@ -392,6 +432,66 @@
                 .replace(/'/g, "&#39;");
         }
 
+        function readEntryMeta(entry) {
+            return entry && entry.metadata && typeof entry.metadata === "object"
+                ? entry.metadata
+                : {};
+        }
+
+        function memoryTypeLabel(type) {
+            const labels = {
+                profile: "人物信息",
+                preference: "用户喜好",
+                relationship: "关系记忆",
+                event: "事件总结",
+                project: "项目进展",
+                recurring_bit: "反复梗"
+            };
+            return labels[type] || "其他记忆";
+        }
+
+        function timeScopeLabel(value) {
+            const labels = {
+                stable: "长期",
+                current: "当前",
+                past: "过去"
+            };
+            return labels[value] || "";
+        }
+
+        function eventStatusLabel(value) {
+            const labels = {
+                ongoing: "进行中",
+                settled: "已沉淀",
+                none: ""
+            };
+            return labels[value] || "";
+        }
+
+        function getKeyPoints(entry) {
+            const meta = readEntryMeta(entry);
+            if (Array.isArray(meta.keyPoints) && meta.keyPoints.length > 0) {
+                return meta.keyPoints.filter(Boolean);
+            }
+            return String(entry.detail || "")
+                .split("｜")
+                .map((item) => item.trim())
+                .filter(Boolean);
+        }
+
+        function buildMetaLine(entry) {
+            const meta = readEntryMeta(entry);
+            const segments = [
+                memoryTypeLabel(meta.memoryType || meta.category),
+                timeScopeLabel(meta.timeScope),
+                eventStatusLabel(meta.eventStatus),
+                `来源：${entry.source_channel || "unknown"}`,
+                `时间：${formatTime(entry.updated_at)}`,
+                `置信度：${entry.confidence == null ? "?" : String(entry.confidence)}`
+            ].filter(Boolean);
+            return segments.join(" · ");
+        }
+
         function updateSummary() {
             memoryCount.textContent = `待确认 ${bundle.pendingEntries.length} 条，已确认 ${bundle.approvedEntries.length} 条`;
         }
@@ -404,10 +504,17 @@
 
             approvedList.innerHTML = bundle.approvedEntries.map((entry) => `
                 <article class="memory-card">
-                    <div class="status-chip">${escapeHtml(entry.status || "approved")}</div>
+                    <div class="memory-head">
+                        <div class="status-chip">${escapeHtml(memoryTypeLabel(readEntryMeta(entry).memoryType || readEntryMeta(entry).category))}</div>
+                        <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
+                    </div>
                     <div><strong>${escapeHtml(entry.summary || "")}</strong></div>
-                    <div>${escapeHtml(entry.detail || "")}</div>
-                    <div class="tiny">来源：${escapeHtml(entry.source_channel || "unknown")} · 更新时间：${escapeHtml(formatTime(entry.updated_at))}</div>
+                    ${getKeyPoints(entry).length ? `
+                        <div class="memory-tags">
+                            ${getKeyPoints(entry).map((point) => `<span class="mini-chip">${escapeHtml(point)}</span>`).join("")}
+                        </div>
+                    ` : ""}
+                    <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
                 </article>
             `).join("");
         }
@@ -419,23 +526,31 @@
             }
 
             pendingList.innerHTML = bundle.pendingEntries.map((entry) => `
-                <article class="memory-card" data-entry-id="${escapeHtml(entry.id)}">
-                    <div class="status-chip">pending</div>
+                <article class="memory-card" data-entry-id="${escapeHtml(entry.id)}" data-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
+                    <div class="memory-head">
+                        <div class="status-chip">pending</div>
+                        <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
+                    </div>
                     <div class="memory-grid">
                         <div>
-                            <div class="tiny">一句话总结</div>
-                            <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
+                            <div class="tiny">记忆类型</div>
+                            <select class="memory-type-input">
+                                ${["profile", "preference", "relationship", "event", "project", "recurring_bit"].map((type) => `
+                                    <option value="${escapeHtml(type)}" ${(readEntryMeta(entry).memoryType || readEntryMeta(entry).category) === type ? "selected" : ""}>${escapeHtml(memoryTypeLabel(type))}</option>
+                                `).join("")}
+                            </select>
                         </div>
                         <div>
-                            <div class="tiny">为什么值得记住</div>
-                            <input class="reason-input" value="${escapeHtml(entry.reason || "")}">
+                            <div class="tiny">记忆内容</div>
+                            <input class="summary-input" value="${escapeHtml(entry.summary || "")}">
                         </div>
                     </div>
-                    <div>
-                        <div class="tiny">更完整说明</div>
-                        <textarea class="detail-input">${escapeHtml(entry.detail || "")}</textarea>
+                    <div class="memory-stack">
+                        <div>
+                            <div class="tiny">重点信息</div>
+                            <input class="detail-input" value="${escapeHtml(getKeyPoints(entry).join("｜"))}" placeholder="用 ｜ 分隔几个重点">
+                        </div>
                     </div>
-                    <div class="tiny">来源：${escapeHtml(entry.source_channel || "unknown")} · 置信度：${escapeHtml(entry.confidence == null ? "?" : String(entry.confidence))} · 更新时间：${escapeHtml(formatTime(entry.updated_at))}</div>
                     <div class="actions">
                         <button class="success-btn" data-action="approve" type="button">批准</button>
                         <button class="primary-btn" data-action="edit" type="button">修改后批准</button>
@@ -549,33 +664,50 @@
             if (!card) return;
 
             const id = card.dataset.entryId;
+            const metadata = card.dataset.entryMeta
+                ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
+                : {};
+            const memoryType = card.querySelector(".memory-type-input").value.trim();
             const summary = card.querySelector(".summary-input").value.trim();
             const detail = card.querySelector(".detail-input").value.trim();
-            const reason = card.querySelector(".reason-input").value.trim();
+            const keyPoints = detail
+                .split("｜")
+                .map((item) => item.trim())
+                .filter(Boolean);
             const action = button.dataset.action;
 
             button.disabled = true;
 
             try {
+                const nextMetadata = {
+                    ...metadata,
+                    memoryType,
+                    category: memoryType,
+                    keyPoints
+                };
+
                 if (action === "approve") {
                     await patchEntry(id, {
                         summary,
                         detail,
-                        reason,
+                        reason: "",
+                        metadata: nextMetadata,
                         status: "approved"
                     });
                 } else if (action === "edit") {
                     await patchEntry(id, {
                         summary,
                         detail,
-                        reason,
+                        reason: "",
+                        metadata: nextMetadata,
                         status: "edited"
                     });
                 } else if (action === "reject") {
                     await patchEntry(id, {
                         summary,
                         detail,
-                        reason,
+                        reason: "",
+                        metadata: nextMetadata,
                         status: "rejected"
                     });
                 }
