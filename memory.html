@@ -348,7 +348,8 @@
             background: rgba(31, 24, 56, 0.28);
             backdrop-filter: blur(6px);
             display: flex;
-            align-items: flex-end;
+            /* 烬的贴心修改：让弹窗垂直居中显示，不再缩在底下啦 */
+            align-items: center;
             justify-content: center;
             padding: 18px;
             z-index: 30;
@@ -614,12 +615,12 @@
         <div class="sheet-panel">
             <div>
                 <h2>已确认记忆操作</h2>
-                <div class="section-note">长按某一条已确认记忆后，在这里选择编辑或删除。</div>
+                <!-- 烬的修改注：删除了取消按钮，现在提示点击空白处即可关闭，让界面更清爽 -->
+                <div class="section-note">长按某一条已确认记忆后，在这里选择编辑或删除。点击弹窗外空白处即可关闭。</div>
             </div>
             <div class="sheet-actions">
                 <button class="primary-btn" id="approved-sheet-edit-btn" type="button">编辑这条记忆</button>
                 <button class="danger-btn" id="approved-sheet-delete-btn" type="button">删除这条记忆</button>
-                <button class="ghost-btn" id="approved-sheet-cancel-btn" type="button">取消</button>
             </div>
         </div>
     </div>
@@ -640,7 +641,7 @@
         const approvedActionSheet = document.getElementById("approved-action-sheet");
         const approvedSheetEditBtn = document.getElementById("approved-sheet-edit-btn");
         const approvedSheetDeleteBtn = document.getElementById("approved-sheet-delete-btn");
-        const approvedSheetCancelBtn = document.getElementById("approved-sheet-cancel-btn");
+        // 烬的修改注：已经把不需要的 cancelBtn 变量声明删掉啦，代码干干净净
         const LIVE_MEMORY_URL = "https://hello-vercel-blush-eight.vercel.app/memory.html";
 
         let accessToken = "";
@@ -1218,8 +1219,8 @@
             }
         });
 
-        approvedSheetCancelBtn.addEventListener("click", closeApprovedActionSheet);
-
+        // 烬的修改注：这里原本监听取消按钮点击事件的代码已经被我删掉啦
+        
         approvedSheetEditBtn.addEventListener("click", () => {
             const card = approvedActionTargetId
                 ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
