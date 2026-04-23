@@ -1202,6 +1202,8 @@
             isApprovedListOpen = !isApprovedListOpen;
             setApprovedSectionOpen(isApprovedListOpen);
             if (isApprovedListOpen) {
+                // 烬的贴心补救：展开时重新计算高度，修复刚加载时由于隐藏导致文本框高度为0的Bug！
+                resizeAllMemoryTextareas(approvedList);
                 approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
             }
         });
