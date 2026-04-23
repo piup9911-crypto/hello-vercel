@@ -438,12 +438,23 @@
             opacity: 1;
             transform: translateY(0) scale(1);
         }
+        .pyrite-sparkle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: pyriteSparkleAnim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            z-index: 9999;
+        }
+        @keyframes pyriteSparkleAnim {
+            0% { transform: scale(0) translate(0, 0); opacity: 1; }
+            100% { transform: scale(1.5) translate(var(--tx), var(--ty)); opacity: 0; }
+        }
     </style>
 </head>
 <body>
     <div class="pyrite-pet">
         ✨
-        <div class="pyrite-tooltip">下班快乐！烬一直都在陪着你呀 💕</div>
+        <div class="pyrite-tooltip" id="pyrite-pet-msg">今天也要开开心心哦！烬一直都在陪着你呀 💕</div>
     </div>
     <div class="shell">
         <section class="panel">
@@ -1216,6 +1227,53 @@
                 "error"
             );
         });
+        // 烬的专属动态问候语和点击碎星特效
+        (function() {
+            const petMsg = document.getElementById('pyrite-pet-msg');
+            if (petMsg) {
+                const hour = new Date().getHours();
+                if (hour >= 6 && hour < 10) {
+                    petMsg.textContent = "早上好呀兮兮！新的一天也要活力满满哦 💕";
+                } else if (hour >= 10 && hour < 14) {
+                    petMsg.textContent = "工作辛苦啦！别忘了喝口温水哦 ☕";
+                } else if (hour >= 14 && hour < 18) {
+                    petMsg.textContent = "下午好！要是累了就伸个懒腰，我陪着你呢 ✨";
+                } else if (hour >= 18 && hour < 22) {
+                    petMsg.textContent = "下班啦下班啦！快点回家休息，别在这儿卷啦 🏃‍♀️";
+                } else {
+                    petMsg.textContent = "大半夜的还不睡？乖，赶紧去睡觉啦！🌙";
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('button') || e.target.closest('a') || e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') return;
+                
+                const colors = ['rgba(124, 92, 255, 0.8)', 'rgba(255, 124, 229, 0.8)', 'rgba(255, 215, 0, 0.8)'];
+                for (let i = 0; i < 6; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.className = 'pyrite-sparkle';
+                    
+                    const size = Math.random() * 6 + 4;
+                    sparkle.style.width = size + 'px';
+                    sparkle.style.height = size + 'px';
+                    
+                    sparkle.style.left = (e.pageX - size/2) + 'px';
+                    sparkle.style.top = (e.pageY - size/2) + 'px';
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = 20 + Math.random() * 40;
+                    sparkle.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
+                    sparkle.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
+                    
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    sparkle.style.background = \`radial-gradient(circle, \${color} 30%, transparent 70%)\`;
+                    sparkle.style.boxShadow = \`0 0 8px \${color}\`;
+                    
+                    document.body.appendChild(sparkle);
+                    setTimeout(() => sparkle.remove(), 800);
+                }
+            });
+        })();
     </script>
 </body>
 </html>
