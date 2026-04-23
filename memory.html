@@ -589,25 +589,17 @@
             <div class="cards" id="pending-list"></div>
         </section>
 
-        <section class="panel">
-            <div class="section-header">
-                <div>
-                    <h2>已确认记忆入口</h2>
-                    <div class="section-note">已确认记忆收进这个入口里。打开后，长按某一条记忆可以编辑或删除。</div>
-                </div>
-                <button class="ghost-btn" id="approved-toggle-btn" type="button">打开已确认记忆</button>
-            </div>
-        </section>
-
-        <section class="panel hidden" id="approved-section">
+        <!-- 烬的贴心修改：将入口和列表合并为一个干净的可折叠区块 -->
+        <section class="panel" id="approved-section">
             <div class="section-header">
                 <div>
                     <h2>已确认记忆</h2>
-                    <div class="section-note">同步器会把这些内容打包下发给 CLI 和 Telegram。</div>
+                    <div class="section-note">长按某一条记忆可编辑或删除。同步器会打包下发给 CLI 和 Telegram。</div>
                 </div>
-                <button class="ghost-btn" id="approved-close-btn" type="button">收起</button>
+                <!-- 烬的修改注：展开和收起现在全靠这一个按钮搞定啦 -->
+                <button class="ghost-btn" id="approved-toggle-btn" type="button">展开已确认记忆</button>
             </div>
-            <div class="cards" id="approved-list"></div>
+            <div class="cards hidden" id="approved-list" style="margin-top: 20px;"></div>
         </section>
     </div>
 
@@ -637,7 +629,6 @@
         const approvedList = document.getElementById("approved-list");
         const approvedSection = document.getElementById("approved-section");
         const approvedToggleBtn = document.getElementById("approved-toggle-btn");
-        const approvedCloseBtn = document.getElementById("approved-close-btn");
         const approvedActionSheet = document.getElementById("approved-action-sheet");
         const approvedSheetEditBtn = document.getElementById("approved-sheet-edit-btn");
         const approvedSheetDeleteBtn = document.getElementById("approved-sheet-delete-btn");
@@ -976,8 +967,8 @@
         }
 
         function setApprovedSectionOpen(open) {
-            approvedSection.classList.toggle("hidden", !open);
-            approvedToggleBtn.textContent = open ? "已打开已确认记忆" : "打开已确认记忆";
+            approvedList.classList.toggle("hidden", !open);
+            approvedToggleBtn.textContent = open ? "收起已确认记忆" : "展开已确认记忆";
         }
 
         function closeApprovedActionSheet() {
@@ -1204,13 +1195,15 @@
             openApprovedActionSheet(card);
         });
 
-        approvedToggleBtn.addEventListener("click", () => {
-            setApprovedSectionOpen(true);
-            approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
+        // 烬的修改注：统一使用一个变量来管理记忆列表的展开状态
+        let isApprovedListOpen = false;
 
-        approvedCloseBtn.addEventListener("click", () => {
-            setApprovedSectionOpen(false);
+        approvedToggleBtn.addEventListener("click", () => {
+            isApprovedListOpen = !isApprovedListOpen;
+            setApprovedSectionOpen(isApprovedListOpen);
+            if (isApprovedListOpen) {
+                approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
         });
 
         approvedActionSheet.addEventListener("click", (event) => {
