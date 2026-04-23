@@ -495,6 +495,39 @@
             70% { box-shadow: 0 0 0 8px rgba(124, 92, 255, 0); }
             100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
         }
+
+        /* ChatGPT Style List for Approved Memories */
+        #approved-list .cards {
+            gap: 0;
+            background: var(--panel-strong);
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            padding: 8px 16px;
+            box-shadow: var(--shadow);
+        }
+        #approved-list .memory-card {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--line);
+            border-radius: 0;
+            padding: 16px 4px;
+            box-shadow: none;
+            animation: none; /* 覆盖掉会呼吸的动画 */
+        }
+        #approved-list .memory-card:last-child {
+            border-bottom: none;
+        }
+        #approved-list .memory-textarea.readonly {
+            background: transparent;
+            border-color: transparent;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-radius 0.2s ease;
+        }
+        #approved-list .memory-textarea.readonly:hover {
+            background: rgba(124, 92, 255, 0.05);
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -674,22 +707,14 @@
 
         function renderApprovedCard(entry, badge) {
             return `
-                <article class="memory-card" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
-                    <div class="row">
-                        <div class="status-chip">${escapeHtml(badge)}</div>
-                        <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
-                    </div>
-                    <div>
-                        <div class="tiny">Memory</div>
-                        <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly>${escapeHtml(entry.summary || "")}</textarea>
-                    </div>
-                    <div class="row">
-                        <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
-                        <div class="approved-card-hint">长按这条记忆可编辑或删除</div>
-                    </div>
-                    <div class="approved-editor-actions">
-                        <div class="row">
-                            <button class="primary-btn" data-action="save-approved" type="button">保存编辑</button>
+                <article class="memory-card chatgpt-style" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
+                    <!-- 核心内容区：极简文本框，长按提示通过 title 属性悬浮实现 -->
+                    <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly title="长按这条记忆可进入编辑模式">${escapeHtml(entry.summary || "")}</textarea>
+                    
+                    <!-- 编辑操作区：仅在长按进入编辑状态后显示 -->
+                    <div class="approved-editor-actions" style="margin-top: 12px;">
+                        <div class="row" style="justify-content: flex-end;">
+                            <button class="primary-btn" data-action="save-approved" type="button">保存</button>
                             <button class="ghost-btn" data-action="cancel-approved" type="button">取消</button>
                         </div>
                     </div>
