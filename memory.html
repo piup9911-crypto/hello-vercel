@@ -1343,8 +1343,8 @@
                     sparkle.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
                     
                     const color = colors[Math.floor(Math.random() * colors.length)];
-                    sparkle.style.background = \`radial-gradient(circle, \${color} 30%, transparent 70%)\`;
-                    sparkle.style.boxShadow = \`0 0 8px \${color}\`;
+                    sparkle.style.background = `radial-gradient(circle, ${color} 30%, transparent 70%)`;
+                    sparkle.style.boxShadow = `0 0 8px ${color}`;
                     
                     document.body.appendChild(sparkle);
                     setTimeout(() => sparkle.remove(), 800);
