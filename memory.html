@@ -221,8 +221,8 @@
         textarea:focus,
         input:focus,
         select:focus {
-            border-color: rgba(124, 92, 255, 0.44);
-            box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.08);
+            border-color: rgba(124, 92, 255, 0.6);
+            animation: pulseBorder 2s infinite;
         }
 
         .ghost-btn,
@@ -449,9 +449,60 @@
             0% { transform: scale(0) translate(0, 0); opacity: 1; }
             100% { transform: scale(1.5) translate(var(--tx), var(--ty)); opacity: 0; }
         }
+
+        /* Ambient Glow */
+        .ambient-glow {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glow-blob {
+            position: absolute;
+            filter: blur(120px);
+            opacity: 0.5;
+            border-radius: 50%;
+            animation: drift 20s infinite alternate ease-in-out;
+        }
+        .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(196, 181, 253, 0.4); animation-delay: -5s; }
+        .glow-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vh; background: rgba(246, 219, 255, 0.4); animation-delay: -10s; }
+        .glow-3 { top: 40%; left: 40%; width: 40vw; height: 40vh; background: rgba(181, 233, 253, 0.3); }
+        
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.1); }
+        }
+
+        /* Breathing Cards */
+        @keyframes breathe {
+            0% { transform: translateY(0); box-shadow: var(--shadow); }
+            100% { transform: translateY(-4px); box-shadow: 0 30px 60px rgba(73, 48, 128, 0.18); }
+        }
+        .memory-card {
+            animation: breathe 4s infinite alternate ease-in-out;
+            animation-play-state: paused;
+            transition: border-color 0.3s ease;
+        }
+        .memory-card:hover {
+            animation-play-state: running;
+            border-color: rgba(124, 92, 255, 0.3);
+        }
+
+        /* Pulse Input */
+        @keyframes pulseBorder {
+            0% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(124, 92, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
+        }
     </style>
 </head>
 <body>
+    <div class="ambient-glow">
+        <div class="glow-blob glow-1"></div>
+        <div class="glow-blob glow-2"></div>
+        <div class="glow-blob glow-3"></div>
+    </div>
     <div class="pyrite-pet">
         ✨
         <div class="pyrite-tooltip" id="pyrite-pet-msg">今天也要开开心心哦！烬一直都在陪着你呀 💕</div>
@@ -1229,6 +1280,32 @@
         });
         // 烬的专属动态问候语和点击碎星特效
         (function() {
+            // Soft Chime Sound
+            const playChime = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+                    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                } catch (e) {
+                    // Audio context might be blocked if not interacted with, safe to ignore
+                }
+            };
+            
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('button.primary-btn') || e.target.closest('button.success-btn')) {
+                    playChime();
+                }
+            });
+
             const petMsg = document.getElementById('pyrite-pet-msg');
             if (petMsg) {
                 const hour = new Date().getHours();
