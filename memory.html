@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -912,7 +912,8 @@
         async function saveManualMemory() {
             setFeedback(manualFeedback, "", "");
             saveBtn.disabled = true;
-            saveBtn.textContent = "Saving...";
+            // [BUG-5 FIX] 按钮文字统一使用中文，与 HTML 保持一致
+            saveBtn.textContent = "正在保存...";
 
             try {
                 const response = await fetch("/api/shared-memory", {
@@ -940,7 +941,8 @@
                 );
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = "Save Manual Shared Memory";
+                // [BUG-5 FIX] 还原中文按钮文字
+                saveBtn.textContent = "保存手动共享记忆";
             }
         }
 
@@ -1089,7 +1091,10 @@
             const metadata = card.dataset.entryMeta
                 ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
                 : {};
-            const memoryKind = card.dataset.entryKind === "current_summary" ? "current_summary" : "long_term";
+            // [BUG-4 FIX] 直接使用 dataset 原始值做三路判断，修复了原来
+            // 只区分 "current_summary" / "long_term" 导致 important_event
+            // 分支永远不可达、metadata 被写错的问题。
+            const memoryKind = card.dataset.entryKind || "preference_memory";
             const summary = card.querySelector(".summary-input").value.trim();
             const action = button.dataset.action;
 

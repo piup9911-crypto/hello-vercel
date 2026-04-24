@@ -122,12 +122,15 @@
             emoji.textContent = trick.emoji;
             body.style.background = trick.bg;
             
+            // [BUG-2 FIX] 翻转动画结束后重置 transform，避免 scale(0.5) 和
+            // rotateZ(360deg) 残留导致卡片永久缩小。动画结束后让鼠标跟踪重新接管。
             if (trick.flip) {
                 card.style.transition = "transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-                const currentTransform = card.style.transform;
-                card.style.transform = currentTransform + " rotateZ(360deg) scale(0.5)";
+                card.style.transform = "rotateZ(360deg) scale(0.5)";
                 setTimeout(() => {
                     card.style.transition = "transform 0.1s ease-out";
+                    // 重置为当前鼠标位置对应的跟踪 transform（简单清零即可，下次 mousemove 会重新计算）
+                    card.style.transform = "rotateY(0deg) rotateX(0deg)";
                 }, 1000);
             }
 
@@ -135,9 +138,13 @@
             e.stopPropagation();
         });
 
+        // [BUG-3 FIX] 1. 排除条件增加了 button 标签（原来只排除了 a）
+        // 2. 坐标改用 pageX/pageY，与 createParticles 里的 position:absolute 定位一致，
+        //    解决页面滚动时粒子位置偏移的问题。
         document.addEventListener('click', (e) => {
-            if(e.target.tagName.toLowerCase() === 'a') return; // 点按钮不要放烟花
-            createParticles(e.clientX, e.clientY);
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'a' || tag === 'button') return; // 点链接和按钮不放烟花
+            createParticles(e.pageX, e.pageY);
         });
     </script>
 </body>

@@ -588,7 +588,9 @@
                 window.location.href = '/index.html';
             } catch (error) {
                 console.error('退出登录失败：', error);
-                setFeedback(window.AppAuth.humanizeError(error), 'error');
+                // [BUG-6 FIX] 退出登录时用户在 member-view，feedback 元素在 guest-view（hidden），
+                // 用户看不到错误提示。改用 alert 弹窗确保用户感知到失败。
+                window.alert('退出登录失败：' + window.AppAuth.humanizeError(error));
             }
         });
 
