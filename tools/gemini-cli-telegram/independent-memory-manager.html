@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>独立记忆管理器</title>
+    <style>
+      :root {
+        --bg: #f7f2e8;
+        --paper: #fffaf0;
+        --ink: #2b241c;
+        --muted: #78685a;
+        --line: #d9c9b6;
+        --accent: #6b8f71;
+        --accent-ink: #f7fff8;
+        --danger: #9b4c43;
+        --shadow: 0 12px 30px rgba(72, 50, 28, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 35%),
+          linear-gradient(180deg, #f4eadb 0%, var(--bg) 100%);
+      }
+
+      .page {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero,
+      .section {
+        background: color-mix(in srgb, var(--paper) 92%, white 8%);
+        border: 1px solid color-mix(in srgb, var(--line) 82%, white 18%);
+        border-radius: 22px;
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        padding: 22px 24px;
+      }
+
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+      }
+
+      .hero p,
+      .hero li,
+      .meta,
+      .empty,
+      .feedback {
+        color: var(--muted);
+      }
+
+      .hero ul {
+        margin: 12px 0 0 18px;
+        padding: 0;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 18px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 11px 16px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      button.secondary {
+        background: #efe4d4;
+        color: var(--ink);
+      }
+
+      button.danger {
+        background: #efe0dc;
+        color: var(--danger);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+
+      .feedback {
+        min-height: 20px;
+        font-size: 14px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+
+      .section {
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+
+      .section h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .cards {
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        border: 1px solid color-mix(in srgb, var(--line) 84%, white 16%);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .card input,
+      .card textarea {
+        width: 100%;
+        border: 1px solid #d8cab7;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+        color: inherit;
+        background: #fffdf8;
+      }
+
+      .card textarea {
+        resize: none;
+        line-height: 1.55;
+        overflow-y: hidden;
+        min-height: 90px;
+      }
+
+      .card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #f0e7db;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .meta {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .empty {
+        padding: 16px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 14px;
+        }
+
+        .hero,
+        .section {
+          border-radius: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>独立记忆管理器</h1>
+        <p>
+          这里管理的是自动总结层，不会改动 <code>GEMINI.md</code>。不同区域里的文本彼此独立，复制后就不再联动。
+        </p>
+        <ul>
+          <li>模型读取：小总结、大总结、长期记忆。</li>
+          <li>模型不读取：私密记忆、垃圾箱。</li>
+          <li>垃圾箱会从进入垃圾箱时间开始，180 天后自动清理。</li>
+        </ul>
+        <div class="toolbar">
+          <button class="primary" id="refresh-btn" type="button">刷新记忆</button>
+          <div class="feedback" id="feedback"></div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="section">
+          <div class="section-head">
+            <h2>小总结</h2>
+            <div class="badge" id="small-count">0</div>
+          </div>
+          <div class="cards" id="small-list"></div>
+        </article>
+
+        <article class="section">
+          <div class="section-head">
+            <h2>大总结</h2>
+            <div class="badge" id="large-count">0</div>
+          </div>
+          <div class="cards" id="large-list"></div>
+        </article>
+
+        <article class="section">
+          <div class="section-head">
+            <h2>长期记忆</h2>
+            <div class="badge" id="long-count">0</div>
+          </div>
+          <div class="cards" id="long-list"></div>
+        </article>
+
+        <article class="section">
+          <div class="section-head">
+            <h2>私密记忆</h2>
+            <div class="badge" id="private-count">0</div>
+          </div>
+          <div class="cards" id="private-list"></div>
+        </article>
+
+        <article class="section">
+          <div class="section-head">
+            <h2>垃圾箱</h2>
+            <div class="badge" id="trash-count">0</div>
+          </div>
+          <div class="cards" id="trash-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const feedback = document.getElementById("feedback");
+      const refreshBtn = document.getElementById("refresh-btn");
+
+      const lists = {
+        smallSummaries: document.getElementById("small-list"),
+        largeSummaries: document.getElementById("large-list"),
+        longTerm: document.getElementById("long-list"),
+        privateMemory: document.getElementById("private-list"),
+        trash: document.getElementById("trash-list")
+      };
+
+      const counts = {
+        smallSummaries: document.getElementById("small-count"),
+        largeSummaries: document.getElementById("large-count"),
+        longTerm: document.getElementById("long-count"),
+        privateMemory: document.getElementById("private-count"),
+        trash: document.getElementById("trash-count")
+      };
+
+      function setFeedback(message, tone = "info") {
+        feedback.textContent = message || "";
+        feedback.style.color = tone === "error" ? "#9b4c43" : tone === "success" ? "#496b51" : "";
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function autoResize(textarea) {
+        if (!textarea) return;
+        // We resize after each edit so long memory text stays readable without
+        // forcing the user into a tiny scrolling area.
+        textarea.style.height = "auto";
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight || "24");
+        const maxHeight = lineHeight * 20;
+        textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+        textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+      }
+
+      async function fetchJson(url, init = {}) {
+        const response = await fetch(url, {
+          ...init,
+          headers: {
+            "Content-Type": "application/json",
+            ...(init.headers || {})
+          }
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || `Request failed with ${response.status}`);
+        }
+        return payload;
+      }
+
+      function buildActionButtons(section) {
+        const sharedButtons = `
+          <button class="secondary" data-action="save" type="button">保存</button>
+          <button class="secondary" data-action="copy-long-term" type="button">复制到长期记忆</button>
+          <button class="secondary" data-action="copy-private" type="button">复制到私密记忆</button>
+        `;
+
+        if (section === "trash") {
+          return `
+            ${sharedButtons}
+            <button class="danger" data-action="delete" type="button">永久删除</button>
+          `;
+        }
+
+        return `
+          ${sharedButtons}
+          <button class="danger" data-action="trash" type="button">移入垃圾箱</button>
+        `;
+      }
+
+      function renderCard(section, record) {
+        return `
+          <article class="card" data-record-id="${escapeHtml(record.id)}" data-section="${escapeHtml(section)}">
+            <input class="memory-title" type="text" value="${escapeHtml(record.title || "")}" placeholder="记忆标题" />
+            <textarea class="memory-content" rows="4" placeholder="记忆正文">${escapeHtml(record.content || "")}</textarea>
+            <div class="meta">
+              <div>ID: ${escapeHtml(record.id)}</div>
+              <div>创建: ${escapeHtml(record.createdAt || "-")}</div>
+              <div>更新: ${escapeHtml(record.updatedAt || "-")}</div>
+              ${record.trashedAt ? `<div>进垃圾箱: ${escapeHtml(record.trashedAt)}</div>` : ""}
+              ${record.copiedFrom ? `<div>复制来源: ${escapeHtml(record.copiedFrom)}</div>` : ""}
+              ${
+                Array.isArray(record.derivedFrom) && record.derivedFrom.length
+                  ? `<div>总结来源: ${escapeHtml(record.derivedFrom.join(", "))}</div>`
+                  : ""
+              }
+            </div>
+            <div class="card-actions">
+              ${buildActionButtons(section)}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderSection(section, records) {
+        counts[section].textContent = String(records.length);
+        if (!records.length) {
+          lists[section].innerHTML = '<div class="empty">这个区域现在还没有内容。</div>';
+          return;
+        }
+
+        lists[section].innerHTML = records.map((record) => renderCard(section, record)).join("");
+        lists[section].querySelectorAll("textarea").forEach(autoResize);
+      }
+
+      async function loadMemory() {
+        refreshBtn.disabled = true;
+        setFeedback("正在读取独立记忆...");
+        try {
+          const payload = await fetchJson("/api/memory");
+          renderSection("smallSummaries", payload.sections.smallSummaries || []);
+          renderSection("largeSummaries", payload.sections.largeSummaries || []);
+          renderSection("longTerm", payload.sections.longTerm || []);
+          renderSection("privateMemory", payload.sections.privateMemory || []);
+          renderSection("trash", payload.sections.trash || []);
+          setFeedback("已加载最新独立记忆。", "success");
+        } catch (error) {
+          setFeedback(error.message || String(error), "error");
+        } finally {
+          refreshBtn.disabled = false;
+        }
+      }
+
+      function getCardState(button) {
+        const card = button.closest("[data-record-id]");
+        if (!card) {
+          return null;
+        }
+
+        return {
+          card,
+          id: card.dataset.recordId,
+          section: card.dataset.section,
+          title: card.querySelector(".memory-title").value.trim(),
+          content: card.querySelector(".memory-content").value.trim()
+        };
+      }
+
+      async function saveRecord(state) {
+        await fetchJson(`/api/memory/${encodeURIComponent(state.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: state.title,
+            content: state.content
+          })
+        });
+      }
+
+      async function cloneRecord(state, targetSection) {
+        await fetchJson(`/api/memory/${encodeURIComponent(state.id)}/clone`, {
+          method: "POST",
+          body: JSON.stringify({
+            section: targetSection,
+            title: state.title,
+            content: state.content
+          })
+        });
+      }
+
+      async function trashRecord(state) {
+        await fetchJson(`/api/memory/${encodeURIComponent(state.id)}/trash`, {
+          method: "POST"
+        });
+      }
+
+      async function deleteRecord(state) {
+        await fetchJson(`/api/memory/${encodeURIComponent(state.id)}`, {
+          method: "DELETE"
+        });
+      }
+
+      // All actions operate on the text currently visible in the editor. This
+      // keeps the mental model simple: what the user sees is what gets saved or
+      // copied, and no hidden cross-record synchronization exists.
+      async function handleAction(event) {
+        const button = event.target.closest("button[data-action]");
+        if (!button) {
+          return;
+        }
+
+        const state = getCardState(button);
+        if (!state) {
+          return;
+        }
+
+        if (!state.content) {
+          setFeedback("记忆正文不能为空。", "error");
+          return;
+        }
+
+        button.disabled = true;
+        try {
+          if (button.dataset.action === "save") {
+            await saveRecord(state);
+            setFeedback("已保存这条记忆。", "success");
+          } else if (button.dataset.action === "copy-long-term") {
+            await cloneRecord(state, "long_term");
+            setFeedback("已复制到长期记忆。", "success");
+          } else if (button.dataset.action === "copy-private") {
+            await cloneRecord(state, "private");
+            setFeedback("已复制到私密记忆。", "success");
+          } else if (button.dataset.action === "trash") {
+            await trashRecord(state);
+            setFeedback("已移入垃圾箱。", "success");
+          } else if (button.dataset.action === "delete") {
+            await deleteRecord(state);
+            setFeedback("已永久删除。", "success");
+          }
+
+          await loadMemory();
+        } catch (error) {
+          setFeedback(error.message || String(error), "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      document.addEventListener("input", (event) => {
+        if (event.target.matches("textarea")) {
+          autoResize(event.target);
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        void handleAction(event);
+      });
+
+      refreshBtn.addEventListener("click", () => {
+        void loadMemory();
+      });
+
+      void loadMemory();
+    </script>
+  </body>
+  </html>
