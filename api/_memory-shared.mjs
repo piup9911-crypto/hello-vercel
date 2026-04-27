@@ -239,3 +239,15 @@ export async function patchMemoryEntry(config, id, payload, userId) {
 
   return Array.isArray(rows) ? rows[0] || null : null;
 }
+
+export async function deleteMemoryEntry(config, id) {
+  await callSupabase(
+    config,
+    `/rest/v1/${MEMORY_ENTRIES_TABLE}?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE"
+    }
+  );
+
+  return true;
+}

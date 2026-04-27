@@ -33,8 +33,18 @@ export async function GET(request) {
 
   try {
     const memory = await getSharedMemory(config);
-    const approvedEntries = await listMemoryEntries(config, {
+    const approvedEntries = (await listMemoryEntries(config, {
       statuses: ["approved", "edited"]
+    })).filter((entry) => {
+      const metadata =
+        entry && entry.metadata && typeof entry.metadata === "object"
+          ? entry.metadata
+          : {};
+      const section = metadata.independentSection || "";
+      // The independent memory page stores private/trash records in the same
+      // legacy table for now. Keep this old shared-memory endpoint model-readable
+      // by excluding sections that should never be sent to agents.
+      return section !== "private" && section !== "trash";
     });
     const pendingEntries =
       auth.kind === "user"

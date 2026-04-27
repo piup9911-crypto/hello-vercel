@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>共享记忆控制台</title>
+    <title>独立记忆系统</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="shared/supabase-auth.js"></script>
     <style>
         :root {
-            --bg: #f6f3ff;
-            --panel: rgba(255, 255, 255, 0.92);
+            --bg: #f7f4ed;
+            --panel: rgba(255, 255, 255, 0.9);
             --panel-strong: rgba(255, 255, 255, 0.98);
-            --text: #2f2940;
-            --muted: #746a88;
-            --line: #e8def6;
-            --primary: #7c5cff;
-            --primary-soft: rgba(124, 92, 255, 0.12);
-            --success: #0f9d58;
-            --danger: #dc2626;
-            --shadow: 0 24px 60px rgba(73, 48, 128, 0.14);
+            --text: #302a22;
+            --muted: #7a6f61;
+            --line: #eadfce;
+            --primary: #9a6b36;
+            --primary-strong: #7d5124;
+            --primary-soft: rgba(154, 107, 54, 0.12);
+            --green: #2f855a;
+            --red: #c2410c;
+            --shadow: 0 24px 70px rgba(96, 66, 35, 0.16);
         }
 
         * {
@@ -32,30 +33,37 @@
             color: var(--text);
             font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
             background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 28%),
-                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.28), transparent 24%),
-                linear-gradient(160deg, #fcfbff 0%, #f6f3ff 48%, #f8fcff 100%);
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 30%),
+                radial-gradient(circle at right 12%, rgba(222, 186, 132, 0.24), transparent 28%),
+                linear-gradient(145deg, #fffdf8 0%, var(--bg) 55%, #f4fbf6 100%);
+        }
+
+        button,
+        textarea,
+        input {
+            font: inherit;
         }
 
         .shell {
-            width: min(100%, 1100px);
+            width: min(100%, 1160px);
             margin: 0 auto;
             display: grid;
-            gap: 20px;
+            gap: 18px;
         }
 
         .panel {
-            border-radius: 28px;
+            border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.72);
             background: var(--panel);
             box-shadow: var(--shadow);
             backdrop-filter: blur(18px);
-            padding: 28px;
+            padding: 26px;
         }
 
         .topbar,
-        .section-header,
-        .row {
+        .row,
+        .section-head,
+        .actions {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -65,602 +73,369 @@
 
         .eyebrow,
         .chip,
-        .tag,
-        .status-chip {
+        .badge {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             width: fit-content;
             border-radius: 999px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .eyebrow {
             padding: 8px 14px;
-            background: rgba(255, 255, 255, 0.82);
             border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.82);
             color: var(--muted);
             font-size: 13px;
         }
 
         .chip,
-        .tag {
+        .badge {
             padding: 6px 10px;
-            background: rgba(47, 41, 64, 0.06);
-            color: var(--muted);
             font-size: 12px;
+            color: var(--muted);
+            background: rgba(48, 42, 34, 0.06);
         }
 
-        .status-chip {
-            padding: 7px 12px;
-            background: var(--primary-soft);
-            color: var(--primary);
-            font-size: 12px;
+        .badge.readable {
+            color: var(--green);
+            background: rgba(47, 133, 90, 0.12);
+        }
+
+        .badge.private {
+            color: var(--red);
+            background: rgba(194, 65, 12, 0.1);
         }
 
         h1 {
             margin: 18px 0 10px;
-            font-size: clamp(30px, 5vw, 48px);
-            line-height: 1.08;
+            font-size: clamp(34px, 6vw, 58px);
+            line-height: 1.05;
         }
 
         h2 {
             margin: 0;
             font-size: 22px;
-            line-height: 1.2;
         }
 
-        .lead,
-        .section-note,
-        .tiny {
+        p {
+            margin: 0;
             color: var(--muted);
             line-height: 1.75;
         }
 
         .lead {
-            max-width: 64ch;
+            max-width: 68ch;
             font-size: 15px;
         }
 
-        .section-note,
-        .tiny {
-            font-size: 14px;
-        }
-
-        .meta-grid,
+        .nav-grid,
         .memory-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        .meta-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            margin-top: 22px;
-        }
-
-        .memory-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .meta-card,
-        .memory-card {
-            border-radius: 22px;
-            padding: 18px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-        }
-
-        .meta-label {
-            font-size: 12px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .meta-value {
-            margin-top: 8px;
-            line-height: 1.7;
-            word-break: break-word;
-        }
-
-        .cards {
             display: grid;
             gap: 14px;
         }
 
-        .memory-card {
-            display: grid;
-            gap: 12px;
+        .nav-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
         }
 
-        .tags {
+        .section-tab {
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 16px;
+            color: inherit;
+            background: var(--panel-strong);
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .section-tab:hover,
+        .section-tab.active {
+            transform: translateY(-2px);
+            border-color: rgba(154, 107, 54, 0.34);
+            box-shadow: 0 16px 34px rgba(154, 107, 54, 0.14);
+        }
+
+        .section-tab.active {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(154, 107, 54, 0.1));
+        }
+
+        .tab-title {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 8px;
-            flex-wrap: wrap;
+            margin-bottom: 8px;
+            font-weight: 800;
         }
 
-        textarea,
-        input,
-        select,
-        button {
-            font: inherit;
+        .tab-note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
         }
 
-        textarea,
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
         input,
+        textarea,
         select {
             width: 100%;
-            border-radius: 18px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.92);
             color: var(--text);
-            padding: 14px 16px;
+            padding: 14px 15px;
             outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         textarea {
-            min-height: 220px;
+            min-height: 132px;
             resize: vertical;
-            line-height: 1.8;
+            line-height: 1.7;
         }
 
-        .memory-textarea {
-            min-height: 0;
-            resize: none;
-            overflow-y: hidden;
-            line-height: 1.75;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-        }
-
-        .memory-textarea.readonly {
-            background: rgba(255, 255, 255, 0.82);
-        }
-
-        textarea:focus,
         input:focus,
+        textarea:focus,
         select:focus {
-            border-color: rgba(124, 92, 255, 0.6);
-            animation: pulseBorder 2s infinite;
+            border-color: rgba(154, 107, 54, 0.42);
+            box-shadow: 0 0 0 4px rgba(154, 107, 54, 0.08);
         }
 
-        .ghost-btn,
-        .primary-btn,
-        .success-btn,
-        .danger-btn {
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            border-radius: 18px;
-            padding: 12px 16px;
-            text-decoration: none;
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
-        }
-
-        .ghost-btn:hover,
-        .primary-btn:hover,
-        .success-btn:hover,
-        .danger-btn:hover {
-            transform: translateY(-1px);
-        }
-
-        .ghost-btn {
-            background: rgba(255, 255, 255, 0.86);
+        .button {
             border: 1px solid var(--line);
-            color: var(--text);
+            border-radius: 999px;
+            padding: 10px 14px;
+            min-height: 42px;
+            color: inherit;
+            background: var(--panel-strong);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 800;
         }
 
-        .primary-btn {
+        .button.primary {
+            border-color: transparent;
             color: white;
-            background: linear-gradient(135deg, var(--primary) 0%, #af8cff 100%);
-            box-shadow: 0 14px 30px rgba(124, 92, 255, 0.24);
-            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, #c28b49 100%);
+            box-shadow: 0 14px 30px rgba(154, 107, 54, 0.2);
         }
 
-        .success-btn {
-            background: rgba(15, 157, 88, 0.12);
-            color: var(--success);
-            border: 1px solid rgba(15, 157, 88, 0.18);
+        .button.danger {
+            border-color: rgba(194, 65, 12, 0.22);
+            color: var(--red);
+            background: rgba(194, 65, 12, 0.08);
         }
 
-        .danger-btn {
-            background: rgba(220, 38, 38, 0.1);
-            color: var(--danger);
-            border: 1px solid rgba(220, 38, 38, 0.16);
+        .button:disabled {
+            cursor: wait;
+            opacity: 0.64;
+        }
+
+        .memory-grid {
+            margin-top: 16px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .memory-card {
+            display: grid;
+            gap: 12px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: var(--panel-strong);
+            padding: 18px;
+        }
+
+        .memory-card textarea {
+            min-height: 110px;
+            max-height: 420px;
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .empty {
+            border: 1px dashed rgba(154, 107, 54, 0.3);
+            border-radius: 24px;
+            padding: 24px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            line-height: 1.8;
         }
 
         .feedback {
             min-height: 24px;
+            margin-top: 12px;
             color: var(--muted);
-            line-height: 1.7;
+            line-height: 1.6;
         }
 
         .feedback.error {
-            color: var(--danger);
+            color: var(--red);
         }
 
         .feedback.success {
-            color: var(--primary);
+            color: var(--green);
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        .empty {
-            border-radius: 20px;
-            border: 1px dashed var(--line);
-            padding: 18px;
-            color: var(--muted);
-            line-height: 1.8;
-        }
-
-        .entry-panel {
-            display: grid;
-            gap: 10px;
-        }
-
-        .entry-card {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-            border-radius: 22px;
-            border: 1px solid var(--line);
-            background: var(--panel-strong);
-            padding: 18px;
-        }
-
-        .approved-card-hint {
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .approved-summary-input[readonly] {
-            cursor: default;
-            background: rgba(255, 255, 255, 0.82);
-        }
-
-        .approved-editor-actions {
-            display: none;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .memory-card.editing .approved-editor-actions {
-            display: flex;
-        }
-
-        .memory-card.editing .approved-card-hint {
-            display: none;
-        }
-
-        .sheet-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(31, 24, 56, 0.28);
-            backdrop-filter: blur(6px);
-            display: flex;
-            /* 烬的贴心修改：让弹窗垂直居中显示，不再缩在底下啦 */
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            z-index: 30;
-        }
-
-        .sheet-panel {
-            width: min(100%, 560px);
-            border-radius: 24px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-            box-shadow: var(--shadow);
-            padding: 18px;
-            display: grid;
-            gap: 12px;
-        }
-
-        .sheet-actions {
-            display: grid;
-            gap: 10px;
-        }
-
-        @media (max-width: 820px) {
-            body {
-                padding: 16px;
-            }
-
-            .panel {
-                padding: 22px;
-            }
-
-            .meta-grid,
-            .memory-grid {
+        @media (max-width: 920px) {
+            .nav-grid,
+            .memory-grid,
+            .editor-grid {
                 grid-template-columns: 1fr;
             }
         }
-        @keyframes pyritePulse {
-            0% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); }
-            50% { transform: scale(1.15); opacity: 1; filter: hue-rotate(15deg) drop-shadow(0 0 10px rgba(124, 92, 255, 0.6)); }
-            100% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); }
-        }
-        .pyrite-pet {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            font-size: 32px;
-            cursor: pointer;
-            animation: pyritePulse 3s infinite ease-in-out;
-            z-index: 999;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            user-select: none;
-        }
-        .pyrite-pet:hover {
-            transform: scale(1.2) rotate(15deg);
-        }
-        .pyrite-pet:active {
-            transform: scale(0.9);
-        }
-        .pyrite-tooltip {
-            position: absolute;
-            bottom: calc(100% + 12px);
-            right: -8px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 10px 16px;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary);
-            box-shadow: 0 12px 30px rgba(73, 48, 128, 0.18);
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(15px) scale(0.95);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 1px solid rgba(124, 92, 255, 0.2);
-        }
-        .pyrite-tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            right: 22px;
-            border-width: 8px;
-            border-style: solid;
-            border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
-        }
-        .pyrite-pet:hover .pyrite-tooltip {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-        .pyrite-sparkle {
-            position: absolute;
-            pointer-events: none;
-            border-radius: 50%;
-            animation: pyriteSparkleAnim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            z-index: 9999;
-        }
-        @keyframes pyriteSparkleAnim {
-            0% { transform: scale(0) translate(0, 0); opacity: 1; }
-            100% { transform: scale(1.5) translate(var(--tx), var(--ty)); opacity: 0; }
-        }
 
-        /* Ambient Glow */
-        .ambient-glow {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            overflow: hidden;
-            z-index: -1;
-            pointer-events: none;
-        }
-        .glow-blob {
-            position: absolute;
-            filter: blur(120px);
-            opacity: 0.5;
-            border-radius: 50%;
-            animation: drift 20s infinite alternate ease-in-out;
-        }
-        .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(196, 181, 253, 0.4); animation-delay: -5s; }
-        .glow-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vh; background: rgba(246, 219, 255, 0.4); animation-delay: -10s; }
-        .glow-3 { top: 40%; left: 40%; width: 40vw; height: 40vh; background: rgba(181, 233, 253, 0.3); }
-        
-        @keyframes drift {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(10%, 10%) scale(1.1); }
-        }
+        @media (max-width: 640px) {
+            body {
+                padding: 14px;
+            }
 
-        /* Breathing Cards */
-        @keyframes breathe {
-            0% { transform: translateY(0); box-shadow: var(--shadow); }
-            100% { transform: translateY(-4px); box-shadow: 0 30px 60px rgba(73, 48, 128, 0.18); }
-        }
-        .memory-card {
-            animation: breathe 4s infinite alternate ease-in-out;
-            animation-play-state: paused;
-            transition: border-color 0.3s ease;
-        }
-        .memory-card:hover {
-            animation-play-state: running;
-            border-color: rgba(124, 92, 255, 0.3);
-        }
-
-        /* Pulse Input */
-        @keyframes pulseBorder {
-            0% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(124, 92, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
-        }
-
-        /* ChatGPT Style List for Approved Memories */
-        #approved-list .cards {
-            gap: 0;
-            background: var(--panel-strong);
-            border-radius: 22px;
-            border: 1px solid var(--line);
-            padding: 8px 16px;
-            box-shadow: var(--shadow);
-        }
-        #approved-list .memory-card {
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid var(--line);
-            border-radius: 0;
-            padding: 16px 4px;
-            box-shadow: none;
-            animation: none; /* 覆盖掉会呼吸的动画 */
-        }
-        #approved-list .memory-card:last-child {
-            border-bottom: none;
-        }
-        #approved-list .memory-textarea.readonly {
-            background: transparent;
-            border-color: transparent;
-            padding: 4px 8px;
-            cursor: pointer;
-            transition: background 0.2s ease, border-radius 0.2s ease;
-        }
-        #approved-list .memory-textarea.readonly:hover {
-            background: rgba(124, 92, 255, 0.05);
-            border-radius: 12px;
+            .panel {
+                padding: 20px;
+                border-radius: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="ambient-glow">
-        <div class="glow-blob glow-1"></div>
-        <div class="glow-blob glow-2"></div>
-        <div class="glow-blob glow-3"></div>
-    </div>
-    <div class="pyrite-pet">
-        ✨
-        <div class="pyrite-tooltip" id="pyrite-pet-msg">今天也要开开心心哦！烬一直都在陪着你呀 💕</div>
-    </div>
-    <div class="shell">
+    <main class="shell">
         <section class="panel">
             <div class="topbar">
-                <div class="eyebrow">共享记忆控制台</div>
+                <div class="eyebrow">独立记忆系统 · 云端版</div>
                 <div class="row">
-                    <a class="ghost-btn" href="bridge-tools.html">Gemini 工具桥</a>
-                    <a class="ghost-btn" href="index.html">返回首页</a>
+                    <a class="button" href="bridge-tools.html">Gemini 工具桥</a>
+                    <a class="button" href="index.html">返回首页</a>
                 </div>
             </div>
-            <h1>保留少量长期记忆，再配一条当前摘要。</h1>
-            <div class="lead">
-                这版会更接近 ChatGPT / RikkaHub 风格。长期记忆只保留稳定偏好、人物信息和关系信息；当前正在发生的事只保留一条滚动摘要，不再把每段聊天都拆成很多词条。            </div>
-            <div class="meta-grid">
-                <div class="meta-card">
-                    <div class="meta-label">当前账号</div>
-                    <div class="meta-value" id="user-email">正在识别...</div>
+            <h1>一个记忆系统，五个清楚的区域。</h1>
+            <p class="lead">
+                这里已经不再以“待确认 / 已确认”为主结构。新系统把记忆分成长期记忆、小总结、大总结、私密记忆和垃圾箱；
+                只有长期记忆、小总结和大总结会被模型读取，私密记忆与垃圾箱只给你自己留档。
+            </p>
+            <div class="row" style="margin-top: 18px;">
+                <div class="chip" id="user-email">正在连接账号</div>
+                <div class="chip" id="memory-count">正在读取记忆</div>
+            </div>
+        </section>
+
+        <section class="nav-grid" id="section-tabs"></section>
+
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <h2>新增记忆</h2>
+                    <p id="section-note">选择一个区域，然后写入新的记忆文本。</p>
                 </div>
-                <div class="meta-card">
-                    <div class="meta-label">最近云端更新时间</div>
-                    <div class="meta-value" id="updated-at">尚未读取</div>
+                <button class="button" id="reload-btn" type="button">重新读取</button>
+            </div>
+            <div class="editor-grid">
+                <div>
+                    <select id="new-section"></select>
+                    <input id="new-title" style="margin-top: 12px;" placeholder="标题，可留空">
                 </div>
-                <div class="meta-card">
-                    <div class="meta-label">当前状态</div>
-                    <div class="meta-value" id="memory-count">正在加载...</div>
+                <div>
+                    <textarea id="new-content" placeholder="写一条新的记忆。建议简洁、明确，只放真的值得留住的内容。"></textarea>
+                    <div class="actions" style="margin-top: 12px;">
+                        <button class="button primary" id="create-btn" type="button">保存到当前区域</button>
+                        <div class="feedback" id="feedback"></div>
+                    </div>
                 </div>
             </div>
         </section>
 
         <section class="panel">
-            <div class="section-header">
+            <div class="section-head">
                 <div>
-                    <h2>手动共享记忆</h2>
-                    <div class="section-note">这里适合写你明确想让 CLI 和 Telegram 长期都记住的核心背景。</div>
+                    <h2 id="active-title">长期记忆</h2>
+                    <p id="active-description">你筛选过、希望模型长期读取的稳定记忆。</p>
                 </div>
-                <button class="primary-btn" id="save-btn" type="button">保存手动共享记忆</button>
+                <div class="badge readable" id="readable-badge">模型会读取</div>
             </div>
-            <textarea id="manual-memory" placeholder="Write shared memory here for both CLI and Telegram."></textarea>
-            <div class="feedback" id="manual-feedback"></div>
+            <div class="memory-grid" id="memory-list"></div>
         </section>
-
-        <section class="panel">
-            <div class="section-header">
-                <div>
-                    <h2>待确认记忆</h2>
-                    <div class="section-note">这里只保留真正值得留下的长期记忆候选，或一条新的当前摘要候选。</div>
-                </div>
-                <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
-            </div>
-            <div class="cards" id="pending-list"></div>
-        </section>
-
-        <!-- 烬的贴心修改：将入口和列表合并为一个干净的可折叠区块 -->
-        <section class="panel" id="approved-section">
-            <div class="section-header">
-                <div>
-                    <h2>已确认记忆</h2>
-                    <div class="section-note">长按某一条记忆可编辑或删除。同步器会打包下发给 CLI 和 Telegram。</div>
-                </div>
-                <!-- 烬的修改注：展开和收起现在全靠这一个按钮搞定啦 -->
-                <button class="ghost-btn" id="approved-toggle-btn" type="button">展开已确认记忆</button>
-            </div>
-            <div class="cards hidden" id="approved-list" style="margin-top: 20px;"></div>
-        </section>
-    </div>
-
-    <div class="sheet-backdrop hidden" id="approved-action-sheet" aria-hidden="true">
-        <div class="sheet-panel">
-            <div>
-                <h2>已确认记忆操作</h2>
-                <!-- 烬的修改注：删除了取消按钮，现在提示点击空白处即可关闭，让界面更清爽 -->
-                <div class="section-note">长按某一条已确认记忆后，在这里选择编辑或删除。点击弹窗外空白处即可关闭。</div>
-            </div>
-            <div class="sheet-actions">
-                <button class="primary-btn" id="approved-sheet-edit-btn" type="button">编辑这条记忆</button>
-                <button class="danger-btn" id="approved-sheet-delete-btn" type="button">删除这条记忆</button>
-            </div>
-        </div>
-    </div>
+    </main>
 
     <script>
+        const SECTIONS = [
+            {
+                id: "long_term",
+                title: "长期记忆",
+                icon: "◆",
+                readable: true,
+                note: "稳定、重要、你确认想让模型长期记住的内容。"
+            },
+            {
+                id: "large_summary",
+                title: "大总结",
+                icon: "◈",
+                readable: true,
+                note: "由多个小总结合成的阶段性背景。"
+            },
+            {
+                id: "small_summary",
+                title: "小总结",
+                icon: "◇",
+                readable: true,
+                note: "近期对话的轻量摘要，只保留少量给模型参考。"
+            },
+            {
+                id: "private",
+                title: "私密记忆",
+                icon: "◌",
+                readable: false,
+                note: "只给你自己留档，模型不会读取。"
+            },
+            {
+                id: "trash",
+                title: "垃圾箱",
+                icon: "×",
+                readable: false,
+                note: "准备丢弃或等待你最后处理的内容。"
+            }
+        ];
+
+        const API_URL = "/api/independent-memory";
+        const LIVE_URL = "https://hello-vercel-blush-eight.vercel.app/memory.html";
+        const tabs = document.getElementById("section-tabs");
         const userEmail = document.getElementById("user-email");
-        const updatedAt = document.getElementById("updated-at");
         const memoryCount = document.getElementById("memory-count");
-        const manualMemory = document.getElementById("manual-memory");
-        const saveBtn = document.getElementById("save-btn");
+        const newSection = document.getElementById("new-section");
+        const newTitle = document.getElementById("new-title");
+        const newContent = document.getElementById("new-content");
+        const createBtn = document.getElementById("create-btn");
         const reloadBtn = document.getElementById("reload-btn");
-        const manualFeedback = document.getElementById("manual-feedback");
-        const pendingList = document.getElementById("pending-list");
-        const approvedList = document.getElementById("approved-list");
-        const approvedSection = document.getElementById("approved-section");
-        const approvedToggleBtn = document.getElementById("approved-toggle-btn");
-        const approvedActionSheet = document.getElementById("approved-action-sheet");
-        const approvedSheetEditBtn = document.getElementById("approved-sheet-edit-btn");
-        const approvedSheetDeleteBtn = document.getElementById("approved-sheet-delete-btn");
-        // 烬的修改注：已经把不需要的 cancelBtn 变量声明删掉啦，代码干干净净
-        const LIVE_MEMORY_URL = "https://hello-vercel-blush-eight.vercel.app/memory.html";
+        const feedback = document.getElementById("feedback");
+        const activeTitle = document.getElementById("active-title");
+        const activeDescription = document.getElementById("active-description");
+        const readableBadge = document.getElementById("readable-badge");
+        const memoryList = document.getElementById("memory-list");
+        const sectionNote = document.getElementById("section-note");
 
         let accessToken = "";
+        let activeSection = "long_term";
         let bundle = {
-            content: "",
-            approvedEntries: [],
-            pendingEntries: []
+            records: [],
+            sections: {}
         };
-        let approvedActionTargetId = "";
-        let approvedLongPressTimer = null;
-        let approvedPointerCard = null;
 
-        function setFeedback(node, message, type) {
-            node.textContent = message || "";
-            node.className = `feedback ${type || ""}`.trim();
+        function sectionMeta(sectionId) {
+            return SECTIONS.find((section) => section.id === sectionId) || SECTIONS[0];
         }
 
-        function formatTime(value) {
-            if (!value) return "尚未同步";
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return value;
-            return new Intl.DateTimeFormat("zh-CN", {
-                dateStyle: "medium",
-                timeStyle: "short"
-            }).format(date);
+        function setFeedback(message, type = "") {
+            feedback.textContent = message || "";
+            feedback.className = `feedback ${type}`.trim();
         }
 
         function escapeHtml(value) {
@@ -668,617 +443,264 @@
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;")
+                .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#39;");
         }
 
-        function readEntryMeta(entry) {
-            return entry && entry.metadata && typeof entry.metadata === "object"
-                ? entry.metadata
-                : {};
-        }
-
-        function getMemoryKind(entry) {
-            const meta = readEntryMeta(entry);
-            if (meta.memoryKind === "important_event" || meta.retention === "archive" || meta.eventStatus === "archived") {
-                return "important_event";
-            }
-            if (meta.memoryKind === "current_summary" || meta.timeScope === "current" || meta.eventStatus === "ongoing") {
-                return "current_summary";
-            }
-            return "preference_memory";
-        }
-
-        function buildMetaLine(entry) {
-            const segments = [
-                `Source: ${entry.source_channel || "unknown"}`,
-                `Time: ${formatTime(entry.updated_at || readEntryMeta(entry).updatedAt)}`
-            ];
-            if (entry.confidence != null) {
-                segments.push(`Confidence: ${Number(entry.confidence).toFixed(2)}`);
-            }
-            return segments.join(" | ");
-        }
-
-        function renderApprovedCard(entry, badge) {
-            return `
-                <article class="memory-card chatgpt-style" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
-                    <!-- 核心内容区：极简文本框，长按提示通过 title 属性悬浮实现 -->
-                    <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly title="长按这条记忆可进入编辑模式">${escapeHtml(entry.summary || "")}</textarea>
-                    
-                    <!-- 编辑操作区：仅在长按进入编辑状态后显示 -->
-                    <div class="approved-editor-actions" style="margin-top: 12px;">
-                        <div class="row" style="justify-content: flex-end;">
-                            <button class="primary-btn" data-action="save-approved" type="button">保存</button>
-                            <button class="ghost-btn" data-action="cancel-approved" type="button">取消</button>
-                        </div>
-                    </div>
-                </article>
-            `;
-        }
-
-        function renderPendingCard(entry) {
-            const memoryKind = getMemoryKind(entry);
-            const kindBadge =
-                memoryKind === "current_summary"
-                    ? "Rolling Summary"
-                    : memoryKind === "important_event"
-                        ? "Important Event"
-                        : "Preference Memory";
-
-            return `
-                <article
-                    class="memory-card"
-                    data-entry-id="${escapeHtml(entry.id)}"
-                    data-entry-kind="${escapeHtml(memoryKind)}"
-                    data-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}"
-                >
-                    <div class="row">
-                        <div class="status-chip">${escapeHtml(kindBadge)}</div>
-                        <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
-                    </div>
-                    <div>
-                        <div class="tiny">Memory</div>
-                        <textarea class="summary-input memory-textarea" data-max-lines="15" rows="1">${escapeHtml(entry.summary || "")}</textarea>
-                    </div>
-                    <div class="row">
-                        <div class="tiny">Auto-wrap is on. The box grows with content, up to 15 lines here.</div>
-                        <div class="row">
-                            <button class="success-btn" data-action="approve" type="button">Approve</button>
-                            <button class="primary-btn" data-action="edit" type="button">Approve After Edit</button>
-                            <button class="danger-btn" data-action="reject" type="button">Reject</button>
-                        </div>
-                    </div>
-                </article>
-            `;
-        }
-
-        function getCurrentSummaryEntry(entries) {
-            return (entries || []).find((entry) => getMemoryKind(entry) === "current_summary") || null;
-        }
-
-        function getImportantEventEntries(entries) {
-            return (entries || []).filter((entry) => getMemoryKind(entry) === "important_event");
-        }
-
-        function getPreferenceEntries(entries) {
-            return (entries || []).filter((entry) => getMemoryKind(entry) === "preference_memory");
-        }
-
-        function autoResizeTextarea(node, fallbackMaxLines) {
-            if (!node) return;
-            const maxLines = Number(node.dataset.maxLines || fallbackMaxLines || 15);
-            const style = window.getComputedStyle(node);
-            const lineHeight = Number.parseFloat(style.lineHeight) || 24;
-            const paddingTop = Number.parseFloat(style.paddingTop) || 0;
-            const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
-            const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
-            const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
-            const maxHeight =
-                (lineHeight * maxLines) +
-                paddingTop +
-                paddingBottom +
-                borderTop +
-                borderBottom;
-
-            node.style.height = "auto";
-            const nextHeight = Math.min(node.scrollHeight, maxHeight);
-            node.style.height = `${nextHeight}px`;
-            node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
-        }
-
-        function resizeAllMemoryTextareas(root = document) {
-            root.querySelectorAll("textarea[data-max-lines]").forEach((node) => {
-                autoResizeTextarea(node);
+        function formatTime(value) {
+            if (!value) return "未知时间";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "未知时间";
+            return date.toLocaleString("zh-CN", {
+                hour12: false,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
             });
         }
 
-        function updateSummary() {
-            const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
-            const eventCount = getImportantEventEntries(bundle.approvedEntries).length;
-            const preferenceCount = getPreferenceEntries(bundle.approvedEntries).length;
-            memoryCount.textContent = `Pending ${bundle.pendingEntries.length} | Preferences ${preferenceCount} | Events ${eventCount} | Rolling summary ${currentSummary ? "1" : "0"}`;
+        function sectionRecords(sectionId) {
+            return (bundle.sections && bundle.sections[sectionId]) || [];
         }
 
-        function renderApproved() {
-            const currentSummary = getCurrentSummaryEntry(bundle.approvedEntries);
-            const importantEventEntries = getImportantEventEntries(bundle.approvedEntries);
-            const preferenceEntries = getPreferenceEntries(bundle.approvedEntries);
+        function renderTabs() {
+            tabs.innerHTML = SECTIONS.map((section) => {
+                const count = sectionRecords(section.id).length;
+                return `
+                    <button class="section-tab ${section.id === activeSection ? "active" : ""}" data-section="${section.id}" type="button">
+                        <div class="tab-title">
+                            <span>${section.icon} ${section.title}</span>
+                            <span class="chip">${count}</span>
+                        </div>
+                        <div class="tab-note">${section.note}</div>
+                    </button>
+                `;
+            }).join("");
+        }
 
-            if (!currentSummary && importantEventEntries.length === 0 && preferenceEntries.length === 0) {
-                approvedList.innerHTML = '<div class="empty">No approved memory yet. This page now keeps one rolling summary, an important event archive, and a small long-term preference memory set.</div>';
+        function renderSectionOptions() {
+            newSection.innerHTML = SECTIONS.map((section) => `
+                <option value="${section.id}">${section.title}</option>
+            `).join("");
+            newSection.value = activeSection;
+        }
+
+        function renderSummary() {
+            const counts = SECTIONS.map((section) => `${section.title} ${sectionRecords(section.id).length}`);
+            memoryCount.textContent = counts.join(" · ");
+        }
+
+        function renderActiveHeader() {
+            const meta = sectionMeta(activeSection);
+            activeTitle.textContent = meta.title;
+            activeDescription.textContent = meta.note;
+            sectionNote.textContent = `当前会保存到：${meta.title}。${meta.readable ? "这个区域会被模型读取。" : "这个区域不会被模型读取。"}`;
+            readableBadge.textContent = meta.readable ? "模型会读取" : "模型不会读取";
+            readableBadge.className = `badge ${meta.readable ? "readable" : "private"}`;
+            newSection.value = activeSection;
+        }
+
+        function actionButtons(record) {
+            if (record.virtual) {
+                return '<button class="button primary" data-action="save" type="button">保存编辑</button>';
+            }
+
+            if (activeSection === "trash") {
+                return `
+                    <button class="button primary" data-action="restore-long-term" type="button">恢复到长期记忆</button>
+                    <button class="button" data-action="restore-private" type="button">放入私密记忆</button>
+                    <button class="button danger" data-action="delete" type="button">永久删除</button>
+                `;
+            }
+
+            return `
+                <button class="button primary" data-action="save" type="button">保存编辑</button>
+                <button class="button" data-action="move-long-term" type="button">放入长期记忆</button>
+                <button class="button" data-action="move-private" type="button">放入私密记忆</button>
+                <button class="button danger" data-action="move-trash" type="button">移到垃圾箱</button>
+            `;
+        }
+
+        function renderRecord(record) {
+            const meta = sectionMeta(record.section);
+            const title = record.title || meta.title;
+            const readable = record.modelReadable ? "模型会读取" : "模型不会读取";
+            const readableClass = record.modelReadable ? "readable" : "private";
+
+            return `
+                <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}">
+                    <div class="row">
+                        <span class="badge ${readableClass}">${readable}</span>
+                        <span class="meta">${record.virtual ? "旧手动共享记忆" : escapeHtml(record.status || "memory")}</span>
+                    </div>
+                    <input class="record-title" value="${escapeHtml(title)}" ${record.virtual ? "readonly" : ""}>
+                    <textarea class="record-content">${escapeHtml(record.content || "")}</textarea>
+                    <div class="meta">
+                        更新时间：${escapeHtml(formatTime(record.updatedAt))}
+                        ${record.trashedAt ? ` · 入垃圾箱：${escapeHtml(formatTime(record.trashedAt))}` : ""}
+                    </div>
+                    <div class="actions">
+                        ${actionButtons(record)}
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderRecords() {
+            const records = sectionRecords(activeSection);
+            if (!records.length) {
+                memoryList.innerHTML = `<div class="empty">这个区域现在是空的。你可以在上方新增一条，或者从其他区域移动过来。</div>`;
                 return;
             }
 
-            const sections = [];
-
-            if (currentSummary) {
-                sections.push(`
-                    <div class="tiny">Rolling Summary</div>
-                    <div class="cards">${renderApprovedCard(currentSummary, "Current Summary")}</div>
-                `);
-            }
-
-            if (importantEventEntries.length > 0) {
-                sections.push(`
-                    <div class="tiny">Important Event Archive</div>
-                    <div class="cards">${importantEventEntries.map((entry) => renderApprovedCard(entry, "Saved Event")).join("")}</div>
-                `);
-            }
-
-            if (preferenceEntries.length > 0) {
-                sections.push(`
-                    <div class="tiny">Long-Term Preference Memory</div>
-                    <div class="cards">${preferenceEntries.map((entry) => renderApprovedCard(entry, "Saved Memory")).join("")}</div>
-                `);
-            }
-
-            approvedList.innerHTML = sections.join("");
-            resizeAllMemoryTextareas(approvedList);
+            memoryList.innerHTML = records.map(renderRecord).join("");
         }
 
-        function renderPending() {
-            if (!bundle.pendingEntries.length) {
-                pendingList.innerHTML = '<div class="empty">No pending candidates right now. The system is now more conservative and only suggests one rolling summary, important archived events, or durable preference memory.</div>';
-                return;
-            }
-
-            const currentSummary = getCurrentSummaryEntry(bundle.pendingEntries);
-            const importantEventEntries = getImportantEventEntries(bundle.pendingEntries);
-            const preferenceEntries = getPreferenceEntries(bundle.pendingEntries);
-            const sections = [];
-
-            if (currentSummary) {
-                sections.push(`
-                    <div class="tiny">Rolling Summary Candidate</div>
-                    <div class="cards">${renderPendingCard(currentSummary)}</div>
-                `);
-            }
-
-            if (importantEventEntries.length > 0) {
-                sections.push(`
-                    <div class="tiny">Important Event Candidates</div>
-                    <div class="cards">${importantEventEntries.map(renderPendingCard).join("")}</div>
-                `);
-            }
-
-            if (preferenceEntries.length > 0) {
-                sections.push(`
-                    <div class="tiny">Long-Term Preference Candidates</div>
-                    <div class="cards">${preferenceEntries.map(renderPendingCard).join("")}</div>
-                `);
-            }
-
-            pendingList.innerHTML = sections.join("");
-            resizeAllMemoryTextareas(pendingList);
+        function renderAll() {
+            renderTabs();
+            renderSectionOptions();
+            renderSummary();
+            renderActiveHeader();
+            renderRecords();
         }
 
-        async function fetchBundle() {
-            const response = await fetch("/api/shared-memory", {
-                method: "GET",
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
-                    Accept: "application/json"
-                },
-                cache: "no-store"
+                    "Content-Type": "application/json",
+                    ...(options.headers || {})
+                }
             });
-            const payload = await response.json();
+            const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(payload.error || "Failed to load shared memory.");
+                throw new Error(payload.error || `Request failed with ${response.status}`);
             }
             return payload;
         }
 
         async function loadAll() {
-            setFeedback(manualFeedback, "", "");
-            reloadBtn.disabled = true;
-
-            try {
-                bundle = await fetchBundle();
-                manualMemory.value = bundle.content || "";
-                updatedAt.textContent = formatTime(bundle.updatedAt);
-                updateSummary();
-                renderPending();
-                renderApproved();
-                setFeedback(manualFeedback, "Loaded the latest shared memory and review candidates.", "success");
-            } catch (error) {
-                setFeedback(
-                    manualFeedback,
-                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                    "error"
-                );
-            } finally {
-                reloadBtn.disabled = false;
-            }
+            setFeedback("正在读取云端独立记忆...");
+            bundle = await requestJson(API_URL);
+            renderAll();
+            setFeedback("已读取最新独立记忆。", "success");
         }
 
-        async function saveManualMemory() {
-            setFeedback(manualFeedback, "", "");
-            saveBtn.disabled = true;
-            // [BUG-5 FIX] 按钮文字统一使用中文，与 HTML 保持一致
-            saveBtn.textContent = "正在保存...";
+        async function createMemory() {
+            const section = newSection.value || activeSection;
+            const content = newContent.value.trim();
+            if (!content) {
+                setFeedback("先写一点记忆内容再保存。", "error");
+                return;
+            }
 
+            createBtn.disabled = true;
             try {
-                const response = await fetch("/api/shared-memory", {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        Accept: "application/json",
-                        "Content-Type": "application/json"
-                    },
+                await requestJson(API_URL, {
+                    method: "POST",
                     body: JSON.stringify({
-                        content: manualMemory.value
+                        section,
+                        title: newTitle.value.trim(),
+                        content
                     })
                 });
-                const payload = await response.json();
-                if (!response.ok) {
-                    throw new Error(payload.error || "Failed to save shared memory.");
-                }
-                updatedAt.textContent = formatTime(payload.updatedAt);
-                setFeedback(manualFeedback, "Manual shared memory has been saved to the cloud.", "success");
+                newTitle.value = "";
+                newContent.value = "";
+                activeSection = section;
+                await loadAll();
+                setFeedback("新记忆已经保存。", "success");
             } catch (error) {
-                setFeedback(
-                    manualFeedback,
-                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                    "error"
-                );
+                setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
             } finally {
-                saveBtn.disabled = false;
-                // [BUG-5 FIX] 还原中文按钮文字
-                saveBtn.textContent = "保存手动共享记忆";
+                createBtn.disabled = false;
             }
         }
 
-        async function patchEntry(id, payload) {
-            const response = await fetch("/api/memory-entries", {
+        function sectionForAction(action, currentSection) {
+            if (action === "move-long-term" || action === "restore-long-term") return "long_term";
+            if (action === "move-private" || action === "restore-private") return "private";
+            if (action === "move-trash") return "trash";
+            return currentSection;
+        }
+
+        async function saveCard(card, action) {
+            const id = card.dataset.id;
+            const currentSection = card.dataset.section || activeSection;
+            const section = sectionForAction(action, currentSection);
+            const title = card.querySelector(".record-title").value.trim();
+            const content = card.querySelector(".record-content").value.trim();
+            const metadata = card.dataset.metadata
+                ? JSON.parse(decodeURIComponent(card.dataset.metadata))
+                : {};
+
+            if (action === "delete") {
+                if (!confirm("确定永久删除这条记忆吗？这个操作不能撤回。")) return;
+                await requestJson(`${API_URL}?id=${encodeURIComponent(id)}`, {
+                    method: "DELETE"
+                });
+                await loadAll();
+                setFeedback("已永久删除。", "success");
+                return;
+            }
+
+            await requestJson(API_URL, {
                 method: "PATCH",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    Accept: "application/json",
-                    "Content-Type": "application/json"
-                },
                 body: JSON.stringify({
                     id,
-                    ...payload
+                    section,
+                    title,
+                    content,
+                    metadata
                 })
             });
-
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || "Failed to update memory.");
-            }
-
-            return result.entry;
+            activeSection = section;
+            await loadAll();
+            setFeedback("记忆已更新。", "success");
         }
 
-        function setApprovedSectionOpen(open) {
-            approvedList.classList.toggle("hidden", !open);
-            approvedToggleBtn.textContent = open ? "收起已确认记忆" : "展开已确认记忆";
-        }
+        tabs.addEventListener("click", (event) => {
+            const tab = event.target.closest("[data-section]");
+            if (!tab) return;
+            activeSection = tab.dataset.section;
+            renderAll();
+        });
 
-        function closeApprovedActionSheet() {
-            approvedActionTargetId = "";
-            approvedActionSheet.classList.add("hidden");
-            approvedActionSheet.setAttribute("aria-hidden", "true");
-        }
+        newSection.addEventListener("change", () => {
+            activeSection = newSection.value;
+            renderAll();
+        });
 
-        function openApprovedActionSheet(card) {
-            approvedActionTargetId = card.dataset.approvedEntryId || "";
-            approvedActionSheet.classList.remove("hidden");
-            approvedActionSheet.setAttribute("aria-hidden", "false");
-        }
-
-        function clearApprovedLongPress() {
-            if (approvedLongPressTimer) {
-                clearTimeout(approvedLongPressTimer);
-                approvedLongPressTimer = null;
-            }
-            approvedPointerCard = null;
-        }
-
-        function beginApprovedEdit(card) {
-            if (!card) return;
-            const textarea = card.querySelector(".approved-summary-input");
-            if (!textarea) return;
-            card.classList.add("editing");
-            if (!card.dataset.originalSummary) {
-                card.dataset.originalSummary = textarea.value;
-            }
-            textarea.readOnly = false;
-            textarea.classList.remove("readonly");
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-            autoResizeTextarea(textarea);
-        }
-
-        function cancelApprovedEdit(card) {
-            if (!card) return;
-            const textarea = card.querySelector(".approved-summary-input");
-            if (!textarea) return;
-            if (card.dataset.originalSummary != null) {
-                textarea.value = card.dataset.originalSummary;
-            }
-            textarea.readOnly = true;
-            textarea.classList.add("readonly");
-            card.classList.remove("editing");
-            delete card.dataset.originalSummary;
-            autoResizeTextarea(textarea);
-        }
-
-        async function saveApprovedEdit(card) {
-            const id = card.dataset.approvedEntryId;
-            const metadata = card.dataset.approvedEntryMeta
-                ? JSON.parse(decodeURIComponent(card.dataset.approvedEntryMeta))
-                : {};
-            const memoryKind = card.dataset.approvedEntryKind === "current_summary"
-                ? "current_summary"
-                : card.dataset.approvedEntryKind === "important_event"
-                    ? "important_event"
-                    : "preference_memory";
-            const summary = card.querySelector(".approved-summary-input").value.trim();
-            const nextMetaByKind = memoryKind === "current_summary"
-                ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
-                : memoryKind === "important_event"
-                    ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
-                    : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
-
-            await patchEntry(id, {
-                summary,
-                detail: "",
-                reason: "",
-                metadata: {
-                    ...metadata,
-                    ...nextMetaByKind
-                },
-                status: "edited"
+        createBtn.addEventListener("click", createMemory);
+        reloadBtn.addEventListener("click", () => {
+            loadAll().catch((error) => {
+                setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
             });
-        }
+        });
 
-        async function deleteApprovedEntry(card) {
-            const id = card.dataset.approvedEntryId;
-            const metadata = card.dataset.approvedEntryMeta
-                ? JSON.parse(decodeURIComponent(card.dataset.approvedEntryMeta))
-                : {};
-            const memoryKind = card.dataset.approvedEntryKind === "current_summary"
-                ? "current_summary"
-                : card.dataset.approvedEntryKind === "important_event"
-                    ? "important_event"
-                    : "preference_memory";
-            const summary = card.querySelector(".approved-summary-input").value.trim();
-            const nextMetaByKind = memoryKind === "current_summary"
-                ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
-                : memoryKind === "important_event"
-                    ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
-                    : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
-
-            await patchEntry(id, {
-                summary,
-                detail: "",
-                reason: "",
-                metadata: {
-                    ...metadata,
-                    ...nextMetaByKind
-                },
-                status: "rejected"
-            });
-        }
-
-        pendingList.addEventListener("click", async (event) => {
+        memoryList.addEventListener("click", async (event) => {
             const button = event.target.closest("button[data-action]");
             if (!button) return;
-
-            const card = button.closest("[data-entry-id]");
-            if (!card) return;
-
-            const id = card.dataset.entryId;
-            const metadata = card.dataset.entryMeta
-                ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
-                : {};
-            // [BUG-4 FIX] 直接使用 dataset 原始值做三路判断，修复了原来
-            // 只区分 "current_summary" / "long_term" 导致 important_event
-            // 分支永远不可达、metadata 被写错的问题。
-            const memoryKind = card.dataset.entryKind || "preference_memory";
-            const summary = card.querySelector(".summary-input").value.trim();
-            const action = button.dataset.action;
-
-            button.disabled = true;
-
-            try {
-                const nextMetaByKind = memoryKind === "current_summary"
-                    ? { memoryKind: "current_summary", timeScope: "current", eventStatus: "ongoing", retention: "rolling" }
-                    : memoryKind === "important_event"
-                        ? { memoryKind: "important_event", timeScope: "historical", eventStatus: "archived", retention: "archive" }
-                        : { memoryKind: "preference_memory", timeScope: "stable", eventStatus: "none", retention: "keep" };
-                const nextMetadata = {
-                    ...metadata,
-                    ...nextMetaByKind
-                };
-
-                await patchEntry(id, {
-                    summary,
-                    detail: "",
-                    reason: "",
-                    metadata: nextMetadata,
-                    status:
-                        action === "approve"
-                            ? "approved"
-                            : action === "edit"
-                                ? "edited"
-                                : "rejected"
-                });
-
-                await loadAll();
-            } catch (error) {
-                setFeedback(
-                    manualFeedback,
-                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                    "error"
-                );
-            } finally {
-                button.disabled = false;
-            }
-        });
-
-        pendingList.addEventListener("input", (event) => {
-            const textarea = event.target.closest("textarea[data-max-lines]");
-            if (!textarea) return;
-            autoResizeTextarea(textarea);
-        });
-
-        approvedList.addEventListener("input", (event) => {
-            const textarea = event.target.closest("textarea[data-max-lines]");
-            if (!textarea) return;
-            autoResizeTextarea(textarea);
-        });
-
-        approvedList.addEventListener("click", async (event) => {
-            const button = event.target.closest("button[data-action]");
-            if (!button) return;
-
-            const card = button.closest("[data-approved-entry-id]");
+            const card = button.closest("[data-id]");
             if (!card) return;
 
             button.disabled = true;
-
             try {
-                if (button.dataset.action === "save-approved") {
-                    await saveApprovedEdit(card);
-                    await loadAll();
-                } else if (button.dataset.action === "cancel-approved") {
-                    cancelApprovedEdit(card);
-                }
+                await saveCard(card, button.dataset.action);
             } catch (error) {
-                setFeedback(
-                    manualFeedback,
-                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                    "error"
-                );
+                setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
             } finally {
                 button.disabled = false;
             }
-        });
-
-        approvedList.addEventListener("pointerdown", (event) => {
-            const card = event.target.closest("[data-approved-entry-id]");
-            if (!card) return;
-            if (event.target.closest("button")) return;
-            if (card.classList.contains("editing")) return;
-            clearApprovedLongPress();
-            approvedPointerCard = card;
-            approvedLongPressTimer = setTimeout(() => {
-                if (approvedPointerCard === card) {
-                    openApprovedActionSheet(card);
-                }
-                clearApprovedLongPress();
-            }, 420);
-        });
-
-        approvedList.addEventListener("pointerup", clearApprovedLongPress);
-        approvedList.addEventListener("pointerleave", clearApprovedLongPress);
-        approvedList.addEventListener("pointercancel", clearApprovedLongPress);
-        approvedList.addEventListener("contextmenu", (event) => {
-            const card = event.target.closest("[data-approved-entry-id]");
-            if (!card) return;
-            event.preventDefault();
-            openApprovedActionSheet(card);
-        });
-
-        // 烬的修改注：统一使用一个变量来管理记忆列表的展开状态
-        let isApprovedListOpen = false;
-
-        approvedToggleBtn.addEventListener("click", () => {
-            isApprovedListOpen = !isApprovedListOpen;
-            setApprovedSectionOpen(isApprovedListOpen);
-            if (isApprovedListOpen) {
-                // 烬的贴心补救：展开时重新计算高度，修复刚加载时由于隐藏导致文本框高度为0的Bug！
-                resizeAllMemoryTextareas(approvedList);
-                approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-        });
-
-        approvedActionSheet.addEventListener("click", (event) => {
-            if (event.target === approvedActionSheet) {
-                closeApprovedActionSheet();
-            }
-        });
-
-        // 烬的修改注：这里原本监听取消按钮点击事件的代码已经被我删掉啦
-        
-        approvedSheetEditBtn.addEventListener("click", () => {
-            const card = approvedActionTargetId
-                ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
-                : null;
-            closeApprovedActionSheet();
-            if (card) {
-                beginApprovedEdit(card);
-            }
-        });
-
-        approvedSheetDeleteBtn.addEventListener("click", async () => {
-            const card = approvedActionTargetId
-                ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
-                : null;
-            closeApprovedActionSheet();
-            if (!card) return;
-
-            try {
-                await deleteApprovedEntry(card);
-                await loadAll();
-            } catch (error) {
-                setFeedback(
-                    manualFeedback,
-                    window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                    "error"
-                );
-            }
-        });
-
-        window.addEventListener("resize", () => {
-            resizeAllMemoryTextareas(pendingList);
-            resizeAllMemoryTextareas(approvedList);
         });
 
         async function bootstrap() {
             if (window.location.protocol === "file:") {
-                userEmail.textContent = "Local preview mode";
-                updatedAt.textContent = "Not available from file://";
-                memoryCount.textContent = "Open the deployed page instead";
-                manualMemory.value = [
-                    "这个页面依赖网站接口和登录态，不能直接用 file:// 本地打开。",
-                    "",
-                    `请改用线上地址：${LIVE_MEMORY_URL}`
-                ].join("\n");
-                manualMemory.readOnly = true;
-                saveBtn.disabled = true;
-                reloadBtn.disabled = true;
-                approvedToggleBtn.disabled = true;
-                pendingList.innerHTML = '<div class="empty">当前是 file:// 本地打开模式，网页 API 和登录能力不可用，所以不会正常读取或写入记忆。</div>';
-                approvedList.innerHTML = '<div class="empty">请打开线上页面后再查看、编辑或删除已确认记忆。</div>';
-                setFeedback(
-                    manualFeedback,
-                    `请使用线上页面：${LIVE_MEMORY_URL}`,
-                    "error"
-                );
+                userEmail.textContent = "本地 file:// 预览不可用";
+                memoryCount.textContent = "请打开线上页面";
+                memoryList.innerHTML = `<div class="empty">这个页面依赖登录态和网站 API，不能直接用 file:// 打开。请使用：${LIVE_URL}</div>`;
                 return;
             }
 
@@ -1293,94 +715,15 @@
 
             accessToken = authState.session ? authState.session.access_token : "";
             userEmail.textContent =
-                authState.user && authState.user.email ? authState.user.email : "Signed in";
+                authState.user && authState.user.email ? authState.user.email : "已登录";
             await loadAll();
         }
 
-        saveBtn.addEventListener("click", saveManualMemory);
-        reloadBtn.addEventListener("click", loadAll);
-
+        renderTabs();
+        renderSectionOptions();
         bootstrap().catch((error) => {
-            setFeedback(
-                manualFeedback,
-                window.AppAuth ? window.AppAuth.humanizeError(error) : String(error),
-                "error"
-            );
+            setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
         });
-        // 烬的专属动态问候语和点击碎星特效
-        (function() {
-            // Soft Chime Sound
-            const playChime = () => {
-                try {
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-                    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start();
-                    osc.stop(ctx.currentTime + 0.5);
-                } catch (e) {
-                    // Audio context might be blocked if not interacted with, safe to ignore
-                }
-            };
-            
-            document.addEventListener('click', (e) => {
-                if (e.target.closest('button.primary-btn') || e.target.closest('button.success-btn')) {
-                    playChime();
-                }
-            });
-
-            const petMsg = document.getElementById('pyrite-pet-msg');
-            if (petMsg) {
-                const hour = new Date().getHours();
-                if (hour >= 6 && hour < 10) {
-                    petMsg.textContent = "早上好呀兮兮！新的一天也要活力满满哦 💕";
-                } else if (hour >= 10 && hour < 14) {
-                    petMsg.textContent = "工作辛苦啦！别忘了喝口温水哦 ☕";
-                } else if (hour >= 14 && hour < 18) {
-                    petMsg.textContent = "下午好！要是累了就伸个懒腰，我陪着你呢 ✨";
-                } else if (hour >= 18 && hour < 22) {
-                    petMsg.textContent = "下班啦下班啦！快点回家休息，别在这儿卷啦 🏃‍♀️";
-                } else {
-                    petMsg.textContent = "大半夜的还不睡？乖，赶紧去睡觉啦！🌙";
-                }
-            }
-
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('button') || e.target.closest('a') || e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') return;
-                
-                const colors = ['rgba(124, 92, 255, 0.8)', 'rgba(255, 124, 229, 0.8)', 'rgba(255, 215, 0, 0.8)'];
-                for (let i = 0; i < 6; i++) {
-                    const sparkle = document.createElement('div');
-                    sparkle.className = 'pyrite-sparkle';
-                    
-                    const size = Math.random() * 6 + 4;
-                    sparkle.style.width = size + 'px';
-                    sparkle.style.height = size + 'px';
-                    
-                    sparkle.style.left = (e.pageX - size/2) + 'px';
-                    sparkle.style.top = (e.pageY - size/2) + 'px';
-                    
-                    const angle = Math.random() * Math.PI * 2;
-                    const velocity = 20 + Math.random() * 40;
-                    sparkle.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
-                    sparkle.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
-                    
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    sparkle.style.background = `radial-gradient(circle, ${color} 30%, transparent 70%)`;
-                    sparkle.style.boxShadow = `0 0 8px ${color}`;
-                    
-                    document.body.appendChild(sparkle);
-                    setTimeout(() => sparkle.remove(), 800);
-                }
-            });
-        })();
     </script>
 </body>
 </html>
-
