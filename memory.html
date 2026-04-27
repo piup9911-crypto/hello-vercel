@@ -298,6 +298,8 @@
             font-weight: 800;
         }
 
+        /* 烬的修改注：系统默认标题只用于编辑时兜底，不在阅读态展示。
+           这类标题本身没有信息量，露出来只会制造重复噪音。 */
         .record-title.generic-title {
             display: none;
         }
@@ -436,7 +438,7 @@
             <h1>一个记忆系统，五个清楚的区域。</h1>
             <p class="lead">
                 这里已经不再以“待确认 / 已确认”为主结构。新系统把记忆分成长期记忆、小总结、大总结、私密记忆和垃圾箱；
-                只有长期记忆、小总结和大总结会被模型读取，私密记忆与垃圾箱只给你自己留档。
+                页面会尽量只展示真正的记忆文本，系统状态和数据库标签都藏到背后。
             </p>
             <div class="row" style="margin-top: 18px;">
                 <div class="chip" id="user-email">正在连接账号</div>
@@ -476,9 +478,9 @@
             <div class="section-head">
                 <div>
                     <h2 id="active-title">长期记忆</h2>
-                    <p id="active-description">你筛选过、希望模型长期读取的稳定记忆。</p>
+                    <p id="active-description">你筛选过、希望长期保存的稳定记忆。</p>
                 </div>
-                <div class="badge readable" id="readable-badge">模型会读取</div>
+                <div class="badge readable" id="readable-badge">0 条</div>
             </div>
             <div class="memory-grid" id="memory-list"></div>
         </section>
@@ -503,7 +505,7 @@
                 title: "长期记忆",
                 icon: "◆",
                 readable: true,
-                note: "稳定、重要、你确认想让模型长期记住的内容。"
+                note: "稳定、重要、你确认想长期保存的内容。"
             },
             {
                 id: "large_summary",
@@ -517,14 +519,14 @@
                 title: "小总结",
                 icon: "◇",
                 readable: true,
-                note: "近期对话的轻量摘要，只保留少量给模型参考。"
+                note: "近期对话的轻量摘要，只保留少量关键背景。"
             },
             {
                 id: "private",
                 title: "私密记忆",
                 icon: "◌",
                 readable: false,
-                note: "只给你自己留档，模型不会读取。"
+                note: "只给你自己留档，不混进日常对话背景。"
             },
             {
                 id: "trash",
@@ -652,13 +654,28 @@
             memoryCount.textContent = counts.join(" · ");
         }
 
+        function isGenericTitle(title, record) {
+            const value = String(title || "").trim();
+            const meta = sectionMeta(record.section);
+            if (record.virtual) {
+                return true;
+            }
+            const genericTitles = new Set([
+                "",
+                meta.title,
+                `${meta.title}记忆`
+            ]);
+            return genericTitles.has(value);
+        }
+
         function renderActiveHeader() {
             const meta = sectionMeta(activeSection);
+            const count = sectionRecords(activeSection).length;
             activeTitle.textContent = meta.title;
             activeDescription.textContent = meta.note;
-            sectionNote.textContent = `当前会保存到：${meta.title}。${meta.readable ? "这个区域会被模型读取。" : "这个区域不会被模型读取。"}`;
-            readableBadge.textContent = meta.readable ? "模型会读取" : "模型不会读取";
-            readableBadge.className = `badge ${meta.readable ? "readable" : "private"}`;
+            sectionNote.textContent = `当前会保存到：${meta.title}。`;
+            readableBadge.textContent = `${count} 条`;
+            readableBadge.className = "badge readable";
             newSection.value = activeSection;
         }
 
@@ -674,21 +691,14 @@
         function renderRecord(record) {
             const meta = sectionMeta(record.section);
             const title = record.title || meta.title;
-            const titleIsGeneric = !record.title || title === meta.title;
-            const readable = record.modelReadable ? "模型会读取" : "模型不会读取";
-            const readableClass = record.modelReadable ? "readable" : "private";
+            const titleIsGeneric = isGenericTitle(title, record);
 
             return `
                 <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}" ${record.virtual ? 'data-virtual="true"' : ""} title="长按这条记忆可编辑、移动或删除">
-                    <div class="row">
-                        <span class="badge ${readableClass}">${readable}</span>
-                        <span class="meta">${record.virtual ? "旧手动共享记忆" : escapeHtml(record.status || "memory")}</span>
-                    </div>
                     <input class="record-title ${titleIsGeneric ? "generic-title" : ""}" value="${escapeHtml(title)}" readonly>
                     <textarea class="record-content" data-max-lines="20" readonly>${escapeHtml(record.content || "")}</textarea>
                     <div class="meta">
                         更新时间：${escapeHtml(formatTime(record.updatedAt))}
-                        ${record.trashedAt ? ` · 入垃圾箱：${escapeHtml(formatTime(record.trashedAt))}` : ""}
                     </div>
                     <div class="actions">
                         ${actionButtons(record)}
