@@ -281,6 +281,28 @@
             background: rgba(154, 107, 54, 0.07);
         }
 
+        .memory-grid.bulk-mode .memory-card {
+            padding-left: 44px;
+        }
+
+        .bulk-select-wrap {
+            display: none;
+        }
+
+        .memory-grid.bulk-mode .bulk-select-wrap {
+            position: absolute;
+            top: 18px;
+            left: 6px;
+            display: block;
+        }
+
+        .bulk-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
         .memory-card .row {
             justify-content: flex-start;
         }
@@ -377,6 +399,32 @@
 
         .feedback.success {
             color: var(--green);
+        }
+
+        /* 烬的修改注：批量操作只作为临时模式出现，默认隐藏。
+           这样满足批量整理需求，又不会破坏旧系统那种干净的记忆清单观感。 */
+        .bulk-toolbar {
+            display: grid;
+            gap: 12px;
+            margin: 16px 0 0;
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.68);
+        }
+
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .bulk-actions select {
+            width: min(100%, 220px);
+            min-height: 42px;
+            padding: 10px 12px;
+            border-radius: 999px;
         }
 
         .sheet-backdrop {
@@ -482,6 +530,22 @@
                 </div>
                 <div class="badge readable" id="readable-badge">0 条</div>
             </div>
+            <div class="bulk-toolbar hidden" id="bulk-toolbar">
+                <div class="row">
+                    <div>
+                        <strong>批量整理</strong>
+                        <div class="meta" id="bulk-selected-label">已选 0 条</div>
+                    </div>
+                    <button class="button" id="bulk-mode-btn" type="button">批量操作</button>
+                </div>
+                <div class="bulk-actions hidden" id="bulk-actions">
+                    <button class="button" id="bulk-select-all-btn" type="button">全选</button>
+                    <select id="bulk-target"></select>
+                    <button class="button primary" id="bulk-move-btn" type="button">移动所选</button>
+                    <button class="button danger" id="bulk-delete-btn" type="button">删除所选</button>
+                    <button class="button" id="bulk-cancel-btn" type="button">退出批量</button>
+                </div>
+            </div>
             <div class="memory-grid" id="memory-list"></div>
         </section>
     </main>
@@ -555,12 +619,22 @@
         const readableBadge = document.getElementById("readable-badge");
         const memoryList = document.getElementById("memory-list");
         const sectionNote = document.getElementById("section-note");
+        const bulkToolbar = document.getElementById("bulk-toolbar");
+        const bulkModeBtn = document.getElementById("bulk-mode-btn");
+        const bulkActions = document.getElementById("bulk-actions");
+        const bulkSelectedLabel = document.getElementById("bulk-selected-label");
+        const bulkSelectAllBtn = document.getElementById("bulk-select-all-btn");
+        const bulkTarget = document.getElementById("bulk-target");
+        const bulkMoveBtn = document.getElementById("bulk-move-btn");
+        const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+        const bulkCancelBtn = document.getElementById("bulk-cancel-btn");
         const memoryActionSheet = document.getElementById("memory-action-sheet");
         const memorySheetActions = document.getElementById("memory-sheet-actions");
 
         let accessToken = "";
         let activeSection = "long_term";
         let isCreateOpen = false;
+        let isBulkMode = false;
         let memoryActionTargetId = "";
         let memoryLongPressTimer = null;
         let memoryPointerCard = null;
@@ -624,6 +698,59 @@
 
         function sectionRecords(sectionId) {
             return (bundle.sections && bundle.sections[sectionId]) || [];
+        }
+
+        function canBulkOperateSection(sectionId = activeSection) {
+            return sectionId !== "small_summary";
+        }
+
+        function bulkRecords(sectionId = activeSection) {
+            return canBulkOperateSection(sectionId)
+                ? sectionRecords(sectionId).filter((record) => !record.virtual)
+                : [];
+        }
+
+        function bulkTargetSections() {
+            return SECTIONS.filter((section) =>
+                section.id !== activeSection &&
+                section.id !== "small_summary" &&
+                section.id !== "trash"
+            );
+        }
+
+        function selectedBulkCards() {
+            return Array.from(memoryList.querySelectorAll(".bulk-checkbox:checked"))
+                .map((checkbox) => checkbox.closest("[data-id]"))
+                .filter(Boolean);
+        }
+
+        function updateBulkToolbar() {
+            const availableRecords = bulkRecords();
+            const canOperate = availableRecords.length > 0;
+            if (!canOperate) {
+                isBulkMode = false;
+            }
+
+            bulkToolbar.classList.toggle("hidden", !canOperate);
+            bulkModeBtn.classList.toggle("hidden", isBulkMode);
+            bulkActions.classList.toggle("hidden", !isBulkMode);
+            memoryList.classList.toggle("bulk-mode", isBulkMode);
+
+            const selectedCount = selectedBulkCards().length;
+            bulkSelectedLabel.textContent = isBulkMode
+                ? `已选 ${selectedCount} 条`
+                : "小总结之外的分区可批量整理";
+
+            bulkTarget.innerHTML = bulkTargetSections().map((section) =>
+                `<option value="${section.id}">${section.title}</option>`
+            ).join("");
+            const hasTarget = bulkTarget.options.length > 0;
+            bulkMoveBtn.disabled = !selectedCount || !hasTarget;
+            bulkDeleteBtn.disabled = !selectedCount;
+            bulkSelectAllBtn.disabled = !availableRecords.length;
+            bulkSelectAllBtn.textContent =
+                selectedCount && selectedCount === availableRecords.length ? "取消全选" : "全选";
+            bulkDeleteBtn.textContent = activeSection === "trash" ? "永久删除所选" : "删除所选";
         }
 
         function renderTabs() {
@@ -695,6 +822,9 @@
 
             return `
                 <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}" ${record.virtual ? 'data-virtual="true"' : ""} title="长按这条记忆可编辑、移动或删除">
+                    <div class="bulk-select-wrap">
+                        <input class="bulk-checkbox" data-bulk-id="${escapeHtml(record.id)}" type="checkbox" ${record.virtual ? "disabled" : ""} aria-label="选择这条记忆">
+                    </div>
                     <input class="record-title ${titleIsGeneric ? "generic-title" : ""}" value="${escapeHtml(title)}" readonly>
                     <textarea class="record-content" data-max-lines="20" readonly>${escapeHtml(record.content || "")}</textarea>
                     <div class="meta">
@@ -724,6 +854,7 @@
             renderSummary();
             renderActiveHeader();
             renderRecords();
+            updateBulkToolbar();
         }
 
         async function requestJson(url, options = {}) {
@@ -781,6 +912,7 @@
 
         function sectionForAction(action, currentSection) {
             if (action === "move-long-term" || action === "restore-long-term") return "long_term";
+            if (action === "move-large-summary" || action === "restore-large-summary") return "large_summary";
             if (action === "move-private" || action === "restore-private") return "private";
             if (action === "move-trash") return "trash";
             return currentSection;
@@ -874,7 +1006,9 @@
             memoryPointerCard = null;
         }
 
-        async function saveCard(card, action) {
+        async function saveCard(card, action, options = {}) {
+            const shouldReload = options.reload !== false;
+            const shouldConfirmDelete = options.confirmDelete !== false;
             const id = card.dataset.id;
             const currentSection = card.dataset.section || activeSection;
             const section = sectionForAction(action, currentSection);
@@ -885,13 +1019,17 @@
                 : {};
 
             if (action === "delete") {
-                if (!confirm("确定永久删除这条记忆吗？这个操作不能撤回。")) return;
+                if (shouldConfirmDelete && !confirm("确定永久删除这条记忆吗？这个操作不能撤回。")) {
+                    return false;
+                }
                 await requestJson(`${API_URL}?id=${encodeURIComponent(id)}`, {
                     method: "DELETE"
                 });
-                await loadAll();
-                setFeedback("已永久删除。", "success");
-                return;
+                if (shouldReload) {
+                    await loadAll();
+                    setFeedback("已永久删除。", "success");
+                }
+                return true;
             }
 
             await requestJson(API_URL, {
@@ -905,18 +1043,89 @@
                 })
             });
             activeSection = section;
-            await loadAll();
-            setFeedback("记忆已更新。", "success");
+            if (shouldReload) {
+                await loadAll();
+                setFeedback("记忆已更新。", "success");
+            }
+            return true;
+        }
+
+        function setBulkButtonsDisabled(disabled) {
+            [bulkModeBtn, bulkSelectAllBtn, bulkMoveBtn, bulkDeleteBtn, bulkCancelBtn].forEach((button) => {
+                button.disabled = disabled;
+            });
+            bulkTarget.disabled = disabled;
+        }
+
+        function toggleBulkMode(open) {
+            isBulkMode = open && bulkRecords().length > 0;
+            memoryList.querySelectorAll(".bulk-checkbox").forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+            updateBulkToolbar();
+        }
+
+        async function runBulkAction(action) {
+            const cards = selectedBulkCards();
+            if (!cards.length) {
+                setFeedback("先选择要整理的记忆。", "error");
+                return;
+            }
+
+            const target = action === "move" ? bulkTarget.value : "";
+            const moveAction = target
+                ? `move-${target.replace(/_/g, "-")}`
+                : "";
+            const finalAction = action === "delete"
+                ? activeSection === "trash" ? "delete" : "move-trash"
+                : moveAction;
+            const targetLabel = target ? sectionMeta(target).title : "";
+            const actionLabel = action === "delete"
+                ? activeSection === "trash" ? "永久删除" : "移到垃圾箱"
+                : `移动到${targetLabel}`;
+
+            if (!finalAction) {
+                setFeedback("先选择要移动到的区域。", "error");
+                return;
+            }
+
+            if (!confirm(`确定要把 ${cards.length} 条记忆${actionLabel}吗？`)) {
+                return;
+            }
+
+            setBulkButtonsDisabled(true);
+            try {
+                let updated = 0;
+                for (const card of cards) {
+                    const ok = await saveCard(card, finalAction, {
+                        reload: false,
+                        confirmDelete: false
+                    });
+                    if (ok) {
+                        updated += 1;
+                    }
+                }
+                isBulkMode = false;
+                await loadAll();
+                setFeedback(`已完成批量操作：${updated} 条记忆${actionLabel}。`, "success");
+            } catch (error) {
+                setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
+            } finally {
+                setBulkButtonsDisabled(false);
+                updateBulkToolbar();
+            }
         }
 
         tabs.addEventListener("click", (event) => {
             const tab = event.target.closest("[data-section]");
             if (!tab) return;
+            isBulkMode = false;
             activeSection = tab.dataset.section;
             renderAll();
         });
 
         newSection.addEventListener("change", () => {
+            isBulkMode = false;
             activeSection = newSection.value;
             renderAll();
         });
@@ -930,6 +1139,31 @@
             loadAll().catch((error) => {
                 setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
             });
+        });
+
+        bulkModeBtn.addEventListener("click", () => {
+            toggleBulkMode(true);
+        });
+
+        bulkCancelBtn.addEventListener("click", () => {
+            toggleBulkMode(false);
+        });
+
+        bulkSelectAllBtn.addEventListener("click", () => {
+            const checkboxes = Array.from(memoryList.querySelectorAll(".bulk-checkbox:not(:disabled)"));
+            const shouldSelectAll = selectedBulkCards().length !== checkboxes.length;
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = shouldSelectAll;
+            });
+            updateBulkToolbar();
+        });
+
+        bulkMoveBtn.addEventListener("click", () => {
+            runBulkAction("move");
+        });
+
+        bulkDeleteBtn.addEventListener("click", () => {
+            runBulkAction("delete");
         });
 
         memoryList.addEventListener("click", async (event) => {
@@ -953,6 +1187,12 @@
             }
         });
 
+        memoryList.addEventListener("change", (event) => {
+            if (event.target.matches(".bulk-checkbox")) {
+                updateBulkToolbar();
+            }
+        });
+
         memoryList.addEventListener("input", (event) => {
             if (event.target.matches(".record-content")) {
                 autoResizeTextarea(event.target);
@@ -960,6 +1200,7 @@
         });
 
         memoryList.addEventListener("pointerdown", (event) => {
+            if (isBulkMode || event.target.closest(".bulk-select-wrap")) return;
             const card = event.target.closest("[data-id]");
             if (!card || card.classList.contains("editing")) return;
             clearMemoryLongPress();
@@ -974,6 +1215,7 @@
         memoryList.addEventListener("pointerleave", clearMemoryLongPress);
         memoryList.addEventListener("pointercancel", clearMemoryLongPress);
         memoryList.addEventListener("contextmenu", (event) => {
+            if (isBulkMode) return;
             const card = event.target.closest("[data-id]");
             if (!card) return;
             event.preventDefault();
