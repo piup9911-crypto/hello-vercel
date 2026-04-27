@@ -129,6 +129,10 @@
             font-size: 15px;
         }
 
+        .hidden {
+            display: none !important;
+        }
+
         .nav-grid,
         .memory-grid {
             display: grid;
@@ -159,6 +163,10 @@
 
         .section-tab.active {
             background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(154, 107, 54, 0.1));
+        }
+
+        .section-tab.secondary {
+            opacity: 0.82;
         }
 
         .tab-title {
@@ -238,23 +246,104 @@
             opacity: 0.64;
         }
 
+        /* 烬的修改注：这里故意把已保存记忆改回旧系统的轻列表样式。
+           记忆页的重点是“读和微调”，不是像后台管理系统一样每条都挂满按钮。 */
         .memory-grid {
             margin-top: 16px;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .memory-card {
-            display: grid;
-            gap: 12px;
+            display: block;
             border: 1px solid var(--line);
             border-radius: 24px;
             background: var(--panel-strong);
-            padding: 18px;
+            padding: 8px 18px;
+            box-shadow: 0 18px 50px rgba(96, 66, 35, 0.1);
         }
 
-        .memory-card textarea {
-            min-height: 110px;
-            max-height: 420px;
+        .memory-card {
+            position: relative;
+            display: grid;
+            gap: 8px;
+            border: none;
+            border-bottom: 1px solid var(--line);
+            border-radius: 0;
+            background: transparent;
+            padding: 16px 4px;
+            box-shadow: none;
+        }
+
+        .memory-card:last-child {
+            border-bottom: none;
+        }
+
+        .memory-card.editing {
+            margin: 4px -8px;
+            padding: 16px 12px;
+            border-radius: 18px;
+            background: rgba(154, 107, 54, 0.07);
+        }
+
+        .memory-card .row {
+            justify-content: flex-start;
+        }
+
+        .record-title,
+        .record-content {
+            border-color: transparent;
+            background: transparent;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .record-title {
+            min-height: 34px;
+            font-weight: 800;
+        }
+
+        .record-title.generic-title {
+            display: none;
+        }
+
+        .memory-card.editing .record-title.generic-title {
+            display: block;
+            opacity: 0.82;
+        }
+
+        .record-content {
+            min-height: 0;
+            resize: none;
+            overflow: hidden;
+            line-height: 1.75;
+        }
+
+        .memory-card:not(.editing) .record-title,
+        .memory-card:not(.editing) .record-content {
+            cursor: pointer;
+        }
+
+        .memory-card:not(.editing) .record-title:focus,
+        .memory-card:not(.editing) .record-content:focus {
+            box-shadow: none;
+        }
+
+        .memory-card:not(.editing):hover .record-content {
+            background: rgba(154, 107, 54, 0.06);
+        }
+
+        .memory-card.editing .record-title,
+        .memory-card.editing .record-content {
+            border-color: rgba(154, 107, 54, 0.28);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        /* 烬的修改注：操作按钮默认隐藏，只在长按进入编辑态后出现。
+           这段不要轻易删，不然页面又会退回每条记忆一排按钮的臃肿状态。 */
+        .memory-card .actions {
+            display: none;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+
+        .memory-card.editing .actions {
+            display: flex;
         }
 
         .meta {
@@ -288,9 +377,35 @@
             color: var(--green);
         }
 
+        .sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: grid;
+            place-items: end center;
+            padding: 18px;
+            background: rgba(48, 42, 34, 0.24);
+            backdrop-filter: blur(8px);
+        }
+
+        .sheet-panel {
+            width: min(100%, 560px);
+            display: grid;
+            gap: 14px;
+            border: 1px solid var(--line);
+            border-radius: 26px;
+            background: var(--panel-strong);
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        .sheet-actions {
+            display: grid;
+            gap: 10px;
+        }
+
         @media (max-width: 920px) {
             .nav-grid,
-            .memory-grid,
             .editor-grid {
                 grid-template-columns: 1fr;
             }
@@ -337,9 +452,13 @@
                     <h2>新增记忆</h2>
                     <p id="section-note">选择一个区域，然后写入新的记忆文本。</p>
                 </div>
-                <button class="button" id="reload-btn" type="button">重新读取</button>
+                <div class="row">
+                    <button class="button" id="reload-btn" type="button">重新读取</button>
+                    <button class="button primary" id="create-toggle-btn" type="button">写入一条记忆</button>
+                </div>
             </div>
-            <div class="editor-grid">
+            <div class="feedback" id="feedback"></div>
+            <div class="editor-grid hidden" id="create-body">
                 <div>
                     <select id="new-section"></select>
                     <input id="new-title" style="margin-top: 12px;" placeholder="标题，可留空">
@@ -348,7 +467,6 @@
                     <textarea id="new-content" placeholder="写一条新的记忆。建议简洁、明确，只放真的值得留住的内容。"></textarea>
                     <div class="actions" style="margin-top: 12px;">
                         <button class="button primary" id="create-btn" type="button">保存到当前区域</button>
-                        <div class="feedback" id="feedback"></div>
                     </div>
                 </div>
             </div>
@@ -365,6 +483,18 @@
             <div class="memory-grid" id="memory-list"></div>
         </section>
     </main>
+
+    <div class="sheet-backdrop hidden" id="memory-action-sheet" aria-hidden="true">
+        <div class="sheet-panel">
+            <div>
+                <h2>记忆操作</h2>
+                <!-- 烬的修改注：这里复刻旧系统“长按后再操作”的交互。
+                     这样已保存记忆默认只像清单，不会被编辑/删除按钮挤得很吵。 -->
+                <p>长按某条记忆后，在这里选择编辑、移动或删除。点击空白处即可关闭。</p>
+            </div>
+            <div class="sheet-actions" id="memory-sheet-actions"></div>
+        </div>
+    </div>
 
     <script>
         const SECTIONS = [
@@ -414,6 +544,8 @@
         const newTitle = document.getElementById("new-title");
         const newContent = document.getElementById("new-content");
         const createBtn = document.getElementById("create-btn");
+        const createToggleBtn = document.getElementById("create-toggle-btn");
+        const createBody = document.getElementById("create-body");
         const reloadBtn = document.getElementById("reload-btn");
         const feedback = document.getElementById("feedback");
         const activeTitle = document.getElementById("active-title");
@@ -421,9 +553,15 @@
         const readableBadge = document.getElementById("readable-badge");
         const memoryList = document.getElementById("memory-list");
         const sectionNote = document.getElementById("section-note");
+        const memoryActionSheet = document.getElementById("memory-action-sheet");
+        const memorySheetActions = document.getElementById("memory-sheet-actions");
 
         let accessToken = "";
         let activeSection = "long_term";
+        let isCreateOpen = false;
+        let memoryActionTargetId = "";
+        let memoryLongPressTimer = null;
+        let memoryPointerCard = null;
         let bundle = {
             records: [],
             sections: {}
@@ -461,6 +599,27 @@
             });
         }
 
+        function setCreateOpen(open) {
+            isCreateOpen = open;
+            createBody.classList.toggle("hidden", !open);
+            createToggleBtn.textContent = open ? "收起写入框" : "写入一条记忆";
+        }
+
+        function autoResizeTextarea(textarea) {
+            if (!textarea) return;
+            textarea.style.height = "auto";
+            const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 24;
+            const maxLines = Number(textarea.dataset.maxLines || 20);
+            const maxHeight = lineHeight * maxLines + 18;
+            const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+            textarea.style.height = `${nextHeight}px`;
+            textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+        }
+
+        function resizeMemoryTextareas(scope = memoryList) {
+            scope.querySelectorAll(".record-content").forEach(autoResizeTextarea);
+        }
+
         function sectionRecords(sectionId) {
             return (bundle.sections && bundle.sections[sectionId]) || [];
         }
@@ -468,8 +627,9 @@
         function renderTabs() {
             tabs.innerHTML = SECTIONS.map((section) => {
                 const count = sectionRecords(section.id).length;
+                const tabTone = section.readable ? "" : " secondary";
                 return `
-                    <button class="section-tab ${section.id === activeSection ? "active" : ""}" data-section="${section.id}" type="button">
+                    <button class="section-tab${tabTone} ${section.id === activeSection ? "active" : ""}" data-section="${section.id}" type="button">
                         <div class="tab-title">
                             <span>${section.icon} ${section.title}</span>
                             <span class="chip">${count}</span>
@@ -503,40 +663,29 @@
         }
 
         function actionButtons(record) {
-            if (record.virtual) {
-                return '<button class="button primary" data-action="save" type="button">保存编辑</button>';
-            }
-
-            if (activeSection === "trash") {
-                return `
-                    <button class="button primary" data-action="restore-long-term" type="button">恢复到长期记忆</button>
-                    <button class="button" data-action="restore-private" type="button">放入私密记忆</button>
-                    <button class="button danger" data-action="delete" type="button">永久删除</button>
-                `;
-            }
-
+            // 烬的修改注：这里故意只保留“保存/取消”。
+            // 移动、删除这种不常用操作统一放进长按菜单，避免每条记忆都变成按钮墙。
             return `
                 <button class="button primary" data-action="save" type="button">保存编辑</button>
-                <button class="button" data-action="move-long-term" type="button">放入长期记忆</button>
-                <button class="button" data-action="move-private" type="button">放入私密记忆</button>
-                <button class="button danger" data-action="move-trash" type="button">移到垃圾箱</button>
+                <button class="button" data-action="cancel" type="button">取消</button>
             `;
         }
 
         function renderRecord(record) {
             const meta = sectionMeta(record.section);
             const title = record.title || meta.title;
+            const titleIsGeneric = !record.title || title === meta.title;
             const readable = record.modelReadable ? "模型会读取" : "模型不会读取";
             const readableClass = record.modelReadable ? "readable" : "private";
 
             return `
-                <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}">
+                <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}" ${record.virtual ? 'data-virtual="true"' : ""} title="长按这条记忆可编辑、移动或删除">
                     <div class="row">
                         <span class="badge ${readableClass}">${readable}</span>
                         <span class="meta">${record.virtual ? "旧手动共享记忆" : escapeHtml(record.status || "memory")}</span>
                     </div>
-                    <input class="record-title" value="${escapeHtml(title)}" ${record.virtual ? "readonly" : ""}>
-                    <textarea class="record-content">${escapeHtml(record.content || "")}</textarea>
+                    <input class="record-title ${titleIsGeneric ? "generic-title" : ""}" value="${escapeHtml(title)}" readonly>
+                    <textarea class="record-content" data-max-lines="20" readonly>${escapeHtml(record.content || "")}</textarea>
                     <div class="meta">
                         更新时间：${escapeHtml(formatTime(record.updatedAt))}
                         ${record.trashedAt ? ` · 入垃圾箱：${escapeHtml(formatTime(record.trashedAt))}` : ""}
@@ -556,6 +705,7 @@
             }
 
             memoryList.innerHTML = records.map(renderRecord).join("");
+            resizeMemoryTextareas();
         }
 
         function renderAll() {
@@ -626,6 +776,94 @@
             return currentSection;
         }
 
+        function findActionCard() {
+            return Array.from(memoryList.querySelectorAll("[data-id]"))
+                .find((card) => card.dataset.id === memoryActionTargetId) || null;
+        }
+
+        function setCardReadonly(card, readonly) {
+            card.querySelectorAll(".record-title, .record-content").forEach((field) => {
+                field.readOnly = readonly;
+            });
+        }
+
+        function beginMemoryEdit(card) {
+            if (!card) return;
+            const title = card.querySelector(".record-title");
+            const content = card.querySelector(".record-content");
+            card.dataset.originalTitle = title ? title.value : "";
+            card.dataset.originalContent = content ? content.value : "";
+            card.classList.add("editing");
+            setCardReadonly(card, false);
+            if (content) {
+                content.focus();
+                content.setSelectionRange(content.value.length, content.value.length);
+                autoResizeTextarea(content);
+            }
+        }
+
+        function cancelMemoryEdit(card) {
+            if (!card) return;
+            const title = card.querySelector(".record-title");
+            const content = card.querySelector(".record-content");
+            if (title && card.dataset.originalTitle != null) {
+                title.value = card.dataset.originalTitle;
+            }
+            if (content && card.dataset.originalContent != null) {
+                content.value = card.dataset.originalContent;
+            }
+            card.classList.remove("editing");
+            setCardReadonly(card, true);
+            delete card.dataset.originalTitle;
+            delete card.dataset.originalContent;
+            resizeMemoryTextareas(card);
+        }
+
+        function closeMemoryActionSheet() {
+            memoryActionTargetId = "";
+            memoryActionSheet.classList.add("hidden");
+            memoryActionSheet.setAttribute("aria-hidden", "true");
+            memorySheetActions.innerHTML = "";
+        }
+
+        function renderSheetButtons(card) {
+            const section = card.dataset.section || activeSection;
+            const isVirtual = card.dataset.virtual === "true";
+            const buttons = [
+                '<button class="button primary" data-sheet-action="edit" type="button">编辑这条记忆</button>'
+            ];
+
+            if (!isVirtual && section !== "long_term") {
+                buttons.push('<button class="button" data-sheet-action="move-long-term" type="button">移动到长期记忆</button>');
+            }
+            if (!isVirtual && section !== "private") {
+                buttons.push('<button class="button" data-sheet-action="move-private" type="button">移动到私密记忆</button>');
+            }
+            if (!isVirtual && section === "trash") {
+                buttons.push('<button class="button danger" data-sheet-action="delete" type="button">永久删除</button>');
+            } else if (!isVirtual) {
+                buttons.push('<button class="button danger" data-sheet-action="move-trash" type="button">移到垃圾箱</button>');
+            }
+
+            return buttons.join("");
+        }
+
+        function openMemoryActionSheet(card) {
+            if (!card) return;
+            memoryActionTargetId = card.dataset.id || "";
+            memorySheetActions.innerHTML = renderSheetButtons(card);
+            memoryActionSheet.classList.remove("hidden");
+            memoryActionSheet.setAttribute("aria-hidden", "false");
+        }
+
+        function clearMemoryLongPress() {
+            if (memoryLongPressTimer) {
+                clearTimeout(memoryLongPressTimer);
+            }
+            memoryLongPressTimer = null;
+            memoryPointerCard = null;
+        }
+
         async function saveCard(card, action) {
             const id = card.dataset.id;
             const currentSection = card.dataset.section || activeSection;
@@ -673,6 +911,10 @@
             renderAll();
         });
 
+        createToggleBtn.addEventListener("click", () => {
+            setCreateOpen(!isCreateOpen);
+        });
+
         createBtn.addEventListener("click", createMemory);
         reloadBtn.addEventListener("click", () => {
             loadAll().catch((error) => {
@@ -686,9 +928,69 @@
             const card = button.closest("[data-id]");
             if (!card) return;
 
+            if (button.dataset.action === "cancel") {
+                cancelMemoryEdit(card);
+                return;
+            }
+
             button.disabled = true;
             try {
                 await saveCard(card, button.dataset.action);
+            } catch (error) {
+                setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        memoryList.addEventListener("input", (event) => {
+            if (event.target.matches(".record-content")) {
+                autoResizeTextarea(event.target);
+            }
+        });
+
+        memoryList.addEventListener("pointerdown", (event) => {
+            const card = event.target.closest("[data-id]");
+            if (!card || card.classList.contains("editing")) return;
+            clearMemoryLongPress();
+            memoryPointerCard = card;
+            memoryLongPressTimer = window.setTimeout(() => {
+                openMemoryActionSheet(memoryPointerCard);
+                clearMemoryLongPress();
+            }, 560);
+        });
+
+        memoryList.addEventListener("pointerup", clearMemoryLongPress);
+        memoryList.addEventListener("pointerleave", clearMemoryLongPress);
+        memoryList.addEventListener("pointercancel", clearMemoryLongPress);
+        memoryList.addEventListener("contextmenu", (event) => {
+            const card = event.target.closest("[data-id]");
+            if (!card) return;
+            event.preventDefault();
+            openMemoryActionSheet(card);
+        });
+
+        memoryActionSheet.addEventListener("click", async (event) => {
+            if (event.target === memoryActionSheet) {
+                closeMemoryActionSheet();
+                return;
+            }
+
+            const button = event.target.closest("[data-sheet-action]");
+            if (!button) return;
+            const card = findActionCard();
+            const action = button.dataset.sheetAction;
+            closeMemoryActionSheet();
+
+            if (!card) return;
+            if (action === "edit") {
+                beginMemoryEdit(card);
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                await saveCard(card, action);
             } catch (error) {
                 setFeedback(window.AppAuth ? window.AppAuth.humanizeError(error) : String(error), "error");
             } finally {
