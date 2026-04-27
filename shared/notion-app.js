@@ -878,11 +878,14 @@
   void boot().catch((error) => {
     console.error("Mini Notion 启动失败：", error);
     cloudStatus.textContent = "云端暂时还没有连好，请检查 Supabase 表结构和 Vercel 环境变量。";
-    authEmail.textContent = window.AppAuth
+    // [BUG-7 FIX] 统一增加 AppAuth 存在性守卫，防止 supabase-auth.js CDN 加载失败时
+    // 调用 humanizeError() 抛出 TypeError: Cannot read properties of undefined
+    const errorMessage = window.AppAuth
       ? window.AppAuth.humanizeError(error)
       : "请检查 Supabase 配置。";
+    authEmail.textContent = errorMessage;
     migrateBtn.hidden = true;
     showSaveStatus("⚠️ 云端暂时不可用");
-    window.alert(`Mini Notion 还没有连上 Supabase：${window.AppAuth.humanizeError(error)}`);
+    window.alert(`Mini Notion 还没有连上 Supabase：${errorMessage}`);
   });
 })();

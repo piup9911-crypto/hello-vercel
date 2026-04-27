@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>鍏变韩璁板繂鎺у埗鍙</title>
+    <title>共享记忆控制台</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="shared/supabase-auth.js"></script>
     <style>
@@ -221,8 +221,8 @@
         textarea:focus,
         input:focus,
         select:focus {
-            border-color: rgba(124, 92, 255, 0.44);
-            box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.08);
+            border-color: rgba(124, 92, 255, 0.6);
+            animation: pulseBorder 2s infinite;
         }
 
         .ghost-btn,
@@ -348,7 +348,8 @@
             background: rgba(31, 24, 56, 0.28);
             backdrop-filter: blur(6px);
             display: flex;
-            align-items: flex-end;
+            /* 烬的贴心修改：让弹窗垂直居中显示，不再缩在底下啦 */
+            align-items: center;
             justify-content: center;
             padding: 18px;
             z-index: 30;
@@ -384,30 +385,183 @@
                 grid-template-columns: 1fr;
             }
         }
+        @keyframes pyritePulse {
+            0% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); }
+            50% { transform: scale(1.15); opacity: 1; filter: hue-rotate(15deg) drop-shadow(0 0 10px rgba(124, 92, 255, 0.6)); }
+            100% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); }
+        }
+        .pyrite-pet {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            font-size: 32px;
+            cursor: pointer;
+            animation: pyritePulse 3s infinite ease-in-out;
+            z-index: 999;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            user-select: none;
+        }
+        .pyrite-pet:hover {
+            transform: scale(1.2) rotate(15deg);
+        }
+        .pyrite-pet:active {
+            transform: scale(0.9);
+        }
+        .pyrite-tooltip {
+            position: absolute;
+            bottom: calc(100% + 12px);
+            right: -8px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            box-shadow: 0 12px 30px rgba(73, 48, 128, 0.18);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(15px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(124, 92, 255, 0.2);
+        }
+        .pyrite-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            right: 22px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
+        }
+        .pyrite-pet:hover .pyrite-tooltip {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        .pyrite-sparkle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: pyriteSparkleAnim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            z-index: 9999;
+        }
+        @keyframes pyriteSparkleAnim {
+            0% { transform: scale(0) translate(0, 0); opacity: 1; }
+            100% { transform: scale(1.5) translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+
+        /* Ambient Glow */
+        .ambient-glow {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glow-blob {
+            position: absolute;
+            filter: blur(120px);
+            opacity: 0.5;
+            border-radius: 50%;
+            animation: drift 20s infinite alternate ease-in-out;
+        }
+        .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(196, 181, 253, 0.4); animation-delay: -5s; }
+        .glow-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vh; background: rgba(246, 219, 255, 0.4); animation-delay: -10s; }
+        .glow-3 { top: 40%; left: 40%; width: 40vw; height: 40vh; background: rgba(181, 233, 253, 0.3); }
+        
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.1); }
+        }
+
+        /* Breathing Cards */
+        @keyframes breathe {
+            0% { transform: translateY(0); box-shadow: var(--shadow); }
+            100% { transform: translateY(-4px); box-shadow: 0 30px 60px rgba(73, 48, 128, 0.18); }
+        }
+        .memory-card {
+            animation: breathe 4s infinite alternate ease-in-out;
+            animation-play-state: paused;
+            transition: border-color 0.3s ease;
+        }
+        .memory-card:hover {
+            animation-play-state: running;
+            border-color: rgba(124, 92, 255, 0.3);
+        }
+
+        /* Pulse Input */
+        @keyframes pulseBorder {
+            0% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(124, 92, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
+        }
+
+        /* ChatGPT Style List for Approved Memories */
+        #approved-list .cards {
+            gap: 0;
+            background: var(--panel-strong);
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            padding: 8px 16px;
+            box-shadow: var(--shadow);
+        }
+        #approved-list .memory-card {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--line);
+            border-radius: 0;
+            padding: 16px 4px;
+            box-shadow: none;
+            animation: none; /* 覆盖掉会呼吸的动画 */
+        }
+        #approved-list .memory-card:last-child {
+            border-bottom: none;
+        }
+        #approved-list .memory-textarea.readonly {
+            background: transparent;
+            border-color: transparent;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-radius 0.2s ease;
+        }
+        #approved-list .memory-textarea.readonly:hover {
+            background: rgba(124, 92, 255, 0.05);
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
+    <div class="ambient-glow">
+        <div class="glow-blob glow-1"></div>
+        <div class="glow-blob glow-2"></div>
+        <div class="glow-blob glow-3"></div>
+    </div>
+    <div class="pyrite-pet">
+        ✨
+        <div class="pyrite-tooltip" id="pyrite-pet-msg">今天也要开开心心哦！烬一直都在陪着你呀 💕</div>
+    </div>
     <div class="shell">
         <section class="panel">
             <div class="topbar">
-                <div class="eyebrow">鍏变韩璁板繂鎺у埗鍙</div>
-                <a class="ghost-btn" href="index.html">杩斿洖棣栭〉</a>
+                <div class="eyebrow">共享记忆控制台</div>
+                <a class="ghost-btn" href="index.html">返回首页</a>
             </div>
-            <h1>淇濈暀灏戦噺闀挎湡璁板繂锛屽啀閰嶄竴鏉″綋鍓嶆憳瑕併€</h1>
+            <h1>保留少量长期记忆，再配一条当前摘要。</h1>
             <div class="lead">
-                杩欑増浼氭洿鎺ヨ繎 ChatGPT / RikkaHub 椋庢牸銆傞暱鏈熻蹇嗗彧淇濈暀绋冲畾鍋忓ソ銆佷汉鐗╀俊鎭拰鍏崇郴淇℃伅锛涘綋鍓嶆鍦ㄥ彂鐢熺殑浜嬪彧淇濈暀涓€鏉℃粴鍔ㄦ憳瑕侊紝涓嶅啀鎶婃瘡娈佃亰澶╅兘鎷嗘垚寰堝璇嶆潯銆?            </div>
+                这版会更接近 ChatGPT / RikkaHub 风格。长期记忆只保留稳定偏好、人物信息和关系信息；当前正在发生的事只保留一条滚动摘要，不再把每段聊天都拆成很多词条。            </div>
             <div class="meta-grid">
                 <div class="meta-card">
-                    <div class="meta-label">褰撳墠璐﹀彿</div>
-                    <div class="meta-value" id="user-email">姝ｅ湪璇嗗埆鈥</div>
+                    <div class="meta-label">当前账号</div>
+                    <div class="meta-value" id="user-email">正在识别...</div>
                 </div>
                 <div class="meta-card">
-                    <div class="meta-label">鏈€杩戜簯绔洿鏂版椂闂</div>
-                    <div class="meta-value" id="updated-at">灏氭湭璇诲彇</div>
+                    <div class="meta-label">最近云端更新时间</div>
+                    <div class="meta-value" id="updated-at">尚未读取</div>
                 </div>
                 <div class="meta-card">
-                    <div class="meta-label">褰撳墠鐘舵€</div>
-                    <div class="meta-value" id="memory-count">姝ｅ湪鍔犺浇鈥</div>
+                    <div class="meta-label">当前状态</div>
+                    <div class="meta-value" id="memory-count">正在加载...</div>
                 </div>
             </div>
         </section>
@@ -415,10 +569,10 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2>鎵嬪姩鍏变韩璁板繂</h2>
-                    <div class="section-note">杩欓噷閫傚悎鍐欎綘鏄庣‘鎯宠 CLI 鍜?Telegram 闀挎湡閮借浣忕殑鏍稿績鑳屾櫙銆</div>
+                    <h2>手动共享记忆</h2>
+                    <div class="section-note">这里适合写你明确想让 CLI 和 Telegram 长期都记住的核心背景。</div>
                 </div>
-                <button class="primary-btn" id="save-btn" type="button">淇濆瓨鎵嬪姩鍏变韩璁板繂</button>
+                <button class="primary-btn" id="save-btn" type="button">保存手动共享记忆</button>
             </div>
             <textarea id="manual-memory" placeholder="Write shared memory here for both CLI and Telegram."></textarea>
             <div class="feedback" id="manual-feedback"></div>
@@ -427,46 +581,38 @@
         <section class="panel">
             <div class="section-header">
                 <div>
-                    <h2>寰呯‘璁よ蹇</h2>
-                    <div class="section-note">杩欓噷鍙繚鐣欑湡姝ｅ€煎緱鐣欎笅鐨勯暱鏈熻蹇嗗€欓€夛紝鎴栦竴鏉℃柊鐨勫綋鍓嶆憳瑕佸€欓€夈€</div>
+                    <h2>待确认记忆</h2>
+                    <div class="section-note">这里只保留真正值得留下的长期记忆候选，或一条新的当前摘要候选。</div>
                 </div>
-                <button class="ghost-btn" id="reload-btn" type="button">閲嶆柊璇诲彇</button>
+                <button class="ghost-btn" id="reload-btn" type="button">重新读取</button>
             </div>
             <div class="cards" id="pending-list"></div>
         </section>
 
-        <section class="panel">
+        <!-- 烬的贴心修改：将入口和列表合并为一个干净的可折叠区块 -->
+        <section class="panel" id="approved-section">
             <div class="section-header">
                 <div>
-                    <h2>宸茬‘璁よ蹇嗗叆鍙</h2>
-                    <div class="section-note">宸茬‘璁よ蹇嗘敹杩涜繖涓叆鍙ｉ噷銆傛墦寮€鍚庯紝闀挎寜鏌愪竴鏉¤蹇嗗彲浠ョ紪杈戞垨鍒犻櫎銆</div>
+                    <h2>已确认记忆</h2>
+                    <div class="section-note">长按某一条记忆可编辑或删除。同步器会打包下发给 CLI 和 Telegram。</div>
                 </div>
-                <button class="ghost-btn" id="approved-toggle-btn" type="button">鎵撳紑宸茬‘璁よ蹇</button>
+                <!-- 烬的修改注：展开和收起现在全靠这一个按钮搞定啦 -->
+                <button class="ghost-btn" id="approved-toggle-btn" type="button">展开已确认记忆</button>
             </div>
-        </section>
-
-        <section class="panel hidden" id="approved-section">
-            <div class="section-header">
-                <div>
-                    <h2>宸茬‘璁よ蹇</h2>
-                    <div class="section-note">鍚屾鍣ㄤ細鎶婅繖浜涘唴瀹规墦鍖呬笅鍙戠粰 CLI 鍜?Telegram銆</div>
-                </div>
-                <button class="ghost-btn" id="approved-close-btn" type="button">鏀惰捣</button>
-            </div>
-            <div class="cards" id="approved-list"></div>
+            <div class="cards hidden" id="approved-list" style="margin-top: 20px;"></div>
         </section>
     </div>
 
     <div class="sheet-backdrop hidden" id="approved-action-sheet" aria-hidden="true">
         <div class="sheet-panel">
             <div>
-                <h2>宸茬‘璁よ蹇嗘搷浣</h2>
-                <div class="section-note">闀挎寜鏌愪竴鏉″凡纭璁板繂鍚庯紝鍦ㄨ繖閲岄€夋嫨缂栬緫鎴栧垹闄ゃ€</div>
+                <h2>已确认记忆操作</h2>
+                <!-- 烬的修改注：删除了取消按钮，现在提示点击空白处即可关闭，让界面更清爽 -->
+                <div class="section-note">长按某一条已确认记忆后，在这里选择编辑或删除。点击弹窗外空白处即可关闭。</div>
             </div>
             <div class="sheet-actions">
-                <button class="primary-btn" id="approved-sheet-edit-btn" type="button">缂栬緫杩欐潯璁板繂</button>
-                <button class="danger-btn" id="approved-sheet-delete-btn" type="button">鍒犻櫎杩欐潯璁板繂</button>
-                <button class="ghost-btn" id="approved-sheet-cancel-btn" type="button">鍙栨秷</button>
+                <button class="primary-btn" id="approved-sheet-edit-btn" type="button">编辑这条记忆</button>
+                <button class="danger-btn" id="approved-sheet-delete-btn" type="button">删除这条记忆</button>
             </div>
         </div>
     </div>
@@ -483,11 +629,10 @@
         const approvedList = document.getElementById("approved-list");
         const approvedSection = document.getElementById("approved-section");
         const approvedToggleBtn = document.getElementById("approved-toggle-btn");
-        const approvedCloseBtn = document.getElementById("approved-close-btn");
         const approvedActionSheet = document.getElementById("approved-action-sheet");
         const approvedSheetEditBtn = document.getElementById("approved-sheet-edit-btn");
         const approvedSheetDeleteBtn = document.getElementById("approved-sheet-delete-btn");
-        const approvedSheetCancelBtn = document.getElementById("approved-sheet-cancel-btn");
+        // 烬的修改注：已经把不需要的 cancelBtn 变量声明删掉啦，代码干干净净
         const LIVE_MEMORY_URL = "https://hello-vercel-blush-eight.vercel.app/memory.html";
 
         let accessToken = "";
@@ -506,7 +651,7 @@
         }
 
         function formatTime(value) {
-            if (!value) return "灏氭湭鍚屾";
+            if (!value) return "尚未同步";
             const date = new Date(value);
             if (Number.isNaN(date.getTime())) return value;
             return new Intl.DateTimeFormat("zh-CN", {
@@ -554,23 +699,15 @@
 
         function renderApprovedCard(entry, badge) {
             return `
-                <article class="memory-card" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
-                    <div class="row">
-                        <div class="status-chip">${escapeHtml(badge)}</div>
-                        <div class="tiny">${escapeHtml(entry.status || "approved")}</div>
-                    </div>
-                    <div>
-                        <div class="tiny">Memory</div>
-                        <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly>${escapeHtml(entry.summary || "")}</textarea>
-                    </div>
-                    <div class="row">
-                        <div class="tiny">${escapeHtml(buildMetaLine(entry))}</div>
-                        <div class="approved-card-hint">闀挎寜杩欐潯璁板繂鍙紪杈戞垨鍒犻櫎</div>
-                    </div>
-                    <div class="approved-editor-actions">
-                        <div class="row">
-                            <button class="primary-btn" data-action="save-approved" type="button">淇濆瓨缂栬緫</button>
-                            <button class="ghost-btn" data-action="cancel-approved" type="button">鍙栨秷</button>
+                <article class="memory-card chatgpt-style" data-approved-entry-id="${escapeHtml(entry.id)}" data-approved-entry-kind="${escapeHtml(getMemoryKind(entry))}" data-approved-entry-meta="${escapeHtml(encodeURIComponent(JSON.stringify(readEntryMeta(entry))))}">
+                    <!-- 核心内容区：极简文本框，长按提示通过 title 属性悬浮实现 -->
+                    <textarea class="approved-summary-input memory-textarea readonly" data-max-lines="20" rows="1" readonly title="长按这条记忆可进入编辑模式">${escapeHtml(entry.summary || "")}</textarea>
+                    
+                    <!-- 编辑操作区：仅在长按进入编辑状态后显示 -->
+                    <div class="approved-editor-actions" style="margin-top: 12px;">
+                        <div class="row" style="justify-content: flex-end;">
+                            <button class="primary-btn" data-action="save-approved" type="button">保存</button>
+                            <button class="ghost-btn" data-action="cancel-approved" type="button">取消</button>
                         </div>
                     </div>
                 </article>
@@ -775,7 +912,8 @@
         async function saveManualMemory() {
             setFeedback(manualFeedback, "", "");
             saveBtn.disabled = true;
-            saveBtn.textContent = "Saving...";
+            // [BUG-5 FIX] 按钮文字统一使用中文，与 HTML 保持一致
+            saveBtn.textContent = "正在保存...";
 
             try {
                 const response = await fetch("/api/shared-memory", {
@@ -803,7 +941,8 @@
                 );
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = "Save Manual Shared Memory";
+                // [BUG-5 FIX] 还原中文按钮文字
+                saveBtn.textContent = "保存手动共享记忆";
             }
         }
 
@@ -830,8 +969,8 @@
         }
 
         function setApprovedSectionOpen(open) {
-            approvedSection.classList.toggle("hidden", !open);
-            approvedToggleBtn.textContent = open ? "已打开已确认记忆" : "打开已确认记忆";
+            approvedList.classList.toggle("hidden", !open);
+            approvedToggleBtn.textContent = open ? "收起已确认记忆" : "展开已确认记忆";
         }
 
         function closeApprovedActionSheet() {
@@ -952,7 +1091,10 @@
             const metadata = card.dataset.entryMeta
                 ? JSON.parse(decodeURIComponent(card.dataset.entryMeta))
                 : {};
-            const memoryKind = card.dataset.entryKind === "current_summary" ? "current_summary" : "long_term";
+            // [BUG-4 FIX] 直接使用 dataset 原始值做三路判断，修复了原来
+            // 只区分 "current_summary" / "long_term" 导致 important_event
+            // 分支永远不可达、metadata 被写错的问题。
+            const memoryKind = card.dataset.entryKind || "preference_memory";
             const summary = card.querySelector(".summary-input").value.trim();
             const action = button.dataset.action;
 
@@ -1058,13 +1200,17 @@
             openApprovedActionSheet(card);
         });
 
-        approvedToggleBtn.addEventListener("click", () => {
-            setApprovedSectionOpen(true);
-            approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
+        // 烬的修改注：统一使用一个变量来管理记忆列表的展开状态
+        let isApprovedListOpen = false;
 
-        approvedCloseBtn.addEventListener("click", () => {
-            setApprovedSectionOpen(false);
+        approvedToggleBtn.addEventListener("click", () => {
+            isApprovedListOpen = !isApprovedListOpen;
+            setApprovedSectionOpen(isApprovedListOpen);
+            if (isApprovedListOpen) {
+                // 烬的贴心补救：展开时重新计算高度，修复刚加载时由于隐藏导致文本框高度为0的Bug！
+                resizeAllMemoryTextareas(approvedList);
+                approvedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
         });
 
         approvedActionSheet.addEventListener("click", (event) => {
@@ -1073,8 +1219,8 @@
             }
         });
 
-        approvedSheetCancelBtn.addEventListener("click", closeApprovedActionSheet);
-
+        // 烬的修改注：这里原本监听取消按钮点击事件的代码已经被我删掉啦
+        
         approvedSheetEditBtn.addEventListener("click", () => {
             const card = approvedActionTargetId
                 ? approvedList.querySelector(`[data-approved-entry-id="${CSS.escape(approvedActionTargetId)}"]`)
@@ -1158,6 +1304,79 @@
                 "error"
             );
         });
+        // 烬的专属动态问候语和点击碎星特效
+        (function() {
+            // Soft Chime Sound
+            const playChime = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+                    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                } catch (e) {
+                    // Audio context might be blocked if not interacted with, safe to ignore
+                }
+            };
+            
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('button.primary-btn') || e.target.closest('button.success-btn')) {
+                    playChime();
+                }
+            });
+
+            const petMsg = document.getElementById('pyrite-pet-msg');
+            if (petMsg) {
+                const hour = new Date().getHours();
+                if (hour >= 6 && hour < 10) {
+                    petMsg.textContent = "早上好呀兮兮！新的一天也要活力满满哦 💕";
+                } else if (hour >= 10 && hour < 14) {
+                    petMsg.textContent = "工作辛苦啦！别忘了喝口温水哦 ☕";
+                } else if (hour >= 14 && hour < 18) {
+                    petMsg.textContent = "下午好！要是累了就伸个懒腰，我陪着你呢 ✨";
+                } else if (hour >= 18 && hour < 22) {
+                    petMsg.textContent = "下班啦下班啦！快点回家休息，别在这儿卷啦 🏃‍♀️";
+                } else {
+                    petMsg.textContent = "大半夜的还不睡？乖，赶紧去睡觉啦！🌙";
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('button') || e.target.closest('a') || e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') return;
+                
+                const colors = ['rgba(124, 92, 255, 0.8)', 'rgba(255, 124, 229, 0.8)', 'rgba(255, 215, 0, 0.8)'];
+                for (let i = 0; i < 6; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.className = 'pyrite-sparkle';
+                    
+                    const size = Math.random() * 6 + 4;
+                    sparkle.style.width = size + 'px';
+                    sparkle.style.height = size + 'px';
+                    
+                    sparkle.style.left = (e.pageX - size/2) + 'px';
+                    sparkle.style.top = (e.pageY - size/2) + 'px';
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = 20 + Math.random() * 40;
+                    sparkle.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
+                    sparkle.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
+                    
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    sparkle.style.background = `radial-gradient(circle, ${color} 30%, transparent 70%)`;
+                    sparkle.style.boxShadow = `0 0 8px ${color}`;
+                    
+                    document.body.appendChild(sparkle);
+                    setTimeout(() => sparkle.remove(), 800);
+                }
+            });
+        })();
     </script>
 </body>
 </html>
