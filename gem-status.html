@@ -215,6 +215,18 @@
       white-space: pre-wrap;
     }
 
+    .control-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .control-buttons button {
+      border-color: rgba(47, 143, 98, 0.22);
+      background: rgba(255, 255, 255, 0.82);
+    }
+
     .footer {
       display: flex;
       flex-wrap: wrap;
@@ -297,6 +309,19 @@
         </div>
         <div class="value" id="memory-value">等待本机上报。</div>
       </article>
+
+      <article class="card wide">
+        <div class="card-title">
+          <span>远程控制</span>
+          <span class="pill" id="control-pill"><span class="dot"></span><span>待命</span></span>
+        </div>
+        <div class="value" id="control-value">电脑端控制器在线时，可以从这里请求它启动本地桥接。</div>
+        <div class="control-buttons">
+          <button class="control-action" type="button" data-action="start_public_openai_bridge">启动小手机/ST 桥接</button>
+          <button class="control-action" type="button" data-action="start_telegram_bridge">启动 Telegram 桥接</button>
+          <button class="control-action" type="button" data-action="sync_status_once">同步一次状态</button>
+        </div>
+      </article>
     </section>
 
     <div class="footer">
@@ -307,6 +332,7 @@
 
   <script>
     const API_URL = "/api/gem-status";
+    const CONTROL_API_URL = "/api/gem-control";
     let accessToken = "";
     let latestPublicUrl = "";
 
@@ -324,7 +350,10 @@
       updatedAt: document.getElementById("updated-at"),
       reporter: document.getElementById("reporter"),
       refreshBtn: document.getElementById("refresh-btn"),
-      copyBtn: document.getElementById("copy-public-url")
+      copyBtn: document.getElementById("copy-public-url"),
+      controlPill: document.getElementById("control-pill"),
+      controlValue: document.getElementById("control-value"),
+      controlButtons: Array.from(document.querySelectorAll(".control-action"))
     };
 
     function setPill(node, state, label) {
@@ -407,15 +436,83 @@
       renderStatus(payload);
     }
 
+    function renderControl(state) {
+      const command = state && state.command ? state.command : null;
+      if (!command) {
+        setPill(el.controlPill, "warn", "无指令");
+        el.controlValue.textContent = "暂无待执行指令。电脑端控制器运行后，会领取这里发出的动作。";
+        return;
+      }
+
+      const statusMap = {
+        queued: ["warn", "排队中"],
+        running: ["warn", "执行中"],
+        completed: ["good", "已完成"],
+        failed: ["bad", "失败"],
+        skipped: ["good", "已跳过"]
+      };
+      const [pillState, label] = statusMap[command.status] || ["warn", command.status || "未知"];
+      setPill(el.controlPill, pillState, label);
+      el.controlValue.innerHTML = [
+        `动作：${command.label || command.action || "未知"}`,
+        `状态：${label}`,
+        `消息：${command.message || "暂无"}`,
+        `更新时间：${formatTime(command.updatedAt || command.requestedAt)}`
+      ].join("<br>");
+    }
+
+    async function requestControl() {
+      const response = await fetch(CONTROL_API_URL, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        },
+        cache: "no-store"
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || `控制状态读取失败：${response.status}`);
+      }
+      renderControl(payload);
+      return payload;
+    }
+
+    async function sendControlAction(action) {
+      el.controlButtons.forEach((button) => {
+        button.disabled = true;
+      });
+      try {
+        const response = await fetch(CONTROL_API_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
+          body: JSON.stringify({ action })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || `指令发送失败：${response.status}`);
+        }
+        renderControl(payload);
+      } finally {
+        el.controlButtons.forEach((button) => {
+          button.disabled = false;
+        });
+      }
+    }
+
     async function init() {
       const auth = await window.AppAuth.requireUser();
       if (auth.redirected) return;
       accessToken = auth.session.access_token;
       await requestStatus();
+      await requestControl();
     }
 
     el.refreshBtn.addEventListener("click", () => {
-      requestStatus().catch((error) => {
+      Promise.all([requestStatus(), requestControl()]).catch((error) => {
         el.lastEvents.textContent = error && error.message ? error.message : String(error);
       });
     });
@@ -427,6 +524,15 @@
       setTimeout(() => {
         el.copyBtn.textContent = "复制地址";
       }, 1200);
+    });
+
+    el.controlButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        sendControlAction(button.dataset.action).catch((error) => {
+          setPill(el.controlPill, "bad", "发送失败");
+          el.controlValue.textContent = error && error.message ? error.message : String(error);
+        });
+      });
     });
 
     init().catch((error) => {
