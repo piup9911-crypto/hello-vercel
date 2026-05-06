@@ -8,243 +8,117 @@
   <script src="shared/supabase-auth.js"></script>
   <style>
     :root {
-      --bg: #f0f0f8;
       --ink: #1e1b2e;
       --muted: #6b6584;
       --line: rgba(60, 51, 100, 0.14);
       --card: rgba(248, 246, 255, 0.86);
-      --card-strong: rgba(252, 250, 255, 0.94);
-      --good: #4f46e5;
+      --good: #16a34a;
       --warn: #b7791f;
       --bad: #b23b3b;
       --shadow: 0 24px 70px rgba(50, 40, 90, 0.15);
+      /* 祈 — 暖紫粉 */
+      --qi-accent: #a855f7;
+      --qi-bg: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(236,72,153,0.06));
+      --qi-border: rgba(168, 85, 247, 0.22);
+      --qi-glow: rgba(168, 85, 247, 0.13);
+      /* CCGram — 冷蓝绿 */
+      --cc-accent: #0ea5e9;
+      --cc-bg: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(6,182,212,0.06));
+      --cc-border: rgba(14, 165, 233, 0.22);
+      --cc-glow: rgba(14, 165, 233, 0.13);
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
+      margin: 0; min-height: 100vh; color: var(--ink);
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       background:
-        radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.96), transparent 28%),
-        radial-gradient(circle at 88% 8%, rgba(165, 160, 230, 0.32), transparent 26%),
-        radial-gradient(circle at 72% 82%, rgba(139, 92, 246, 0.18), transparent 24%),
+        radial-gradient(circle at 12% 12%, rgba(255,255,255,0.96), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(165,160,230,0.32), transparent 26%),
+        radial-gradient(circle at 72% 82%, rgba(139,92,246,0.18), transparent 24%),
         linear-gradient(145deg, #f5f3ff 0%, #eef0ff 52%, #f8f6ff 100%);
     }
+    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 30px 0 42px; }
 
-    .shell {
-      width: min(1120px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 30px 0 42px;
-    }
-
+    /* ── Hero ── */
     .hero {
-      position: relative;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.82);
-      border-radius: 34px;
+      position: relative; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.82); border-radius: 34px;
       padding: clamp(24px, 4vw, 42px);
-      background: linear-gradient(135deg, rgba(248, 246, 255, 0.94), rgba(232, 230, 252, 0.82));
+      background: linear-gradient(135deg, rgba(248,246,255,0.94), rgba(232,230,252,0.82));
       box-shadow: var(--shadow);
     }
-
     .hero::after {
-      content: "";
-      position: absolute;
-      width: 240px;
-      height: 240px;
-      right: -70px;
-      top: -70px;
-      border-radius: 48% 52% 44% 56%;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.18));
+      content: ""; position: absolute; width: 240px; height: 240px;
+      right: -70px; top: -70px; border-radius: 48% 52% 44% 56%;
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
       transform: rotate(12deg);
     }
-
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      gap: 18px;
-    }
-
-    .topline {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
+    .hero-content { position: relative; z-index: 1; display: grid; gap: 18px; }
+    .topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
     .eyebrow {
-      width: fit-content;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 8px 13px;
-      color: var(--muted);
-      background: rgba(255, 255, 255, 0.72);
-      font-size: 13px;
-      font-weight: 700;
+      width: fit-content; border: 1px solid var(--line); border-radius: 999px;
+      padding: 8px 13px; color: var(--muted); background: rgba(255,255,255,0.72);
+      font-size: 13px; font-weight: 700;
     }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(34px, 6vw, 64px);
-      line-height: 1.02;
-      letter-spacing: -0.04em;
-    }
-
-    .lead {
-      max-width: 58ch;
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.8;
-      font-size: 15px;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    button,
-    .link-btn {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 11px 16px;
-      color: var(--ink);
-      background: rgba(255, 255, 255, 0.74);
-      font: inherit;
-      font-weight: 700;
-      text-decoration: none;
-      cursor: pointer;
+    h1 { margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1.02; letter-spacing: -0.04em; }
+    .lead { max-width: 58ch; margin: 0; color: var(--muted); line-height: 1.8; font-size: 15px; }
+    button, .link-btn {
+      border: 1px solid var(--line); border-radius: 999px; padding: 11px 16px;
+      color: var(--ink); background: rgba(255,255,255,0.74);
+      font: inherit; font-weight: 700; text-decoration: none; cursor: pointer;
       transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
+    button:hover, .link-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(67,54,31,0.1); }
 
-    button:hover,
-    .link-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 26px rgba(67, 54, 31, 0.1);
+    /* ── Section divider with colored accent ── */
+    .section-group { margin-top: 28px; }
+    .section-label {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 18px; border-radius: 20px 20px 0 0;
+      font-size: 15px; font-weight: 800; color: white;
+      position: relative; z-index: 2;
     }
+    .section-label.qi  { background: linear-gradient(135deg, #a855f7, #ec4899); }
+    .section-label.cc  { background: linear-gradient(135deg, #0ea5e9, #06b6d4); }
+    .section-label .label-icon { font-size: 18px; }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 18px;
+    .section-body {
+      border-radius: 0 26px 26px 26px; padding: 20px;
+      position: relative; z-index: 1;
     }
+    .section-body.qi  { background: var(--qi-bg); border: 1.5px solid var(--qi-border); }
+    .section-body.cc  { background: var(--cc-bg); border: 1.5px solid var(--cc-border); }
 
+    /* ── Cards inside sections ── */
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .card {
-      min-height: 170px;
-      border: 1px solid rgba(255, 255, 255, 0.72);
-      border-radius: 26px;
-      padding: 20px;
-      background: var(--card);
-      box-shadow: 0 18px 44px rgba(70, 55, 25, 0.08);
+      min-height: 140px; border: 1px solid rgba(255,255,255,0.72); border-radius: 22px;
+      padding: 18px; background: rgba(255,255,255,0.82);
+      box-shadow: 0 12px 30px rgba(70,55,25,0.06);
     }
-
-    .card.wide {
-      grid-column: span 2;
-    }
-
-    .card-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
-      font-weight: 800;
-    }
-
+    .card.wide { grid-column: span 2; }
+    .card-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-weight: 800; }
     .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      border-radius: 999px;
-      padding: 7px 10px;
-      background: rgba(255, 255, 255, 0.72);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
+      display: inline-flex; align-items: center; gap: 7px; border-radius: 999px;
+      padding: 6px 10px; background: rgba(255,255,255,0.72); color: var(--muted);
+      font-size: 12px; font-weight: 800;
     }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 4px rgba(183,121,31,0.12); }
+    .pill.good .dot { background: var(--good); box-shadow: 0 0 0 4px rgba(22,163,74,0.13); }
+    .pill.bad .dot  { background: var(--bad);  box-shadow: 0 0 0 4px rgba(178,59,59,0.13); }
+    .value { color: var(--ink); font-size: 14px; line-height: 1.7; word-break: break-word; }
+    .mono { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; font-size: 13px; }
+    .log { max-height: 180px; overflow: auto; border-radius: 14px; padding: 12px; background: rgba(37,33,25,0.05); white-space: pre-wrap; }
+    .control-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .control-buttons button { font-size: 13px; padding: 8px 14px; }
+    .qi .control-buttons button { border-color: var(--qi-border); }
+    .cc .control-buttons button { border-color: var(--cc-border); }
 
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--warn);
-      box-shadow: 0 0 0 4px rgba(183, 121, 31, 0.12);
-    }
-
-    .pill.good .dot {
-      background: var(--good);
-      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.13);
-    }
-
-    .pill.bad .dot {
-      background: var(--bad);
-      box-shadow: 0 0 0 4px rgba(178, 59, 59, 0.13);
-    }
-
-    .value {
-      color: var(--ink);
-      font-size: 15px;
-      line-height: 1.7;
-      word-break: break-word;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .mono {
-      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-      font-size: 13px;
-    }
-
-    .log {
-      max-height: 220px;
-      overflow: auto;
-      border-radius: 18px;
-      padding: 14px;
-      background: rgba(37, 33, 25, 0.06);
-      white-space: pre-wrap;
-    }
-
-    .control-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .control-buttons button {
-      border-color: rgba(99, 102, 241, 0.22);
-      background: rgba(255, 255, 255, 0.82);
-    }
-
-    .footer {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 13px; }
 
     @media (max-width: 820px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .card.wide {
-        grid-column: auto;
-      }
+      .grid { grid-template-columns: 1fr; }
+      .card.wide { grid-column: auto; }
     }
   </style>
 </head>
@@ -254,75 +128,101 @@
       <div class="hero-content">
         <div class="topline">
           <div class="eyebrow">Codex status cockpit</div>
-          <div class="actions">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
             <a class="link-btn" href="bridge-status.html">返回总舱</a>
             <button id="refresh-btn" type="button">刷新状态</button>
           </div>
         </div>
         <div>
           <h1>Codex 状态舱</h1>
-          <p class="lead">这里显示 Codex 桥接上报到云端的状态。在手机上即可快速查看 Codex 的运行情况、任务执行日志和工作区状态。</p>
+          <p class="lead">两个 Codex 桥接 bot 的合并监控面板。祈是独立的恋爱人格 bot（Codex CLI），CCGram 是通过 WSL 运行的管理 bot。</p>
         </div>
       </div>
     </section>
 
-    <section class="grid" aria-live="polite">
-      <article class="card">
-        <div class="card-title">
-          <span>OpenAI Bridge</span>
-          <span class="pill" id="openai-pill"><span class="dot"></span><span>未知</span></span>
+    <!-- ═══════ 祈（Codex CLI 桥接）═══════ -->
+    <div class="section-group">
+      <div class="section-label qi"><span class="label-icon">🌙</span> 祈 · Codex CLI 桥接</div>
+      <div class="section-body qi">
+        <div class="grid">
+          <article class="card">
+            <div class="card-title">
+              <span>桥接进程</span>
+              <span class="pill" id="qi-bridge-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="qi-bridge-value">等待本机上报。</div>
+          </article>
+          <article class="card">
+            <div class="card-title">
+              <span>模型 / 配置</span>
+              <span class="pill" id="qi-model-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="qi-model-value">等待本机上报。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>最近日志</span>
+              <span class="pill" id="qi-fresh-pill"><span class="dot"></span><span>未同步</span></span>
+            </div>
+            <div class="value log mono" id="qi-log">暂无日志。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>远程控制</span>
+              <span class="pill" id="qi-ctrl-pill"><span class="dot"></span><span>待命</span></span>
+            </div>
+            <div class="value" id="qi-ctrl-value">电脑端控制器在线时可远程操作。</div>
+            <div class="control-buttons">
+              <button class="qi-action" type="button" data-action="start_codex_bridge">启动祈桥接</button>
+              <button class="qi-action" type="button" data-action="restart_codex_bridge">重启祈桥接</button>
+              <button class="qi-action" type="button" data-action="sync_codex_status">同步状态</button>
+            </div>
+          </article>
         </div>
-        <div class="value" id="openai-value">等待本机上报。</div>
-      </article>
+      </div>
+    </div>
 
-      <article class="card">
-        <div class="card-title">
-          <span>公网入口</span>
-          <span class="pill" id="public-pill"><span class="dot"></span><span>未知</span></span>
+    <!-- ═══════ CCGram（WSL Codex 桥接）═══════ -->
+    <div class="section-group">
+      <div class="section-label cc"><span class="label-icon">🤖</span> CCGram · WSL Codex 桥接</div>
+      <div class="section-body cc">
+        <div class="grid">
+          <article class="card">
+            <div class="card-title">
+              <span>桥接进程</span>
+              <span class="pill" id="cc-bridge-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="cc-bridge-value">等待本机上报。</div>
+          </article>
+          <article class="card">
+            <div class="card-title">
+              <span>tmux / 实例</span>
+              <span class="pill" id="cc-tmux-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="cc-tmux-value">等待本机上报。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>最近日志</span>
+              <span class="pill" id="cc-fresh-pill"><span class="dot"></span><span>未同步</span></span>
+            </div>
+            <div class="value log mono" id="cc-log">暂无日志。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>远程控制</span>
+              <span class="pill" id="cc-ctrl-pill"><span class="dot"></span><span>待命</span></span>
+            </div>
+            <div class="value" id="cc-ctrl-value">电脑端控制器在线时可远程操作。</div>
+            <div class="control-buttons">
+              <button class="cc-action" type="button" data-action="start_ccgram">启动 CCGram</button>
+              <button class="cc-action" type="button" data-action="restart_ccgram">重启 CCGram</button>
+              <button class="cc-action" type="button" data-action="sync_ccgram_status">同步状态</button>
+            </div>
+          </article>
         </div>
-        <div class="value mono" id="public-url">暂无</div>
-        <div class="actions" style="margin-top: 14px;">
-          <button id="copy-public-url" type="button">复制地址</button>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="card-title">
-          <span>Telegram Bridge</span>
-          <span class="pill" id="telegram-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value" id="telegram-value">等待本机上报。</div>
-      </article>
-
-      <article class="card wide">
-        <div class="card-title">
-          <span>最近请求</span>
-          <span class="pill" id="fresh-pill"><span class="dot"></span><span>未同步</span></span>
-        </div>
-        <div class="value log mono" id="last-events">暂无日志。</div>
-      </article>
-
-      <article class="card">
-        <div class="card-title">
-          <span>记忆同步</span>
-          <span class="pill" id="memory-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value" id="memory-value">等待本机上报。</div>
-      </article>
-
-      <article class="card wide">
-        <div class="card-title">
-          <span>远程控制</span>
-          <span class="pill" id="control-pill"><span class="dot"></span><span>待命</span></span>
-        </div>
-        <div class="value" id="control-value">电脑端控制器在线时，可以从这里请求它启动本地桥接。</div>
-        <div class="control-buttons">
-          <button class="control-action" type="button" data-action="start_codex_bridge">启动 Codex 桥接</button>
-          <button class="control-action" type="button" data-action="restart_codex_bridge">重启 Codex 桥接</button>
-          <button class="control-action" type="button" data-action="sync_codex_status">同步一次状态</button>
-        </div>
-      </article>
-    </section>
+      </div>
+    </div>
 
     <div class="footer">
       <span id="updated-at">更新时间：暂无</span>
@@ -334,210 +234,115 @@
     const API_URL = "/api/codex-status";
     const CONTROL_API_URL = "/api/codex-control";
     let accessToken = "";
-    let latestPublicUrl = "";
-
-    const el = {
-      openaiPill: document.getElementById("openai-pill"),
-      openaiValue: document.getElementById("openai-value"),
-      publicPill: document.getElementById("public-pill"),
-      publicUrl: document.getElementById("public-url"),
-      telegramPill: document.getElementById("telegram-pill"),
-      telegramValue: document.getElementById("telegram-value"),
-      freshPill: document.getElementById("fresh-pill"),
-      lastEvents: document.getElementById("last-events"),
-      memoryPill: document.getElementById("memory-pill"),
-      memoryValue: document.getElementById("memory-value"),
-      updatedAt: document.getElementById("updated-at"),
-      reporter: document.getElementById("reporter"),
-      refreshBtn: document.getElementById("refresh-btn"),
-      copyBtn: document.getElementById("copy-public-url"),
-      controlPill: document.getElementById("control-pill"),
-      controlValue: document.getElementById("control-value"),
-      controlButtons: Array.from(document.querySelectorAll(".control-action"))
-    };
 
     function setPill(node, state, label) {
+      if (!node) return;
       node.classList.remove("good", "bad");
       if (state === "good") node.classList.add("good");
       if (state === "bad") node.classList.add("bad");
-      node.querySelector("span:last-child").textContent = label;
+      const span = node.querySelector("span:last-child");
+      if (span) span.textContent = label;
     }
 
-    function formatTime(value) {
-      if (!value) return "暂无";
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleString("zh-CN", {
-        hour12: false
-      });
+    function formatTime(v) {
+      if (!v) return "暂无";
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? v : d.toLocaleString("zh-CN", { hour12: false });
     }
 
-    function minutesSince(value) {
-      if (!value) return Infinity;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return Infinity;
-      return Math.round((Date.now() - date.getTime()) / 60000);
+    function minutesSince(v) {
+      if (!v) return Infinity;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? Infinity : Math.round((Date.now() - d.getTime()) / 60000);
     }
 
     function renderStatus(status) {
-      const services = status.services || {};
-      const links = status.links || {};
-      const openai = services.openaiBridge || {};
-      const telegram = services.telegramBridge || {};
-      const memory = services.memorySync || {};
-      const publicTunnel = services.publicTunnel || {};
+      const qi = (status.services || {}).qiBridge || {};
+      const cc = (status.services || {}).ccgramBridge || {};
       const age = minutesSince(status.updatedAt);
 
-      setPill(el.freshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
-      setPill(el.openaiPill, openai.online ? "good" : "bad", openai.online ? "在线" : "离线");
-      setPill(el.publicPill, links.publicUrl ? "good" : "bad", links.publicUrl ? "可用" : "暂无");
-      setPill(el.telegramPill, telegram.online ? "good" : telegram.online === false ? "bad" : "warn", telegram.online ? "在线" : telegram.online === false ? "离线" : "未知");
-      setPill(el.memoryPill, memory.configured ? "good" : "warn", memory.configured ? "已配置" : "未配置");
-
-      latestPublicUrl = links.publicUrl || "";
-      el.publicUrl.textContent = latestPublicUrl || "暂无公网地址。";
-      el.openaiValue.innerHTML = [
-        `端口：${openai.port || 4141}`,
-        `PID：${openai.pid || "未知"}`,
-        `模型：${openai.model || "未知"}`
+      // 祈
+      setPill(document.getElementById("qi-bridge-pill"), qi.online ? "good" : qi.online === false ? "bad" : "warn", qi.online ? "在线" : qi.online === false ? "离线" : "未知");
+      setPill(document.getElementById("qi-model-pill"), qi.model ? "good" : "warn", qi.model || "未知");
+      setPill(document.getElementById("qi-fresh-pill"), age <= 5 ? "good" : age <= 15 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      document.getElementById("qi-bridge-value").innerHTML = [
+        `PID：${qi.pid || "未知"}`,
+        `锁文件：${qi.lockFile ? "存在" : "未发现"}`
       ].join("<br>");
-      el.telegramValue.innerHTML = [
-        `PID：${telegram.pid || "未知"}`,
-        `锁文件：${telegram.lockFile ? "存在" : "未发现"}`,
-        telegram.lastLine ? `最近日志：${telegram.lastLine}` : "最近日志：暂无"
+      document.getElementById("qi-model-value").innerHTML = [
+        `模型：${qi.model || "gpt-5.5"}`,
+        `沙箱：${qi.sandbox || "danger-full-access"}`,
+        `推理强度：${qi.reasoning || "medium"}`
       ].join("<br>");
-      el.memoryValue.innerHTML = [
-        `云端接口：${memory.url || "未知"}`,
-        `Token：${memory.hasToken ? "已配置" : "未配置"}`
+      document.getElementById("qi-log").textContent = qi.lastLine || "暂无日志。";
+
+      // CCGram
+      setPill(document.getElementById("cc-bridge-pill"), cc.online ? "good" : cc.online === false ? "bad" : "warn", cc.online ? "在线" : cc.online === false ? "离线" : "未知");
+      setPill(document.getElementById("cc-tmux-pill"), cc.tmuxSession ? "good" : "warn", cc.tmuxSession || "未知");
+      setPill(document.getElementById("cc-fresh-pill"), age <= 5 ? "good" : age <= 15 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      document.getElementById("cc-bridge-value").innerHTML = [
+        `实例：${cc.instanceName || "codex-ccgram"}`,
+        `Group ID：${cc.groupId || "未知"}`
       ].join("<br>");
+      document.getElementById("cc-tmux-value").innerHTML = [
+        `tmux session：${cc.tmuxSession || "ccgram-codex"}`,
+        `provider：${cc.provider || "codex"}`
+      ].join("<br>");
+      document.getElementById("cc-log").textContent = cc.lastLine || "暂无日志。";
 
-      const eventLines = [];
-      if (openai.lastLine) eventLines.push(`[OpenAI] ${openai.lastLine}`);
-      if (publicTunnel.lastLine) eventLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
-      if (telegram.lastLine) eventLines.push(`[Telegram] ${telegram.lastLine}`);
-      el.lastEvents.textContent = eventLines.length ? eventLines.join("\n\n") : "暂无日志。";
-
-      el.updatedAt.textContent = `更新时间：${formatTime(status.updatedAt)}`;
-      el.reporter.textContent = `上报端：${status.reporter && status.reporter.hostname ? status.reporter.hostname : "暂无"}`;
+      document.getElementById("updated-at").textContent = `更新时间：${formatTime(status.updatedAt)}`;
+      document.getElementById("reporter").textContent = `上报端：${(status.reporter || {}).hostname || "暂无"}`;
     }
 
-    async function requestStatus() {
-      const response = await fetch(API_URL, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        },
-        cache: "no-store"
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || `状态读取失败：${response.status}`);
+    async function fetchApi(url, method, body) {
+      const opts = { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }, cache: "no-store" };
+      if (method === "POST") { opts.method = "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+      const r = await fetch(url, opts);
+      const p = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(p.error || `请求失败：${r.status}`);
+      return p;
+    }
+
+    async function refresh() {
+      try { renderStatus(await fetchApi(API_URL)); } catch (e) {
+        document.getElementById("qi-log").textContent = e.message || String(e);
+        setPill(document.getElementById("qi-fresh-pill"), "bad", "读取失败");
       }
-      renderStatus(payload);
     }
 
-    function renderControl(state) {
-      const command = state && state.command ? state.command : null;
-      if (!command) {
-        setPill(el.controlPill, "warn", "无指令");
-        el.controlValue.textContent = "暂无待执行指令。电脑端控制器运行后，会领取这里发出的动作。";
-        return;
-      }
-
-      const statusMap = {
-        queued: ["warn", "排队中"],
-        running: ["warn", "执行中"],
-        completed: ["good", "已完成"],
-        failed: ["bad", "失败"],
-        skipped: ["good", "已跳过"]
-      };
-      const [pillState, label] = statusMap[command.status] || ["warn", command.status || "未知"];
-      setPill(el.controlPill, pillState, label);
-      el.controlValue.innerHTML = [
-        `动作：${command.label || command.action || "未知"}`,
-        `状态：${label}`,
-        `消息：${command.message || "暂无"}`,
-        `更新时间：${formatTime(command.updatedAt || command.requestedAt)}`
-      ].join("<br>");
-    }
-
-    async function requestControl() {
-      const response = await fetch(CONTROL_API_URL, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        },
-        cache: "no-store"
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || `控制状态读取失败：${response.status}`);
-      }
-      renderControl(payload);
-      return payload;
-    }
-
-    async function sendControlAction(action) {
-      el.controlButtons.forEach((button) => {
-        button.disabled = true;
-      });
+    async function sendAction(action) {
+      document.querySelectorAll(".qi-action, .cc-action").forEach(b => { b.disabled = true; });
       try {
-        const response = await fetch(CONTROL_API_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            Accept: "application/json"
-          },
-          body: JSON.stringify({ action })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(payload.error || `指令发送失败：${response.status}`);
-        }
-        renderControl(payload);
-      } finally {
-        el.controlButtons.forEach((button) => {
-          button.disabled = false;
-        });
-      }
+        const p = await fetchApi(CONTROL_API_URL, "POST", { action });
+        const cmd = p.command || {};
+        const map = { queued: ["warn","排队中"], running: ["warn","执行中"], completed: ["good","已完成"], failed: ["bad","失败"] };
+        const [s, l] = map[cmd.status] || ["warn", cmd.status || "未知"];
+        const isQi = action.includes("codex");
+        const pillId = isQi ? "qi-ctrl-pill" : "cc-ctrl-pill";
+        const valId = isQi ? "qi-ctrl-value" : "cc-ctrl-value";
+        setPill(document.getElementById(pillId), s, l);
+        document.getElementById(valId).textContent = `${cmd.label || action}：${l} — ${cmd.message || ""}`;
+      } finally { document.querySelectorAll(".qi-action, .cc-action").forEach(b => { b.disabled = false; }); }
     }
 
     async function init() {
       const auth = await window.AppAuth.requireUser();
       if (auth.redirected) return;
       accessToken = auth.session.access_token;
-      await requestStatus();
-      await requestControl();
+      await refresh();
     }
 
-    el.refreshBtn.addEventListener("click", () => {
-      Promise.all([requestStatus(), requestControl()]).catch((error) => {
-        el.lastEvents.textContent = error && error.message ? error.message : String(error);
-      });
+    document.getElementById("refresh-btn").addEventListener("click", () => refresh());
+    document.querySelectorAll(".qi-action, .cc-action").forEach(btn => {
+      btn.addEventListener("click", () => sendAction(btn.dataset.action).catch(e => {
+        const isQi = btn.classList.contains("qi-action");
+        setPill(document.getElementById(isQi ? "qi-ctrl-pill" : "cc-ctrl-pill"), "bad", "失败");
+      }));
     });
 
-    el.copyBtn.addEventListener("click", async () => {
-      if (!latestPublicUrl) return;
-      await navigator.clipboard.writeText(latestPublicUrl);
-      el.copyBtn.textContent = "已复制";
-      setTimeout(() => {
-        el.copyBtn.textContent = "复制地址";
-      }, 1200);
-    });
-
-    el.controlButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        sendControlAction(button.dataset.action).catch((error) => {
-          setPill(el.controlPill, "bad", "发送失败");
-          el.controlValue.textContent = error && error.message ? error.message : String(error);
-        });
-      });
-    });
-
-    init().catch((error) => {
-      el.lastEvents.textContent = error && error.message ? error.message : String(error);
-      setPill(el.freshPill, "bad", "读取失败");
+    init().catch(e => {
+      document.getElementById("qi-log").textContent = e.message || String(e);
+      setPill(document.getElementById("qi-fresh-pill"), "bad", "读取失败");
     });
   </script>
 </body>
