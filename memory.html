@@ -820,6 +820,15 @@
             const title = record.title || meta.title;
             const titleIsGeneric = isGenericTitle(title, record);
 
+            let sourceLabel = "";
+            if (record.sourceChannel === "cli") sourceLabel = "Gemini 本地";
+            else if (record.sourceChannel === "telegram") sourceLabel = "Telegram 桥接";
+            else if (record.sourceChannel === "web_independent_memory") sourceLabel = "网页写入";
+            else if (record.sourceChannel === "legacy_shared_memory") sourceLabel = "旧系统数据";
+            else if (record.sourceChannel) sourceLabel = escapeHtml(record.sourceChannel);
+
+            const sourceHtml = sourceLabel ? `<span style="margin-left: 12px; border-left: 1px solid var(--line); padding-left: 12px; color: var(--primary);">来源：${sourceLabel}</span>` : "";
+
             return `
                 <article class="memory-card" data-id="${escapeHtml(record.id)}" data-section="${escapeHtml(record.section)}" data-metadata="${escapeHtml(encodeURIComponent(JSON.stringify(record.metadata || {})))}" ${record.virtual ? 'data-virtual="true"' : ""} title="长按这条记忆可编辑、移动或删除">
                     <div class="bulk-select-wrap">
@@ -828,7 +837,7 @@
                     <input class="record-title ${titleIsGeneric ? "generic-title" : ""}" value="${escapeHtml(title)}" readonly>
                     <textarea class="record-content" data-max-lines="20" readonly>${escapeHtml(record.content || "")}</textarea>
                     <div class="meta">
-                        更新时间：${escapeHtml(formatTime(record.updatedAt))}
+                        更新时间：${escapeHtml(formatTime(record.updatedAt))}${sourceHtml}
                     </div>
                     <div class="actions">
                         ${actionButtons(record)}
