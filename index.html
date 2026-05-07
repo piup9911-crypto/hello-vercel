@@ -404,6 +404,11 @@
                         <div class="app-title">Gemini 工具桥</div>
                         <div class="app-body">查看 Telegram 桥接、CLI 记忆、本地聊天记录面板和启动说明。</div>
                     </a>
+                    <a class="app-card" href="chat-records.html">
+                        <div class="app-icon">💬</div>
+                        <div class="app-title">聊天记录面板</div>
+                        <div class="app-body">从网页入口打开本机 Gem 聊天记录管理器，查看、删除和归档上下文。</div>
+                    </a>
                     <a class="app-card" href="bridge-status.html">
                         <div class="app-icon">🛰️</div>
                         <div class="app-title">桥接状态总舱</div>
@@ -464,6 +469,7 @@
                     <a class="ghost-btn" href="magic.html">✨ 打开魔法实验室</a>
                     <a class="ghost-btn" href="memory.html">☁️ 打开共享记忆</a>
                     <a class="ghost-btn" href="bridge-tools.html">🧩 打开 Gemini 工具桥</a>
+                    <a class="ghost-btn" href="chat-records.html">💬 打开聊天记录面板</a>
                     <a class="ghost-btn" href="bridge-status.html">🛰️ 打开桥接状态总舱</a>
                     <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
                 </div>
@@ -512,6 +518,10 @@
 
             if (path.startsWith('/memory.html')) {
                 return '共享记忆';
+            }
+
+            if (path.startsWith('/chat-records.html')) {
+                return '聊天记录面板';
             }
 
             if (path.startsWith('/bridge-status.html')) {

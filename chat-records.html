@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gem 聊天记录面板入口</title>
+    <style>
+        :root {
+            --bg: #f5f6f1;
+            --panel: rgba(255, 255, 255, 0.92);
+            --panel-strong: rgba(255, 255, 255, 0.98);
+            --text: #202124;
+            --muted: #646a73;
+            --line: #d9ded8;
+            --accent: #24745b;
+            --accent-soft: #e4f2ed;
+            --shadow: 0 24px 60px rgba(31, 38, 35, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--text);
+            font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(36, 116, 91, 0.14), transparent 28%),
+                linear-gradient(150deg, #fbfcf7 0%, var(--bg) 52%, #eef7f4 100%);
+        }
+
+        .shell {
+            width: min(100%, 980px);
+            margin: 0 auto;
+            display: grid;
+            gap: 18px;
+        }
+
+        .panel {
+            border: 1px solid rgba(255, 255, 255, 0.76);
+            border-radius: 28px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            backdrop-filter: blur(18px);
+        }
+
+        .topbar,
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .eyebrow,
+        .chip {
+            width: fit-content;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--muted);
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(34px, 6vw, 58px);
+            line-height: 1.06;
+        }
+
+        h2 {
+            margin: 0 0 10px;
+            font-size: 20px;
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .lead {
+            max-width: 66ch;
+            font-size: 15px;
+        }
+
+        .button {
+            display: inline-flex;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--panel-strong);
+            color: inherit;
+            padding: 11px 16px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .button.primary {
+            border-color: transparent;
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 14px 28px rgba(36, 116, 91, 0.22);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            min-height: 150px;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: var(--panel-strong);
+            padding: 18px;
+        }
+
+        .card strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .code {
+            display: block;
+            margin-top: 12px;
+            border-radius: 14px;
+            background: rgba(32, 33, 36, 0.06);
+            padding: 12px;
+            color: var(--text);
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        .notice {
+            border-color: rgba(36, 116, 91, 0.22);
+            background: var(--accent-soft);
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 16px;
+            }
+
+            .panel {
+                border-radius: 22px;
+                padding: 22px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="panel">
+            <div class="topbar">
+                <div class="eyebrow">Gem Chat Records</div>
+                <a class="button" href="index.html">返回首页</a>
+            </div>
+            <h1>聊天记录面板入口</h1>
+            <p class="lead">
+                这里是你网页里的可见入口。真正的聊天记录仍然保存在电脑本地，所以要先启动本地 agent，
+                然后从这里打开本机面板来查看、删除、归档 Telegram/Gem CLI 记录。
+            </p>
+            <div class="actions" style="margin-top: 22px;">
+                <a class="button primary" href="http://127.0.0.1:4144/" target="_blank" rel="noopener">打开本机聊天记录面板</a>
+                <a class="button" href="tools/gemini-cli-telegram/docs/gem-chat-record-manager.md">查看说明文档</a>
+                <a class="button" href="bridge-tools.html">查看工具桥</a>
+            </div>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <strong>先启动本地 agent</strong>
+                <p>在电脑上运行启动脚本，网页才能读到本地聊天 JSON。</p>
+                <span class="code">tools\gemini-cli-telegram\start-gem-chat-record-manager.cmd</span>
+            </article>
+            <article class="card">
+                <strong>再打开面板</strong>
+                <p>本机浏览器打开这个地址，才能进行查看、删除、归档和手机预览。</p>
+                <span class="code">http://127.0.0.1:4144/</span>
+            </article>
+            <article class="card">
+                <strong>不会上传私密记录</strong>
+                <p>GitHub/Vercel 只保存入口和源码，不保存你的真实聊天记录、token 或运行日志。</p>
+                <span class="code">bridge-state/ 不提交</span>
+            </article>
+        </section>
+
+        <section class="panel notice">
+            <h2>为什么不能直接在 Vercel 页面里显示记录？</h2>
+            <p>
+                Vercel 服务器访问不到你电脑里的 <span class="code">bridge-state\chats</span>。
+                所以这个页面负责做入口和说明；真正的数据面板由你电脑上的本地 agent 提供。
+            </p>
+        </section>
+    </main>
+</body>
+</html>
