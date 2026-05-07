@@ -209,6 +209,11 @@
                 <p>真实 token、聊天记录、运行状态和记忆正文没有上传；仓库里只有模板、代码和说明。</p>
                 <span class="code">tools/gemini-cli-telegram/.gitignore</span>
             </article>
+            <article class="card">
+                <strong>聊天记录面板</strong>
+                <p>本地查看 Telegram/Gem CLI 记录、删除坏消息、归档窗口，并带电脑手机预览模式。</p>
+                <span class="code">tools/gemini-cli-telegram/gem-chat-record-manager.html</span>
+            </article>
         </section>
 
         <section class="panel">
@@ -216,11 +221,21 @@
             <p>这些命令仍然要在你的电脑上运行，网页只是说明和备份，不会在 Vercel 服务器上启动 Gemini 或 Telegram bot。</p>
             <span class="code">start-telegram-gem-bridge.cmd</span>
             <span class="code">start-independent-memory-manager.cmd</span>
+            <span class="code">start-gem-chat-record-manager.cmd</span>
             <span class="code">start-gemini-cli-openai-bridge.cmd</span>
             <div class="actions" style="margin-top: 18px;">
                 <a class="button primary" href="tools/gemini-cli-telegram/README.md">查看工具说明</a>
+                <a class="button" href="tools/gemini-cli-telegram/docs/gem-chat-record-manager.md">聊天记录面板文档</a>
                 <a class="button" href="memory.html">打开共享记忆页</a>
             </div>
+        </section>
+
+        <section class="panel notice">
+            <h2>为什么不能直接在 Vercel 读聊天记录？</h2>
+            <p>
+                聊天记录保存在你电脑的 <span class="code">bridge-state/</span> 里。GitHub/Vercel 页面只能保存源码和说明；
+                真正查看、删除、归档记录时，仍然要启动本地的 <span class="code">gem-chat-record-manager.cjs</span>。
+            </p>
         </section>
     </main>
 </body>

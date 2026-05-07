@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gem Bridge Chat Records</title>
+    <style>
+      :root {
+        --bg: #f5f6f1;
+        --panel: #ffffff;
+        --ink: #202124;
+        --muted: #646a73;
+        --line: #d9ded8;
+        --accent: #24745b;
+        --accent-soft: #e4f2ed;
+        --danger: #a14237;
+        --archive: #745c24;
+        --shadow: 0 12px 28px rgba(31, 38, 35, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      body.phone-preview {
+        background: #dfe3dc;
+      }
+
+      .app {
+        display: grid;
+        /* 【小白可调】整个页面分成两列：
+           260px = 左侧聊天窗口菜单栏的宽度。
+           minmax(0, 1fr) = 右侧聊天内容区，会自动占满剩余空间。
+           想让左侧菜单更窄：把 260px 改小，比如 220px。
+           想让左侧菜单更宽：把 260px 改大，比如 300px。
+           注意：左侧越宽，右侧聊天气泡区域就越窄。 */
+        grid-template-columns: 260px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      body.phone-preview .app {
+        /* 【小白可调】电脑上的手机预览模式。
+           430px 是手机预览框宽度，860px 是手机预览框高度。
+           这个模式只改变电脑预览外观，不会影响聊天记录数据。 */
+        width: min(430px, calc(100vw - 24px));
+        height: min(860px, calc(100vh - 24px));
+        min-height: 0;
+        margin: 12px auto;
+        overflow: hidden;
+        border: 1px solid rgba(45, 50, 46, 0.18);
+        border-radius: 24px;
+        background: var(--bg);
+        box-shadow: 0 24px 60px rgba(31, 38, 35, 0.22);
+      }
+
+      body.phone-preview .sidebar {
+        display: none;
+      }
+
+      body.phone-preview .app {
+        grid-template-columns: 1fr;
+      }
+
+      body.phone-preview .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+      }
+
+      body.phone-preview .actions {
+        justify-content: flex-start;
+      }
+
+      body.phone-preview button {
+        min-height: 32px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      body.phone-preview .message {
+        grid-template-columns: 32px 6px minmax(0, 1fr) 6px 32px;
+        max-width: 100%;
+      }
+
+      body.phone-preview .pixel-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+      }
+
+      body.phone-preview .bubble {
+        max-width: 100%;
+      }
+
+      body.phone-preview .message-head {
+        gap: 6px;
+        font-size: 11px;
+      }
+
+      body.phone-preview .message-body {
+        font-size: 14px;
+      }
+
+      .sidebar {
+        /* 【小白可调】左侧菜单栏本身的样式。
+           border-right 是右边那条分隔线。
+           background 是左侧菜单背景色。
+           padding 第一个数字控制上下留白，第二个数字控制左右留白。 */
+        border-right: 1px solid var(--line);
+        background: #edf0eb;
+        padding: 16px 12px;
+      }
+
+      .brand {
+        padding: 8px 10px 16px;
+      }
+
+      .brand h1 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
+
+      .brand p,
+      .muted {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .chat-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .chat-group-title {
+        margin: 18px 10px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .chat-button {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--ink);
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .chat-button:hover,
+      .chat-button.active {
+        border-color: var(--line);
+        background: var(--panel);
+      }
+
+      .chat-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 650;
+      }
+
+      .pill {
+        display: inline-flex;
+        min-width: 22px;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 1px 7px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+      }
+
+      .main {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .topbar {
+        /* 【小白可调】顶部按钮栏，也就是“刷新/导出/归档/删除”那一行。
+           min-height 控制顶部栏高度。
+           padding 第一个数字控制上下留白，第二个数字控制左右留白。 */
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 74px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.85);
+        padding: 12px 22px;
+      }
+
+      .topbar h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      button {
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--ink);
+        padding: 0 12px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #aeb8ae;
+      }
+
+      button.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: white;
+      }
+
+      button.danger {
+        border-color: color-mix(in srgb, var(--danger) 35%, white);
+        color: var(--danger);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .content-shell {
+        /* 【小白可调】右侧区域再分成两列：
+           minmax(0, 1fr) = 中间聊天记录区域。
+           现在右侧时间条改成“滑动时浮出”，不再占固定宽度。
+           所以这里不再写 118px 的第二列，聊天气泡能用完整宽度。 */
+        display: block;
+        position: relative;
+        min-height: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .timeline {
+        /* 【小白可调】聊天记录滚动区域。
+           padding: 10px 10px;
+           第一个 10px = 整个聊天列表顶部/底部留白。
+           第二个 10px = 整个聊天列表左边/右边留白。
+           你觉得聊天内容离窗口边缘太远，就把第二个数字改小，比如 6px。 */
+        overflow: auto;
+        height: 100%;
+        padding: 10px 10px;
+        scroll-behavior: smooth;
+      }
+
+      .date-divider {
+        /* 【小白可调】日期分隔线，比如“2026年5月6日”。
+           gap 控制文字和左右横线之间的距离。
+           margin 控制日期分隔线上下空出来多少。
+           font-size 控制日期文字大小。 */
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 18px 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .date-divider::before,
+      .date-divider::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: var(--line);
+      }
+
+      .message {
+        display: grid;
+        align-items: flex-end;
+        /* 【小白可调】这是这版对齐的核心。
+           这一行把每条消息拆成 5 列：
+           36px = 左侧头像位。
+           8px = 左侧头像和气泡之间的距离。
+           minmax(0, 760px) = 中间气泡轨道，bot 和 user 的气泡都放在这条轨道里。
+           8px = 右侧气泡和头像之间的距离。
+           36px = 右侧头像位。
+           这样左右头像位一样宽，中间气泡轨道就是居中的；
+           短消息自然小，长消息撑满气泡轨道时边框会对齐。 */
+        grid-template-columns: 36px 8px minmax(0, 760px) 8px 36px;
+        /* 【小白可调】每一条消息“整行”能占多宽。
+           width: 100% 表示消息行可以占满聊天区域宽度。
+           max-width: 848px = 左头像 36 + 左间距 8 + 气泡轨道 760 + 右间距 8 + 右头像 36。
+           这一行是“聊天内容居中”的关键：左右 auto 会让整条消息行居中。
+           如果你把上面的 760px 改大/改小，这里的 848px 也要一起跟着改。
+           公式是：max-width = 头像36 + 间距8 + 气泡轨道 + 间距8 + 头像36。 */
+        width: 100%;
+        max-width: 848px;
+        /* 【小白可调】每条消息行的外边距。
+           0 auto 8px 的意思：
+           上边距 0；左右 auto 会让整条消息行在超宽屏时居中；下边距 8px。
+           想让每条消息上下更松一点，就把 8px 改成 12px。 */
+        margin: 0 auto 8px;
+        /* 【小白可调】普通浏览时，每条消息左右两边额外留出的空间。
+           这里是 padding: 0，表示普通状态不为 checkbox 预留空位。
+           你之前红框里那种“选项框占侧边导致气泡太居中”的问题，主要就和这里有关。 */
+        padding: 0;
+        position: relative;
+      }
+
+      .select-mode .message {
+        /* 【小白可调】进入长按选择/编辑模式后，每条消息左右给 checkbox 预留的空间。
+           只在选项框出现时生效，普通聊天浏览时不生效。
+           26px 越大，编辑时气泡越往中间缩；26px 越小，checkbox 越贴边。
+           如果觉得编辑模式太窄，可以改成 20px。 */
+        padding: 0 26px;
+      }
+
+      .message.archived {
+        opacity: 0.92;
+      }
+
+      .message.user {
+        justify-items: end;
+      }
+
+      .message.assistant {
+        justify-items: start;
+      }
+
+      .message.selected {
+        outline: none;
+      }
+
+      .message input {
+        /* 【小白可调】长按后出现的 checkbox 选项框。
+           position: absolute 表示它浮在消息行边上，不占普通布局空间。
+           bottom 控制它离消息行底部多远。
+           width/height 控制方框大小。
+           opacity: 0 和 pointer-events: none 表示普通状态隐藏且不能点。 */
+        position: absolute;
+        bottom: 12px;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: var(--accent);
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.86);
+        transition: opacity 0.14s ease, transform 0.14s ease;
+      }
+
+      .message.user input {
+        /* 【小白可调】右侧 user 消息的 checkbox 离消息行右边缘的距离。
+           数字越小越贴右边，数字越大越往气泡方向靠。 */
+        right: 2px;
+      }
+
+      .message.assistant input {
+        /* 【小白可调】左侧 assistant 消息的 checkbox 离消息行左边缘的距离。
+           数字越小越贴左边，数字越大越往气泡方向靠。 */
+        left: 2px;
+      }
+
+      .select-mode .message input {
+        /* 【小白可调】进入选择/编辑模式时，checkbox 变成可见、可点击。
+           如果你以后想让 checkbox 一直显示，就需要改这里和上面的 .message input。 */
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1);
+      }
+
+      .message input:checked {
+        opacity: 1;
+      }
+
+      .pixel-avatar {
+        /* 【小白可调】像素头像尺寸。
+           width/height 越大，头像越大，气泡旁边占的位置也越多。
+           想更像微信那种紧凑头像，可以试 32px；想更可爱突出，可以试 40px。 */
+        width: 36px;
+        height: 36px;
+        /* 【小白可调】头像底部和气泡底部的对齐微调。
+           数字越大，头像会稍微往上抬；通常不用改。 */
+        margin-bottom: 4px;
+        /* 【小白可调】头像边框和圆角。
+           border 控制边框粗细/颜色。
+           border-radius 越大越圆，越小越方。像素风一般不要太圆。 */
+        border: 2px solid rgba(45, 50, 46, 0.18);
+        border-radius: 12px;
+        image-rendering: pixelated;
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.55),
+          0 5px 14px rgba(31, 38, 35, 0.12);
+        position: relative;
+      }
+
+      .message.user .pixel-avatar {
+        grid-column: 5;
+        background:
+          linear-gradient(#f58aa3 0 0) 7px 19px / 4px 4px no-repeat,
+          linear-gradient(#f58aa3 0 0) 27px 19px / 4px 4px no-repeat,
+          linear-gradient(#2f3430 0 0) 12px 13px / 4px 5px no-repeat,
+          linear-gradient(#2f3430 0 0) 23px 13px / 4px 5px no-repeat,
+          linear-gradient(#ffffff 0 0) 13px 13px / 1px 2px no-repeat,
+          linear-gradient(#ffffff 0 0) 24px 13px / 1px 2px no-repeat,
+          linear-gradient(#dd5e7b 0 0) 17px 24px / 5px 2px no-repeat,
+          linear-gradient(135deg, #d9fff1, #91e5c4);
+        transform: scaleX(-1);
+      }
+
+      .message.assistant .pixel-avatar {
+        grid-column: 1;
+        background:
+          linear-gradient(#ffd36c 0 0) 5px 5px / 5px 5px no-repeat,
+          linear-gradient(#ffd36c 0 0) 28px 5px / 5px 5px no-repeat,
+          linear-gradient(#f58aa3 0 0) 8px 20px / 4px 4px no-repeat,
+          linear-gradient(#f58aa3 0 0) 26px 20px / 4px 4px no-repeat,
+          linear-gradient(#2f3430 0 0) 12px 14px / 4px 5px no-repeat,
+          linear-gradient(#2f3430 0 0) 23px 14px / 4px 5px no-repeat,
+          linear-gradient(#ffffff 0 0) 13px 14px / 1px 2px no-repeat,
+          linear-gradient(#ffffff 0 0) 24px 14px / 1px 2px no-repeat,
+          linear-gradient(#6a5a44 0 0) 17px 25px / 5px 2px no-repeat,
+          linear-gradient(135deg, #eaf4ff, #a9cdfa);
+      }
+
+      .message.archived .pixel-avatar {
+        filter: sepia(0.28) saturate(0.82);
+      }
+
+      .bubble {
+        /* 【小白可调】聊天气泡本体。
+           grid-column: 3 表示 bot 和 user 的气泡都在中间同一条气泡轨道里。
+           width: fit-content 表示短消息按文字自然变小，不会强行拉宽。
+           max-width: 100% 表示长消息最多撑满中间气泡轨道，到边界后自动换行。
+           这就是“短消息像社交软件，长消息边框对齐”的关键。
+           border-radius 控制圆角；padding 控制文字离气泡边缘的距离。 */
+        grid-column: 3;
+        position: relative;
+        width: fit-content;
+        max-width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 10px 12px 8px;
+        background: var(--panel);
+        box-shadow: 0 4px 14px rgba(31, 38, 35, 0.06);
+      }
+
+      .message.user .bubble {
+        /* 【小白可调】右侧 user 气泡。
+           justify-self: end 表示短 user 气泡贴着中间气泡轨道的右边。
+           头像距离已经由上面的 grid-template-columns 里的 8px 控制，不在这里用 margin。 */
+        justify-self: end;
+        margin-right: 0;
+        border-bottom-right-radius: 5px;
+        border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+        background: #dff3ea;
+      }
+
+      .message.assistant .bubble {
+        /* 【小白可调】左侧 bot/assistant 气泡。
+           justify-self: start 表示短 bot 气泡贴着中间气泡轨道的左边。
+           长 bot 气泡撑满气泡轨道时，右边框会和长 user 气泡的右边框对齐。 */
+        justify-self: start;
+        margin-left: 0;
+        border-bottom-left-radius: 5px;
+        background: #ffffff;
+      }
+
+      .message.archived .bubble {
+        border-color: color-mix(in srgb, var(--archive) 28%, var(--line));
+        background: #fffaf0;
+      }
+
+      .message.selected .bubble {
+        border-color: var(--accent);
+        box-shadow:
+          0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent),
+          0 4px 14px rgba(31, 38, 35, 0.06);
+      }
+
+      .message-head {
+        /* 【小白可调】气泡顶部的小字区域，比如 user、active window、字数。
+           gap 控制这些小标签之间的距离。
+           margin-bottom 控制它和正文之间的距离。
+           font-size 控制这行小字的大小。 */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .role {
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .status {
+        border-radius: 999px;
+        padding: 1px 7px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .status.archived {
+        background: #f5ebcf;
+        color: var(--archive);
+      }
+
+      .message-body {
+        /* 【小白可调】气泡正文。
+           line-height 控制行距，数字越大每行越松。
+           font-size 控制正文大小。
+           overflow-wrap: anywhere 是为了避免很长的英文/链接撑破气泡。 */
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.6;
+        font-size: 14px;
+      }
+
+      .message-foot {
+        /* 【小白可调】气泡底部时间，比如 09:46。
+           margin-top 控制时间和正文的距离。
+           font-size 控制时间文字大小。
+           text-align: right 表示时间靠右显示。 */
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .time-rail {
+        /* 【小白可调】右侧滑动时间条区域。
+           这块现在仿小米相册：平时隐藏，滚动聊天记录时才浮出来。
+           right 控制它离聊天区域右边多远。
+           top/bottom 控制它上下留白。
+           width 控制右侧索引条宽度。
+           opacity: 0 表示平时透明隐藏。 */
+        position: absolute;
+        top: 18px;
+        right: 12px;
+        bottom: 18px;
+        width: 92px;
+        z-index: 6;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+
+      .time-rail.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .current-time {
+        /* 【小白可调】滚动时浮出来的日期气泡。
+           right 控制它距离右侧索引条多远。
+           min-width 控制气泡最小宽度。
+           font-size 控制日期字号。
+           这里按你的要求只显示日期，不显示具体时间。 */
+        position: absolute;
+        top: 50%;
+        right: 72px;
+        min-width: 150px;
+        transform: translateY(-50%);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        padding: 12px 18px;
+        color: var(--ink);
+        font-size: 20px;
+        font-weight: 750;
+        text-align: center;
+        box-shadow: var(--shadow);
+        white-space: nowrap;
+      }
+
+      .rail-marks {
+        position: relative;
+        height: 100%;
+        margin-top: 0;
+      }
+
+      .rail-mark {
+        /* 【小白可调】右侧时间条里的每个时间刻度。
+           right 控制刻度离右边多远。
+           width 控制刻度文字区域宽度。
+           font-size 控制刻度文字大小。
+           major 是大层级，例如年份/月；minor 是小层级，例如日期点。 */
+        position: absolute;
+        right: 0;
+        width: 76px;
+        transform: translateY(-50%);
+        border: 0;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 6px 10px;
+        color: var(--ink);
+        text-align: center;
+        font-size: 13px;
+        box-shadow: 0 4px 14px rgba(31, 38, 35, 0.08);
+      }
+
+      .rail-mark.minor {
+        right: 10px;
+        width: 10px;
+        min-height: 10px;
+        border-radius: 50%;
+        padding: 0;
+        background: rgba(36, 116, 91, 0.42);
+        color: transparent;
+        box-shadow: none;
+      }
+
+      .rail-mark.active {
+        background: var(--accent);
+        color: white;
+      }
+
+      .feedback {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .empty {
+        margin: 56px auto;
+        max-width: 560px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      /* Mobile breakpoint.
+         Below this width, the sidebar stops being a left column and moves above
+         the chat area. Lower this value if you want the left sidebar to stay
+         visible in narrower desktop/in-app browser windows. */
+      @media (max-width: 680px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .content-shell {
+          display: block;
+        }
+
+        .time-rail {
+          right: 8px;
+          width: 76px;
+        }
+
+        .current-time {
+          right: 48px;
+          min-width: 132px;
+          font-size: 17px;
+          padding: 10px 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>Gem Chat Records</h1>
+          <p>管理 Gem bridge 本地上下文。删除会永久移出当前记录；归档不会喂给模型。</p>
+        </div>
+        <div id="chatList" class="chat-list"></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 id="chatTitle">选择一个聊天</h2>
+            <p id="chatMeta" class="muted"></p>
+            <div id="feedback" class="feedback"></div>
+          </div>
+          <div class="actions">
+            <button id="phonePreviewButton" type="button">手机预览</button>
+            <button id="refreshButton" type="button">刷新</button>
+            <button id="exportButton" type="button">导出 JSON</button>
+            <button id="archiveWindowButton" type="button">归档当前窗口</button>
+            <button id="deleteWindowButton" class="danger" type="button">删除归档窗口</button>
+            <button id="deleteButton" class="danger" type="button">永久删除选中</button>
+          </div>
+        </header>
+
+        <section class="content-shell">
+          <div id="timeline" class="timeline"></div>
+          <aside class="time-rail">
+            <div id="currentTime" class="current-time">暂无消息</div>
+            <div id="railMarks" class="rail-marks"></div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const state = {
+        chats: [],
+        currentWindow: null,
+        messages: [],
+        selected: new Set(),
+        selectMode: false,
+        longPressTimer: null,
+        justLongPressed: false,
+        railHideTimer: null,
+        activeRailDay: ""
+      };
+
+      const chatList = document.getElementById("chatList");
+      const chatTitle = document.getElementById("chatTitle");
+      const chatMeta = document.getElementById("chatMeta");
+      const feedback = document.getElementById("feedback");
+      const timeline = document.getElementById("timeline");
+      const currentTime = document.getElementById("currentTime");
+      const railMarks = document.getElementById("railMarks");
+      const phonePreviewButton = document.getElementById("phonePreviewButton");
+      const refreshButton = document.getElementById("refreshButton");
+      const exportButton = document.getElementById("exportButton");
+      const archiveWindowButton = document.getElementById("archiveWindowButton");
+      const deleteWindowButton = document.getElementById("deleteWindowButton");
+      const deleteButton = document.getElementById("deleteButton");
+
+      function setFeedback(text) {
+        feedback.textContent = text || "";
+      }
+
+      function setPhonePreview(enabled) {
+        document.body.classList.toggle("phone-preview", enabled);
+        phonePreviewButton.textContent = enabled ? "退出手机预览" : "手机预览";
+        localStorage.setItem("gemChatPhonePreview", enabled ? "1" : "0");
+        requestAnimationFrame(() => {
+          updateCurrentTime();
+          showTimeRail();
+        });
+      }
+
+      function formatDate(value) {
+        if (!value) return "无时间";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat("zh-CN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          hour12: false
+        }).format(date);
+      }
+
+      function formatDay(value) {
+        if (!value) return "无时间";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat("zh-CN", {
+          dateStyle: "full"
+        }).format(date);
+      }
+
+      function formatShortTime(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return new Intl.DateTimeFormat("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).format(date);
+      }
+
+      function dateParts(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          day: date.getDate()
+        };
+      }
+
+      function dayKey(value) {
+        const parts = dateParts(value);
+        if (!parts) return "unknown";
+        return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+      }
+
+      function monthKey(value) {
+        const parts = dateParts(value);
+        if (!parts) return "unknown";
+        return `${parts.year}-${String(parts.month).padStart(2, "0")}`;
+      }
+
+      function yearKey(value) {
+        const parts = dateParts(value);
+        return parts ? String(parts.year) : "unknown";
+      }
+
+      function formatFloatingDay(value) {
+        const parts = dateParts(value);
+        if (!parts) return "无时间";
+        return `${parts.year}年${parts.month}月${parts.day}日`;
+      }
+
+      function formatMonthLabel(value) {
+        const parts = dateParts(value);
+        return parts ? `${parts.month}月` : "无时间";
+      }
+
+      function formatDayLabel(value) {
+        const parts = dateParts(value);
+        return parts ? `${parts.month}/${parts.day}` : "无";
+      }
+
+      function escapeText(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json.error || `Request failed: ${response.status}`);
+        }
+        return json;
+      }
+
+      function renderChats() {
+        if (state.chats.length === 0) {
+          chatList.innerHTML = '<p class="empty">还没有找到聊天 JSON。</p>';
+          return;
+        }
+
+        const telegramChats = state.chats.filter((chat) => chat.kind === "telegram");
+        const gemCliArchives = state.chats.filter(
+          (chat) => chat.kind === "archive" && chat.sourceGroup === "gem-cli"
+        );
+        const otherArchives = state.chats.filter(
+          (chat) => chat.kind === "archive" && chat.sourceGroup !== "gem-cli"
+        );
+        const renderGroup = (title, chats) => {
+          if (chats.length === 0) return "";
+          return `
+            <div class="chat-group-title">${escapeText(title)}</div>
+            ${chats
+              .map((chat) => {
+                const active =
+                  state.currentWindow &&
+                  chat.windowId === state.currentWindow.windowId
+                    ? " active"
+                    : "";
+            return `
+              <button class="chat-button${active}" type="button" data-window-id="${escapeText(chat.windowId)}">
+                <div class="chat-title">
+                  <span>${escapeText(chat.title)}</span>
+                  <span class="pill">${chat.activeCount}</span>
+                </div>
+                <p class="muted">${escapeText(formatDate(chat.latestAt || chat.updatedAt))}</p>
+                <p class="muted">${escapeText(chat.latestPreview || "无消息")}</p>
+                <p class="muted">${
+                  chat.kind === "telegram"
+                    ? "Telegram 当前总窗口"
+                    : `${escapeText(chat.sourceLabel || "归档窗口")} / 归档`
+                }</p>
+              </button>
+            `;
+              })
+              .join("")}
+          `;
+        };
+
+        chatList.innerHTML =
+          renderGroup("Telegram", telegramChats) +
+          renderGroup("Gem CLI 归档", gemCliArchives) +
+          renderGroup("其他归档", otherArchives);
+
+        chatList.querySelectorAll("button[data-window-id]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const chat = state.chats.find(
+              (item) => item.windowId === button.dataset.windowId
+            );
+            if (chat) loadWindow(chat);
+          });
+        });
+      }
+
+      function renderMessages() {
+        state.selected.clear();
+        state.selectMode = false;
+        document.body.classList.remove("select-mode");
+        const messages = state.messages;
+        if (messages.length === 0) {
+          timeline.innerHTML = '<div class="empty">这个聊天还没有记录。</div>';
+          railMarks.innerHTML = "";
+          currentTime.textContent = "暂无消息";
+          updateActionButtons();
+          return;
+        }
+
+        let lastDay = "";
+        timeline.innerHTML = messages
+          .map((message) => {
+            const day = formatDay(message.at);
+            const divider =
+              day !== lastDay
+                ? `<div class="date-divider">${escapeText(day)}</div>`
+                : "";
+            lastDay = day;
+            const archived = message.bucket === "archived";
+            const archiveView = state.currentWindow && state.currentWindow.kind === "archive";
+            return `
+              ${divider}
+              <article id="msg-${message.id}" class="message ${escapeText(message.role)}${archiveView ? " archived" : ""}" data-message-id="${message.id}" data-at="${escapeText(message.at)}">
+                <input type="checkbox" aria-label="选择消息" data-message-id="${message.id}" />
+                <div class="pixel-avatar" aria-hidden="true"></div>
+                <div class="bubble">
+                  <div class="message-head">
+                    <span class="role">${escapeText(message.role)}</span>
+                    <span class="status${archiveView ? " archived" : ""}">${archiveView ? "archived window" : "active window"}</span>
+                    ${message.source ? `<span>${escapeText(message.source)}</span>` : ""}
+                    <span>${message.length} 字</span>
+                  </div>
+                  <div class="message-body">${escapeText(message.content)}</div>
+                  <div class="message-foot">${escapeText(formatDate(message.at))}</div>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+
+        timeline.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+          checkbox.addEventListener("change", () => {
+            const id = checkbox.dataset.messageId;
+            const messageNode = document.getElementById(`msg-${id}`);
+            if (checkbox.checked) {
+              state.selected.add(id);
+              messageNode.classList.add("selected");
+            } else {
+              state.selected.delete(id);
+              messageNode.classList.remove("selected");
+            }
+            updateActionButtons();
+          });
+        });
+
+        timeline.querySelectorAll(".message").forEach((messageNode) => {
+          const id = messageNode.dataset.messageId;
+          const checkbox = messageNode.querySelector("input[type='checkbox']");
+
+          const selectThisMessage = () => {
+            enterSelectMode();
+            state.justLongPressed = true;
+            if (!checkbox.checked) {
+              checkbox.checked = true;
+              checkbox.dispatchEvent(new Event("change"));
+            }
+            setTimeout(() => {
+              state.justLongPressed = false;
+            }, 120);
+          };
+
+          const cancelLongPress = () => {
+            clearTimeout(state.longPressTimer);
+            state.longPressTimer = null;
+          };
+
+          messageNode.addEventListener("pointerdown", (event) => {
+            if (event.target.tagName === "INPUT") return;
+            cancelLongPress();
+            state.longPressTimer = setTimeout(selectThisMessage, 520);
+          });
+          messageNode.addEventListener("pointerup", cancelLongPress);
+          messageNode.addEventListener("pointerleave", cancelLongPress);
+          messageNode.addEventListener("pointercancel", cancelLongPress);
+          messageNode.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            cancelLongPress();
+            selectThisMessage();
+          });
+          messageNode.addEventListener("click", (event) => {
+            if (!state.selectMode || event.target.tagName === "INPUT") return;
+            if (state.justLongPressed) {
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event("change"));
+          });
+        });
+
+        renderRail();
+        updateActionButtons();
+        updateCurrentTime();
+      }
+
+      function enterSelectMode() {
+        state.selectMode = true;
+        document.body.classList.add("select-mode");
+      }
+
+      function exitSelectMode() {
+        state.selectMode = false;
+        state.selected.clear();
+        document.body.classList.remove("select-mode");
+        timeline.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        timeline.querySelectorAll(".message.selected").forEach((messageNode) => {
+          messageNode.classList.remove("selected");
+        });
+        updateActionButtons();
+      }
+
+      function renderRail() {
+        if (state.messages.length === 0) {
+          railMarks.innerHTML = "";
+          return;
+        }
+        const firstByDay = new Map();
+        const firstByMonth = new Map();
+        const firstByYear = new Map();
+        state.messages.forEach((message, index) => {
+          if (!message.at) return;
+          if (!firstByDay.has(dayKey(message.at))) firstByDay.set(dayKey(message.at), { message, index });
+          if (!firstByMonth.has(monthKey(message.at))) firstByMonth.set(monthKey(message.at), { message, index });
+          if (!firstByYear.has(yearKey(message.at))) firstByYear.set(yearKey(message.at), { message, index });
+        });
+
+        const markTop = (index) =>
+          state.messages.length === 1
+            ? 0
+            : Math.round((index / (state.messages.length - 1)) * 100);
+        const years = Array.from(firstByYear.values());
+        const months = Array.from(firstByMonth.values());
+        const days = Array.from(firstByDay.values());
+        const majorMarks =
+          years.length > 1
+            ? years.map((item) => ({ ...item, label: yearKey(item.message.at), level: "major" }))
+            : months.length > 1
+              ? months.map((item) => ({ ...item, label: formatMonthLabel(item.message.at), level: "major" }))
+              : days.map((item) => ({ ...item, label: formatDayLabel(item.message.at), level: "major" }));
+        const minorMarks =
+          majorMarks.length === days.length
+            ? []
+            : days.map((item) => ({ ...item, label: "", level: "minor" }));
+
+        railMarks.innerHTML = [...minorMarks, ...majorMarks]
+          .map(({ message, index, label, level }) => `
+            <button class="rail-mark ${level}" style="top:${markTop(index)}%" type="button" data-message-id="${message.id}" data-day="${escapeText(dayKey(message.at))}">
+              ${escapeText(label)}
+            </button>
+          `)
+          .join("");
+
+        railMarks.querySelectorAll("button[data-message-id]").forEach((button) => {
+          button.addEventListener("click", () => {
+            document
+              .getElementById(`msg-${button.dataset.messageId}`)
+              ?.scrollIntoView({ block: "center", behavior: "smooth" });
+            showTimeRail();
+          });
+        });
+      }
+
+      function showTimeRail() {
+        document.querySelector(".time-rail").classList.add("visible");
+        clearTimeout(state.railHideTimer);
+        state.railHideTimer = setTimeout(() => {
+          document.querySelector(".time-rail").classList.remove("visible");
+        }, 1300);
+      }
+
+      function updateCurrentTime() {
+        const nodes = Array.from(timeline.querySelectorAll(".message"));
+        if (nodes.length === 0) return;
+        const top = timeline.getBoundingClientRect().top + 90;
+        let best = nodes[0];
+        let bestDistance = Infinity;
+        nodes.forEach((node) => {
+          const distance = Math.abs(node.getBoundingClientRect().top - top);
+          if (distance < bestDistance) {
+            best = node;
+            bestDistance = distance;
+          }
+        });
+        state.activeRailDay = dayKey(best.dataset.at);
+        currentTime.textContent = formatFloatingDay(best.dataset.at);
+        railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
+          mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
+        });
+      }
+
+      function updateActionButtons() {
+        const selectedCount = state.selected.size;
+        deleteButton.disabled = selectedCount === 0;
+        const hasWindow = Boolean(state.currentWindow);
+        const isActiveWindow = hasWindow && state.currentWindow.kind === "active";
+        const isArchiveWindow = hasWindow && state.currentWindow.kind === "archive";
+        exportButton.disabled = !hasWindow;
+        archiveWindowButton.disabled =
+          !isActiveWindow || state.messages.length === 0;
+        deleteWindowButton.disabled = !isArchiveWindow;
+      }
+
+      async function loadChats() {
+        const data = await fetchJson("/api/chats");
+        state.chats = data.chats;
+        if (!state.currentWindow && state.chats[0]) {
+          state.currentWindow = state.chats[0];
+        }
+        renderChats();
+        if (state.currentWindow) {
+          const fresh =
+            state.chats.find(
+              (chat) => chat.windowId === state.currentWindow.windowId
+            ) || state.chats[0];
+          await loadWindow(fresh);
+        }
+      }
+
+      function windowUrl(chat) {
+        if (chat.kind === "telegram") {
+          return `/api/telegram/${encodeURIComponent(chat.chatId)}`;
+        }
+        if (chat.kind === "archive") {
+          return `/api/archives/${encodeURIComponent(chat.chatId)}/${encodeURIComponent(chat.archiveId)}`;
+        }
+        return `/api/chats/${encodeURIComponent(chat.chatId)}`;
+      }
+
+      async function loadWindow(chat) {
+        state.currentWindow = chat;
+        const data = await fetchJson(windowUrl(chat));
+        state.messages = data.messages;
+        chatTitle.textContent = data.chat.title;
+        chatMeta.textContent =
+          data.chat.kind === "telegram"
+            ? `Telegram 当前总窗口 / ${data.chat.activeCount} 条 / session ${data.state.sessionId || "new"}`
+            : data.chat.kind === "archive"
+            ? `归档窗口 / ${data.chat.activeCount} 条 / archived ${formatDate(data.state.archivedAt)}`
+            : `当前窗口 / ${data.chat.activeCount} 条 / session ${data.state.sessionId || "new"}`;
+        renderChats();
+        renderMessages();
+        setFeedback("已加载。");
+      }
+
+      function mutationUrl(action) {
+        if (!state.currentWindow) return "";
+        if (state.currentWindow.kind === "telegram") {
+          return `/api/telegram/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
+        }
+        if (state.currentWindow.kind === "archive") {
+          return `/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/${action}`;
+        }
+        return `/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
+      }
+
+      async function deleteMessages() {
+        if (!state.currentWindow || state.selected.size === 0) return;
+        if (!confirm(`确定永久删除选中的 ${state.selected.size} 条记录吗？`)) {
+          return;
+        }
+        setFeedback("永久删除中...");
+        const data = await fetchJson(
+          mutationUrl("delete-messages"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: Array.from(state.selected) })
+          }
+        );
+        setFeedback(
+          `永久删除完成：${data.changedCount} 条。${data.sessionIdReset ? "已备份并重置 sessionId。" : "已备份归档窗口。"}`
+        );
+        await loadChats();
+      }
+
+      async function archiveCurrentWindow() {
+        if (!state.currentWindow || state.currentWindow.kind !== "active") return;
+        if (
+          !confirm(
+            "确定归档当前聊天窗口吗？当前窗口会清空成新会话，旧窗口会进入左侧归档列表。"
+          )
+        ) {
+          return;
+        }
+        setFeedback("归档当前窗口中...");
+        await fetchJson(
+          `/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/archive-window`,
+          { method: "POST" }
+        );
+        state.currentWindow = null;
+        setFeedback("窗口已归档，当前聊天已重置。");
+        await loadChats();
+      }
+
+      async function deleteCurrentArchiveWindow() {
+        if (!state.currentWindow || state.currentWindow.kind !== "archive") return;
+        if (!confirm("确定永久删除这个归档窗口吗？")) return;
+        setFeedback("删除归档窗口中...");
+        await fetchJson(
+          `/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/delete-window`,
+          { method: "POST" }
+        );
+        state.currentWindow = null;
+        setFeedback("归档窗口已删除。");
+        await loadChats();
+      }
+
+      function exportCurrentChat() {
+        if (!state.currentWindow) return;
+        window.open(`${windowUrl(state.currentWindow)}/export`, "_blank", "noopener");
+      }
+
+      refreshButton.addEventListener("click", () => loadChats().catch(reportError));
+      phonePreviewButton.addEventListener("click", () => {
+        setPhonePreview(!document.body.classList.contains("phone-preview"));
+      });
+      archiveWindowButton.addEventListener("click", () =>
+        archiveCurrentWindow().catch(reportError)
+      );
+      deleteWindowButton.addEventListener("click", () =>
+        deleteCurrentArchiveWindow().catch(reportError)
+      );
+      deleteButton.addEventListener("click", () => deleteMessages().catch(reportError));
+      exportButton.addEventListener("click", exportCurrentChat);
+      timeline.addEventListener("scroll", () => {
+        updateCurrentTime();
+        showTimeRail();
+      });
+      timeline.addEventListener("wheel", () => {
+        updateCurrentTime();
+        showTimeRail();
+      }, { passive: true });
+      document.addEventListener("click", (event) => {
+        if (!state.selectMode) return;
+        if (event.target.closest(".message")) return;
+        if (event.target.closest(".actions")) return;
+        exitSelectMode();
+      }, true);
+
+      function reportError(error) {
+        setFeedback(error.message || String(error));
+      }
+
+      updateActionButtons();
+      setPhonePreview(localStorage.getItem("gemChatPhonePreview") === "1");
+      loadChats().catch(reportError);
+    </script>
+  </body>
+</html>
