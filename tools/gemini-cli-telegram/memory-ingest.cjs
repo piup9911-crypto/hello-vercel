@@ -2,7 +2,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
-const { ROOT, SOURCE_GEMINI_DIR } = require("./cloud-memory-client.cjs");
+const { ROOT, getSharedMemoryConfig, getMemoryEntriesUrl, httpRequestJson } = require("./cloud-memory-client.cjs");
 const {
   createGenerationSignature,
   createRecord,
@@ -31,12 +31,6 @@ const INGEST_STATE_PATH = path.join(
   ROOT,
   "bridge-state",
   "memory-ingest-state.json"
-);
-const CLI_CHAT_DIR = path.join(
-  SOURCE_GEMINI_DIR,
-  "tmp",
-  "gemini-test",
-  "chats"
 );
 const TELEGRAM_CHAT_DIR = path.join(ROOT, "bridge-state", "chats");
 const INGEST_MODEL =
@@ -85,8 +79,7 @@ function writeJson(filePath, value) {
 
 function createEmptyIngestState() {
   return {
-    version: 2,
-    cli: {},
+    version: 3,
     telegram: {}
   };
 }
@@ -119,7 +112,7 @@ function normalizeIngestState(state) {
   const raw = state && typeof state === "object" ? state : createEmptyIngestState();
   const normalized = createEmptyIngestState();
 
-  for (const channel of ["cli", "telegram"]) {
+  for (const channel of ["telegram"]) {
     const channelState =
       raw[channel] && typeof raw[channel] === "object" ? raw[channel] : {};
     for (const [sourceRef, cursor] of Object.entries(channelState)) {
@@ -138,39 +131,6 @@ function loadIngestState() {
 
 function saveIngestState(state) {
   writeJson(INGEST_STATE_PATH, normalizeIngestState(state));
-}
-
-function normalizeCliText(content) {
-  if (Array.isArray(content)) {
-    return content
-      .map((item) => (item && item.text ? String(item.text) : ""))
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-  }
-
-  return String(content || "").trim();
-}
-
-function normalizeCliMessages(chatJson) {
-  const messages = Array.isArray(chatJson && chatJson.messages)
-    ? chatJson.messages
-    : [];
-
-  return messages
-    .filter((message) => message.type === "user" || message.type === "gemini")
-    .map((message) => ({
-      role: message.type === "user" ? "user" : "assistant",
-      content: normalizeCliText(message.content),
-      at: String(
-        message.timestamp ||
-          message.createdAt ||
-          message.updatedAt ||
-          chatJson.lastUpdated ||
-          ""
-      )
-    }))
-    .filter((message) => message.content);
 }
 
 function normalizeTelegramMessages(chatJson) {
@@ -202,39 +162,6 @@ function buildSourceSnapshot(sourceChannel, sourceRef, updatedAt, messages, curs
   };
 }
 
-function collectCliSources(state) {
-  if (!fs.existsSync(CLI_CHAT_DIR)) return [];
-
-  return fs
-    .readdirSync(CLI_CHAT_DIR)
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => path.join(CLI_CHAT_DIR, name))
-    .map((filePath) => ({
-      filePath,
-      json: readJson(filePath, null)
-    }))
-    .filter((item) => item.json && item.json.lastUpdated)
-    .map((item) => {
-      const cursor = normalizeCursor(state.cli[item.filePath]);
-      const messages = normalizeCliMessages(item.json);
-      return buildSourceSnapshot(
-        "cli",
-        item.filePath,
-        item.json.lastUpdated,
-        messages,
-        cursor
-      );
-    })
-    .filter(
-      (item) =>
-        item.messages.length > item.processedMessageCount ||
-        (item.updatedAt &&
-          item.updatedAt !== normalizeCursor(state.cli[item.sourceRef]).lastUpdated)
-    )
-    .sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt))
-    .slice(-3);
-}
-
 function collectTelegramSources(state, chatId) {
   if (!fs.existsSync(TELEGRAM_CHAT_DIR)) return [];
 
@@ -245,23 +172,28 @@ function collectTelegramSources(state, chatId) {
         .filter((name) => name.endsWith(".json"))
         .map((name) => path.join(TELEGRAM_CHAT_DIR, name));
 
-  return targets
+  const sources = [];
+
+  for (const item of targets
     .map((filePath) => ({
       filePath,
       json: readJson(filePath, null)
     }))
-    .filter((item) => item.json && item.json.updatedAt)
-    .map((item) => {
-      const cursor = normalizeCursor(state.telegram[item.filePath]);
-      const messages = normalizeTelegramMessages(item.json);
-      return buildSourceSnapshot(
+    .filter((item) => item.json && item.json.updatedAt)) {
+    const cursor = normalizeCursor(state.telegram[item.filePath]);
+    const messages = normalizeTelegramMessages(item.json);
+    sources.push(
+      buildSourceSnapshot(
         "telegram",
         item.filePath,
         item.json.updatedAt,
         messages,
         cursor
-      );
-    })
+      )
+    );
+  }
+
+  return sources
     .filter(
       (item) =>
         item.messages.length > item.processedMessageCount ||
@@ -440,6 +372,7 @@ function buildSmallSummaryPrompt(batch) {
     "Return JSON only with the shape:",
     '{"summary":"...","confidence":0.0,"importance":0.0}',
     "Rules:",
+    "- MUST write in Simplified Chinese (简体中文).",
     "- Write 2 to 4 sentences in plain language.",
     "- Focus on what changed, what was decided, what was learned, or what emotional/contextual shift happened in this slice.",
     "- This is a small checkpoint summary, not a long-term memory entry.",
@@ -492,6 +425,7 @@ function buildLargeSummaryPrompt(records) {
     "Return JSON only with the shape:",
     '{"summary":"...","confidence":0.0,"importance":0.0}',
     "Rules:",
+    "- MUST write in Simplified Chinese (简体中文).",
     "- Write 3 to 6 sentences in plain language.",
     "- Preserve the important emotional, relational, and factual progression across the source summaries.",
     "- This large summary should be broader than any single small summary.",
@@ -542,6 +476,63 @@ async function summarizeLargeSummary(records) {
   };
 }
 
+function buildCloudEntry(record) {
+  return {
+    fingerprint: record.id,
+    source_channel: record.sourceChannel || "",
+    source_ref: record.sourceRef || "",
+    summary: record.content,
+    detail: "",
+    reason: `Auto-generated ${record.kind || record.section}`,
+    confidence: record.metadata && typeof record.metadata.confidence === "number"
+      ? record.metadata.confidence : null,
+    status: "approved",
+    metadata: {
+      independentSection: record.section,
+      section: record.section,
+      kind: record.kind,
+      title: record.title,
+      firstMessageAt: record.firstMessageAt,
+      lastMessageAt: record.lastMessageAt,
+      batchStart: record.batchStart,
+      batchEnd: record.batchEnd,
+      messageCount: record.messageCount,
+      importance: record.metadata && record.metadata.importance,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    }
+  };
+}
+
+async function uploadRecordsToCloud(records) {
+  if (records.length === 0) return;
+  const config = getSharedMemoryConfig();
+  const entriesUrl = getMemoryEntriesUrl(config.apiUrl);
+  if (!entriesUrl || !config.syncToken) return;
+
+  const entries = records.map(buildCloudEntry);
+  try {
+    await httpRequestJson(entriesUrl, {
+      method: "POST",
+      timeoutMs: 15000,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Memory-Sync-Token": config.syncToken,
+        "X-Memory-Client": "memory-ingest"
+      },
+      body: JSON.stringify({ entries })
+    });
+  } catch (error) {
+    // Cloud upload is best-effort; local records are the source of truth.
+    process.stderr.write(
+      `[memory-ingest] cloud upload failed: ${
+        error && error.message ? error.message : String(error)
+      }\n`
+    );
+  }
+}
+
 async function processSource(source) {
   const batches = createPendingBatches(source);
   const createdRecords = [];
@@ -575,6 +566,9 @@ async function processSource(source) {
     processedMessageCount = batch.endIndex + 1;
   }
 
+  // Upload newly created small summaries to cloud so the web UI can see them
+  await uploadRecordsToCloud(createdRecords);
+
   return {
     createdRecords,
     processedMessageCount
@@ -584,66 +578,83 @@ async function processSource(source) {
 async function consolidateLargeSummaries() {
   const createdLargeSummaries = [];
   const trashedSmallSummaries = [];
-  let activeSmallSummaries = listRecords("small_summary");
 
-  // We wait until there are 16 active small summaries, then consume the oldest
-  // 15 into one large summary and leave the newest one as the seed for the next
-  // accumulation cycle. This matches the user-defined memory lifecycle.
-  while (activeSmallSummaries.length >= LARGE_SUMMARY_TRIGGER_COUNT) {
-    const sourceRecords = activeSmallSummaries.slice(0, LARGE_SUMMARY_SOURCE_COUNT);
-    const signature = createGenerationSignature(sourceRecords.map((item) => item.id));
+  // 记忆摄取现在只服务 Telegram。旧的 CLI 摘要即使还留在文件夹里，
+  // 也不会再参与后续的大摘要合并，避免两套上下文重新缠在一起。
+  let activeSmallSummaries = listRecords("small_summary").filter(
+    (record) => (record.sourceChannel || "telegram") === "telegram"
+  );
+  let channels = [...new Set(activeSmallSummaries.map(r => r.sourceChannel || "unknown"))];
 
-    let shouldTrashSourceRecords = hasLargeSummarySignature(signature);
+  for (const channel of channels) {
+    let channelSummaries = activeSmallSummaries.filter(r => (r.sourceChannel || "unknown") === channel);
 
-    if (!shouldTrashSourceRecords) {
-      const summary = await summarizeLargeSummary(sourceRecords);
-      // Do not move small summaries to trash unless a large summary actually
-      // exists. Gemini can occasionally return an empty/filtered summary; in
-      // that case we keep the edited small summaries active so the user can
-      // review them or retry instead of silently losing the source batch.
-      if (!summary) {
-        break;
-      }
+    // We wait until there are 16 active small summaries for this channel, then consume the oldest
+    // 15 into one large summary and leave the newest one as the seed for the next
+    // accumulation cycle. This matches the user-defined memory lifecycle.
+    while (channelSummaries.length >= LARGE_SUMMARY_TRIGGER_COUNT) {
+      const sourceRecords = channelSummaries.slice(0, LARGE_SUMMARY_SOURCE_COUNT);
+      const signature = createGenerationSignature(sourceRecords.map((item) => item.id));
 
-      const saved = createRecord({
-        section: "large_summary",
-        kind: "large_summary",
-        title: "large summary",
-        content: summary.content,
-        firstMessageAt: sourceRecords[0].firstMessageAt || sourceRecords[0].createdAt,
-        lastMessageAt:
-          sourceRecords[sourceRecords.length - 1].lastMessageAt ||
-          sourceRecords[sourceRecords.length - 1].updatedAt,
-        copiedFrom: "",
-        derivedFrom: sourceRecords.map((item) => item.id),
-        messageCount: sourceRecords.reduce(
-          (total, item) => total + (Number(item.messageCount) || 0),
-          0
-        ),
-        generationSignature: signature,
-        metadata: {
-          sourceSmallSummaryCount: sourceRecords.length,
-          confidence: summary.confidence,
-          importance: summary.importance
+      let shouldTrashSourceRecords = hasLargeSummarySignature(signature);
+
+      if (!shouldTrashSourceRecords) {
+        const summary = await summarizeLargeSummary(sourceRecords);
+        // Do not move small summaries to trash unless a large summary actually
+        // exists. Gemini can occasionally return an empty/filtered summary; in
+        // that case we keep the edited small summaries active so the user can
+        // review them or retry instead of silently losing the source batch.
+        if (!summary) {
+          break; // break out of the while loop for this channel
         }
-      });
-      createdLargeSummaries.push(saved);
-      markLargeSummarySignature(signature, saved.id);
-      shouldTrashSourceRecords = true;
-    }
 
-    if (shouldTrashSourceRecords) {
-      for (const record of sourceRecords) {
-        trashedSmallSummaries.push(
-          moveRecordToTrash(record, {
-            trashReason: "merged_into_large_summary",
-            mergedIntoSignature: signature
-          })
-        );
+        const saved = createRecord({
+          section: "large_summary",
+          kind: "large_summary",
+          title: `${channel} large summary`,
+          content: summary.content,
+          sourceChannel: channel,
+          firstMessageAt: sourceRecords[0].firstMessageAt || sourceRecords[0].createdAt,
+          lastMessageAt:
+            sourceRecords[sourceRecords.length - 1].lastMessageAt ||
+            sourceRecords[sourceRecords.length - 1].updatedAt,
+          copiedFrom: "",
+          derivedFrom: sourceRecords.map((item) => item.id),
+          messageCount: sourceRecords.reduce(
+            (total, item) => total + (Number(item.messageCount) || 0),
+            0
+          ),
+          generationSignature: signature,
+          metadata: {
+            sourceSmallSummaryCount: sourceRecords.length,
+            confidence: summary.confidence,
+            importance: summary.importance
+          }
+        });
+        createdLargeSummaries.push(saved);
+        markLargeSummarySignature(signature, saved.id);
+        // Upload large summary to cloud
+        await uploadRecordsToCloud([saved]);
+        shouldTrashSourceRecords = true;
       }
-    }
 
-    activeSmallSummaries = listRecords("small_summary");
+      if (shouldTrashSourceRecords) {
+        for (const record of sourceRecords) {
+          trashedSmallSummaries.push(
+            moveRecordToTrash(record, {
+              trashReason: "merged_into_large_summary",
+              mergedIntoSignature: signature
+            })
+          );
+        }
+      }
+
+      // 刷新 Telegram 小摘要列表，继续保持 Telegram-only 的合并边界。
+      activeSmallSummaries = listRecords("small_summary").filter(
+        (record) => (record.sourceChannel || "telegram") === "telegram"
+      );
+      channelSummaries = activeSmallSummaries.filter(r => (r.sourceChannel || "unknown") === channel);
+    }
   }
 
   return {
@@ -659,7 +670,15 @@ async function main() {
   const sourceType =
     sourceArgIndex >= 0 && process.argv[sourceArgIndex + 1]
       ? process.argv[sourceArgIndex + 1]
-      : "all";
+      : "telegram";
+  if (sourceType === "cli") {
+    throw new Error(
+      "memory-ingest.cjs 已改为 Telegram-only，不再摄取 Gemini CLI 聊天记录。"
+    );
+  }
+  if (sourceType !== "telegram" && sourceType !== "all") {
+    throw new Error(`Unsupported memory source: ${sourceType}`);
+  }
   const chatIdIndex = process.argv.indexOf("--chat-id");
   const chatId =
     chatIdIndex >= 0 && process.argv[chatIdIndex + 1]
@@ -668,10 +687,6 @@ async function main() {
 
   const state = loadIngestState();
   const sources = [];
-
-  if (sourceType === "cli" || sourceType === "all") {
-    sources.push(...collectCliSources(state));
-  }
 
   if (sourceType === "telegram" || sourceType === "all") {
     sources.push(...collectTelegramSources(state, chatId));

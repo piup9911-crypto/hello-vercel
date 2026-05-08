@@ -1,205 +1,96 @@
-# Memory System Overview
+# Telegram-only 记忆系统说明
 
-This document explains the current memory architecture for the
-`gemini-cli-telegram` project.
+最后更新：2026-05-08
 
-It is written mainly for two collaborators:
+## 当前边界
 
-- the local human maintainer
-- the Gemini CLI side that may continue editing this code later
+云端记忆和独立记忆现在只服务 Telegram bridge。
 
-For the short "do not accidentally break this" checklist, read
-`MAINTAINER_GUARDRAILS.md` first.
+Gemini CLI 本体已经和这套记忆系统解耦：
 
-## Design Goal
+- 桌面 `gemini-start.cmd` 不再运行 `memory-ingest.cjs`
+- 桌面 `gemini-start.cmd` 不再运行 `shared-memory-sync.cjs`
+- `memory-ingest.cjs --source cli` 不再支持
+- 不再向 `~/gemini-test/INDEPENDENT_MEMORY.md` 写入自动记忆
+- 不再生成 CLI 启动注入用的 `cli-bootstrap-prompt.txt`
+- 旧的 `start-gemini-cli-with-memory.*` 和 `start-shared-memory-gemini.cmd` 已删除
 
-The system now treats memory as editable text documents instead of auto-writing
-everything into `GEMINI.md`.
+这样做的目标很简单：Telegram 聊天记忆归 Telegram，普通 Gemini CLI 启动保持纯净，不再为记忆系统付出启动耗时，也不再混入 Telegram 的聊天上下文。
 
-Two important rules now apply:
+## 仍然保留的能力
 
-1. `GEMINI.md` remains manual-only.
-2. Auto-generated memories live in a separate independent memory system.
-3. The old cloud `pending/approved` model is no longer a second source of truth.
+Telegram 侧仍然会继续使用独立记忆系统：
 
-## Read Model
+- Telegram 聊天记录保存在 `bridge-state/chats/`
+- `memory-ingest.cjs --source telegram --chat-id <id>` 从 Telegram 聊天记录生成小摘要
+- 小摘要达到阈值后会合并为大摘要
+- `shared-memory-sync.cjs` 会把可读记忆编译成 `INDEPENDENT_MEMORY.md`
+- 编译后的 `INDEPENDENT_MEMORY.md` 只写入 `bridge-workspace/`
+- Telegram bridge 在构造 Gemini prompt 时读取 `bridge-workspace/INDEPENDENT_MEMORY.md`
 
-The model should read:
+## 主要文件
 
-- `GEMINI.md`
-- independent memory documents that are marked readable
+### `telegram-gem-bridge.cjs`
 
-The model should **not** read:
+Telegram 主桥接程序。它负责接收 Telegram 消息、调用隔离配置下的 Gemini CLI、维护聊天状态，并在需要时触发 Telegram 记忆刷新。
 
-- private memory
-- trash
-
-## Independent Memory Regions
-
-Independent memory is stored under:
-
-- `memory-docs/small-summaries`
-- `memory-docs/large-summaries`
-- `memory-docs/long-term`
-- `memory-docs/private`
-- `memory-docs/trash`
-
-Each memory document is an independent text file.
-
-This is important:
-
-- memories in different regions do **not** synchronize
-- copying a memory into another region creates a new independent memory record
-- editing one memory never auto-updates another memory
-
-## Current Automation Rules
-
-### Small summaries
-
-- `15 raw chat messages -> 1 small summary`
-- small summaries are generated from CLI or Telegram chat history
-- they are saved as separate text documents
-- on the Telegram bridge, memory ingest is no longer scheduled after every
-  idle pause
-- the bridge now waits until there have been `10 completed user/assistant
-  turns`, then requires the normal `2 minute idle window` before it triggers
-  the ingest script
-
-### Large summaries
-
-- once there are `16` active small summaries
-- the oldest `15` are summarized into `1` new large summary
-- those `15` old small summaries are moved into trash
-- the newest remaining small summary stays active
-
-### Trash retention
-
-- trash deletion is based on `trashedAt`
-- trash auto-deletes after `180 days`
-
-## Why This Is More Stable
-
-We intentionally do **not** auto-write summaries into `GEMINI.md`.
-
-Reason:
-
-- `GEMINI.md` is the stable manual layer
-- summaries are the flexible auto layer
-- combining both by rewriting md created coupling and made debugging harder
-
-We also intentionally avoid cross-memory synchronization.
-
-Reason:
-
-- the user may rewrite the same idea differently depending on region and mood
-- therefore the system must treat each copied memory as a separate text record
-
-## File Format
-
-Each independent memory file uses a simple text format:
-
-- a JSON metadata block in an HTML comment
-- followed by the actual editable text body
-
-This keeps the content human-readable while still preserving lifecycle metadata.
-
-## Main Files
-
-### `independent-memory-manager.cjs`
-
-Responsibilities:
-
-- provide a local HTTP API for listing and editing independent memory files
-- provide clone actions into `long_term` and `private`
-- move records into trash or permanently delete them
-- rebuild the model-readable independent memory docs after each mutation
-
-### `independent-memory-manager.html`
-
-Responsibilities:
-
-- act as the local editor UI for the new memory regions
-- edit small summaries, large summaries, long-term memory, private memory, and trash
-- keep each region as explicitly separate editable text instead of pretending they are linked records
+它调用 `syncSharedMemory()` 时只传入 `bridge-workspace/` 作为目标目录。
 
 ### `memory-ingest.cjs`
 
-Responsibilities:
+Telegram 记忆摄取脚本。它只读取 `bridge-state/chats/` 下的 Telegram 聊天记录。
 
-- read raw CLI / Telegram chat history
-- create small summaries
-- create large summaries when enough small summaries exist
-- move merged small summaries into trash
-- clean up expired trash
-
-### `independent-memory-store.cjs`
-
-Responsibilities:
-
-- define the memory directory structure
-- create / read / update memory files
-- clone records into other regions when needed later
-- move records into trash
-- maintain generation signatures to prevent duplicate large summaries
+如果传入 `--source cli`，脚本会直接报错，避免旧启动器或旧命令悄悄把 Gemini CLI 聊天重新接进云端记忆。
 
 ### `shared-memory-sync.cjs`
 
-Responsibilities:
+Telegram 可读记忆编译脚本。它会合并本地独立记忆和可读云端记忆，然后写出：
 
-- no longer writes summaries into `GEMINI.md`
-- runs a one-time legacy cloud import when old shared-memory credentials exist
-- compiles model-readable independent memory text
-- writes `INDEPENDENT_MEMORY.md` into the CLI and Telegram workspaces
-- generates a CLI bootstrap prompt file
+- `memory-docs/generated/independent-memory.md`
+- `bridge-workspace/INDEPENDENT_MEMORY.md`
+- `bridge-state/shared-memory-cache.json`
 
-### `legacy-cloud-memory-migration.cjs`
+它不会再写入 `~/gemini-test/`，也不会再生成 CLI bootstrap prompt。
 
-Responsibilities:
+### `independent-memory-manager.cjs`
 
-- import the old cloud `approvedEntries` into `long_term`
-- import the old plain shared-memory `content` into `long_term`
-- import the old cloud `pendingEntries` into `private` by default, so they are
-  preserved but not model-readable
-- skip duplicates by legacy key and content hash
+本地记忆管理网页服务。每次编辑、复制、删除记忆后，它仍然会调用 `syncSharedMemory()`，但同步目标默认只包含 Telegram 工作区。
 
-This is a bridge for retiring the old system, not a new ongoing write path.
+## 触发规则
 
-### `start-gemini-cli-with-memory.cjs`
+Telegram bridge 当前的自动摄取节奏：
 
-Responsibilities:
+- 完成 10 轮用户/助手对话
+- 再等待 2 分钟空闲窗口
+- 触发 `memory-ingest.cjs --source telegram --chat-id <id>`
 
-- run CLI-side memory ingest
-- rebuild independent memory documents
-- launch interactive Gemini CLI with a bootstrap prompt so the independent
-  memory layer is read without mutating `GEMINI.md`
+这套节奏只作用于 Telegram。普通 Gemini CLI 启动、普通 CLI 对话、`~/gemini-test` 工作区都不参与。
 
-## Current Limits / Follow-ups
+## 维护规则
 
-This version now includes a local editor and API for the new independent memory
-directories.
+- 不要恢复 `memory-ingest.cjs --source cli`
+- 不要把 `bridge-workspace/INDEPENDENT_MEMORY.md` 同步到 `~/gemini-test/`
+- 不要重新添加“带记忆启动 Gemini CLI”的启动器
+- 不要让桌面 `gemini-start.cmd` 调用记忆脚本
+- `GEMINI.md` 仍然是手动维护的人格层，自动摘要不能改写它
+- 如果以后要给普通 Gemini CLI 做记忆，应该另建独立系统，不要复用 Telegram 云端记忆
 
-The old cloud `memory.html` page is still based on the previous
-`pending/approved` model, so it should not be treated as the source of truth for
-the new independent memory workflow. It exists only as legacy data until the new
-memory page replaces it.
+## 验证清单
 
-Use the local manager instead:
+修改记忆系统后至少运行：
 
-- start with `start-independent-memory-manager.cmd`
-- open `http://127.0.0.1:4142`
+```cmd
+node --check memory-ingest.cjs
+node --check shared-memory-sync.cjs
+node --check telegram-gem-bridge.cjs
+node memory-ingest.cjs --source cli
+node memory-ingest.cjs --source telegram
+node shared-memory-sync.cjs
+```
 
-Still not implemented yet:
+预期结果：
 
-- restore helpers from trash back into active summary regions
-- the future cloud/web syncing story for this new file-based memory layout
-
-## Collaboration Note
-
-When editing this subsystem later, keep these principles:
-
-- do not restore automatic summary writes into `GEMINI.md`
-- do not restore new writes into the old `pending/approved` cloud model
-- do not add hidden coupling between memories in different regions
-- prefer explicit file lifecycle steps over implicit synchronization
-- when adding UI or API behaviors, keep comments that explain why the memory
-  regions are intentionally independent editable texts
+- 前三个语法检查通过
+- `--source cli` 明确报错，说明 CLI 摄取已断开
+- `--source telegram` 可以正常完成，即使没有新聊天也应返回 `ok: true`
+- `shared-memory-sync.cjs` 只把 `INDEPENDENT_MEMORY.md` 写到 Telegram 工作区

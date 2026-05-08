@@ -4,6 +4,19 @@ This file is a quick handoff note for Codex, Gemini CLI, Claude Code, or any
 future helper editing this bridge. It focuses on rules that are easy to break
 accidentally.
 
+## 当前记忆边界（2026-05-08）
+
+- 云端记忆和独立记忆现在只服务 Telegram bridge。
+- 普通 Gemini CLI 不再作为这套记忆系统的输入源或输出目标。
+- 桌面 `gemini-start.cmd` 必须保持纯启动，不要重新调用
+  `memory-ingest.cjs` 或 `shared-memory-sync.cjs`。
+- `memory-ingest.cjs --source cli` 已停用；如果旧命令触发它，应该明确报错。
+- `shared-memory-sync.cjs` 默认只写入 `bridge-workspace/INDEPENDENT_MEMORY.md`。
+- 不要重新添加 `start-gemini-cli-with-memory.*` 或
+  `start-shared-memory-gemini.cmd` 这类带记忆的 Gemini CLI 启动器。
+- 如果以后普通 Gemini CLI 也需要记忆，另建独立系统，不要复用 Telegram
+  云端记忆。
+
 ## Telegram Thinking UI
 
 - Hidden thinking and the final reply must stay in one Telegram message bubble.

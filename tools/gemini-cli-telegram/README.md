@@ -1,76 +1,111 @@
-# Gemini CLI Telegram Bridge Tools
+# Telegram Gemini Bridge
 
-This folder contains the local bridge tools used to connect Gemini CLI-style
-chat to Telegram, an OpenAI-compatible local bridge, and the independent memory
-system.
+最后更新：2026-05-08
 
-These files are intended as local tooling. They are not part of the Vercel web
-runtime unless explicitly imported by the website.
+这个目录保存本机 Telegram bridge、Gemini CLI bridge、OpenAI 兼容 bridge，以及 Telegram-only 独立记忆系统。
 
-## What Is Included
+## 当前记忆边界
 
-- `telegram-gem-bridge.cjs`: Telegram chat bridge for Gemini CLI.
-- `gemini-cli-openai-bridge.cjs`: local OpenAI-compatible bridge for tools such
-  as SillyTavern-style clients.
-- `memory-ingest.cjs`: background small-summary and large-summary generation.
-- `independent-memory-store.cjs`: file-backed memory record storage.
-- `independent-memory-manager.cjs` and `.html`: local memory editor.
-- `gem-chat-record-manager.cjs` and `.html`: local Gem bridge chat record
-  manager for Telegram context review, deletion, archive viewing,
-  phone preview, and scroll-date navigation.
-- `scripts/import-gemini-session-archives.cjs`: imports old Telegram bridge
-  Gemini session records into the local Telegram archive display. It
-  intentionally ignores non-Telegram Gemini CLI session folders.
-- `shared-memory-sync.cjs`: compiles readable memory into `INDEPENDENT_MEMORY.md`
-  for CLI and Telegram workspaces.
-- `legacy-cloud-memory-migration.cjs`: one-time migration from the old cloud
-  pending/approved memory model into the new independent memory layout.
+云端记忆和独立记忆现在只服务 Telegram bridge。
 
-## What Is Not Included
+普通 Gemini CLI 已经和这套记忆系统解耦：
 
-Do not commit runtime state or secrets:
+- 桌面 `C:\Users\yx\Desktop\gemini-start.cmd` 不再运行记忆脚本
+- `memory-ingest.cjs` 不再支持 `--source cli`
+- `shared-memory-sync.cjs` 不再写入 `C:\Users\yx\gemini-test`
+- 旧的 `start-gemini-cli-with-memory.*` 已删除
+- 旧的 `start-shared-memory-gemini.cmd` 已删除
 
-- `bridge.env`
-- `bridge-home/`
-- `bridge-state/`
-- `bridge-workspace/`
-- `memory-docs/`
-- `generated/`
-- `st-bridge-*`
-- tunnel logs, temporary files, chat logs, OAuth state, and real memory content
+普通 Gemini CLI 的启动路径现在应该尽量短：设置代理，进入 `gemini-test`，启动 `gemini`。
 
-Use `bridge.env.example` as the template for local secrets.
+## 常用启动
 
-## Memory Rule
+### 启动 Telegram bridge
 
-`GEMINI.md` remains manual-only. Automatic summaries should live in the
-independent memory system and be compiled into `INDEPENDENT_MEMORY.md`.
-
-Read `MAINTAINER_GUARDRAILS.md` before editing this folder.
-
-## Chat Record Manager
-
-The chat record manager is a local agent, not a pure Vercel page. It reads and
-writes files under `bridge-state/`, so it must run on the same computer as the
-Telegram/Gem bridge.
-
-Start it locally:
-
-```bat
-start-gem-chat-record-manager.cmd
+```cmd
+start-telegram-gem-bridge.cmd
 ```
 
-Open it on the computer:
+或：
+
+```cmd
+node telegram-gem-bridge.cjs
+```
+
+### 启动本地记忆管理器
+
+```cmd
+start-independent-memory-manager.cmd
+```
+
+然后打开：
 
 ```text
-http://127.0.0.1:4144/
+http://127.0.0.1:4142/
 ```
 
-If the service is started with `GEM_CHAT_RECORD_MANAGER_HOST=0.0.0.0`, devices
-on the same trusted Wi-Fi can open it through the computer LAN IP, for example:
+### 启动普通 Gemini CLI
+
+使用桌面：
 
 ```text
-http://192.168.101.8:4144/
+C:\Users\yx\Desktop\gemini-start.cmd
 ```
 
-See `docs/gem-chat-record-manager.md` for the data rules and UI behavior.
+这个启动器不再加载 Telegram 云端记忆。
+
+## 记忆系统
+
+Telegram 记忆的当前流程：
+
+1. Telegram 聊天写入 `bridge-state/chats/`
+2. Telegram bridge 在完成 10 轮对话并空闲 2 分钟后触发摄取
+3. `memory-ingest.cjs --source telegram --chat-id <id>` 生成小摘要
+4. 小摘要积累到阈值后合并为大摘要
+5. `shared-memory-sync.cjs` 编译可读记忆
+6. 编译结果写入 `bridge-workspace/INDEPENDENT_MEMORY.md`
+7. Telegram bridge 构造 prompt 时读取这份记忆
+
+`GEMINI.md` 仍然是手动维护的人格层，自动摘要不能改写它。
+
+## 主要文件
+
+| 文件 | 用途 |
+| --- | --- |
+| `telegram-gem-bridge.cjs` | Telegram 主桥接程序 |
+| `memory-ingest.cjs` | Telegram 聊天摘要摄取 |
+| `shared-memory-sync.cjs` | Telegram 可读记忆编译 |
+| `independent-memory-store.cjs` | 文件型独立记忆存储 |
+| `independent-memory-manager.cjs` | 本地记忆管理 Web 服务 |
+| `cloud-memory-client.cjs` | 云端记忆 API 客户端 |
+| `gemini-cli-openai-bridge.cjs` | OpenAI 兼容接口桥接 |
+| `telegram-mcp-fixed.cjs` | Telegram MCP 服务端 |
+
+## 维护规则
+
+- 不要把 `memory-ingest.cjs` 加回普通 Gemini CLI 启动链
+- 不要恢复 `memory-ingest.cjs --source cli`
+- 不要把 `INDEPENDENT_MEMORY.md` 同步到 `C:\Users\yx\gemini-test`
+- 不要重新添加带记忆的 Gemini CLI 启动器
+- 如果以后普通 Gemini CLI 也需要记忆，另建独立系统，不复用 Telegram 云端记忆
+
+更多细节见 `MEMORY_SYSTEM_OVERVIEW.md` 和 `MAINTAINER_GUARDRAILS.md`。
+
+## 验证命令
+
+```cmd
+node --check memory-ingest.cjs
+node --check shared-memory-sync.cjs
+node --check telegram-gem-bridge.cjs
+node --check independent-memory-manager.cjs
+node memory-ingest.cjs --source cli
+node memory-ingest.cjs --source telegram
+node shared-memory-sync.cjs
+```
+
+预期：
+
+- 语法检查通过
+- `--source cli` 明确报错
+- `--source telegram` 正常完成
+- `shared-memory-sync.cjs` 只写入 Telegram 工作区

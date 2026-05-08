@@ -101,8 +101,8 @@ async function readJsonBody(req) {
 
 async function rebuildReadableMemory() {
   // The manager edits the independent memory source of truth, so every write
-  // must refresh the model-readable compiled files immediately. This keeps the
-  // Telegram and CLI entry points consistent without touching GEMINI.md.
+  // must refresh the model-readable compiled files immediately. 现在只刷新
+  // Telegram 工作区；普通 Gemini CLI 不再接入这套云端记忆。
   try {
     return await syncSharedMemory();
   } catch (error) {
