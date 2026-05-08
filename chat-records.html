@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gem 聊天记录面板入口</title>
+    <title>Telegram 聊天记录面板</title>
     <style>
         :root {
             --bg: #f5f6f1;
@@ -162,6 +162,19 @@
             .grid {
                 grid-template-columns: 1fr;
             }
+
+            h1 {
+                font-size: 34px;
+            }
+
+            .actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -169,44 +182,44 @@
     <main class="shell">
         <section class="panel">
             <div class="topbar">
-                <div class="eyebrow">Gem Chat Records</div>
+                <div class="eyebrow">Telegram Chat Records</div>
                 <a class="button" href="index.html">返回首页</a>
             </div>
-            <h1>聊天记录面板入口</h1>
+            <h1>Telegram 聊天记录面板</h1>
             <p class="lead">
-                这里是你网页里的可见入口。真正的聊天记录仍然保存在电脑本地，所以要先启动本地 agent，
-                然后从这里打开本机面板来查看、删除、归档 Telegram/Gem CLI 记录。
+                这里会直接打开域名下面的聊天记录面板。真实聊天记录仍然保存在你的电脑本地，
+                手机访问时会通过域名路径转发到本地 agent。
             </p>
             <div class="actions" style="margin-top: 22px;">
-                <a class="button primary" href="http://127.0.0.1:4144/" target="_blank" rel="noopener">打开本机聊天记录面板</a>
+                <a class="button primary" href="/chat-records-live/">打开聊天记录面板</a>
                 <a class="button" href="tools/gemini-cli-telegram/docs/gem-chat-record-manager.md">查看说明文档</a>
-                <a class="button" href="bridge-tools.html">查看工具桥</a>
+                <a class="button" href="bridge-tools.html">查看工具箱</a>
             </div>
         </section>
 
         <section class="grid">
             <article class="card">
                 <strong>先启动本地 agent</strong>
-                <p>在电脑上运行启动脚本，网页才能读到本地聊天 JSON。</p>
+                <p>电脑上需要运行聊天记录面板服务，网页才能读到 Telegram 聊天 JSON。</p>
                 <span class="code">tools\gemini-cli-telegram\start-gem-chat-record-manager.cmd</span>
             </article>
             <article class="card">
-                <strong>再打开面板</strong>
-                <p>本机浏览器打开这个地址，才能进行查看、删除、归档和手机预览。</p>
-                <span class="code">http://127.0.0.1:4144/</span>
+                <strong>保持公网转发</strong>
+                <p>手机打开域名路径时，会转到你电脑上的本地面板。</p>
+                <span class="code">/chat-records-live/</span>
             </article>
             <article class="card">
-                <strong>不会上传私密记录</strong>
-                <p>GitHub/Vercel 只保存入口和源码，不保存你的真实聊天记录、token 或运行日志。</p>
+                <strong>不保存到 Vercel</strong>
+                <p>Vercel 只保存网页和转发规则，不保存你的真实聊天记录、token 或运行日志。</p>
                 <span class="code">bridge-state/ 不提交</span>
             </article>
         </section>
 
         <section class="panel notice">
-            <h2>为什么不能直接在 Vercel 页面里显示记录？</h2>
+            <h2>当前访问方式</h2>
             <p>
-                Vercel 服务器访问不到你电脑里的 <span class="code">bridge-state\chats</span>。
-                所以这个页面负责做入口和说明；真正的数据面板由你电脑上的本地 agent 提供。
+                域名下面的 <span class="code">/chat-records-live/</span> 会转发到你电脑上的本地 agent。
+                关闭电脑、agent 或公网转发后，手机端就会打不开。这个路径目前没有登录验证，请不要发给不该看到的人。
             </p>
         </section>
     </main>

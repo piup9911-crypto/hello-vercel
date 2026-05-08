@@ -67,8 +67,16 @@ Then open the computer LAN address, for example:
 http://192.168.101.8:4144
 ```
 
-Do not expose this panel to the public internet without authentication. It can
-delete local chat records.
+The current Vercel site also exposes a no-login live path:
+
+```text
+https://naginoumi.com/chat-records-live/
+```
+
+That path is a reverse proxy to the local panel through the current public
+tunnel. The computer, local agent, and tunnel must stay running. This path has
+no authentication, so do not share it with anyone who should not see or edit the
+records.
 
 The panel provides:
 
@@ -138,14 +146,28 @@ memory-docs\generated\independent-memory.md
 Deleting a chat record only changes what the bridge can use as local chat
 context. It does not erase long-term memory.
 
+## Domain Live Path
+
+The public domain does not store chat records. It only forwards requests:
+
+```text
+naginoumi.com/chat-records-live/ -> public tunnel -> 127.0.0.1:4144
+```
+
+Vercel rewrites are configured in:
+
+```text
+vercel.json
+```
+
+If the temporary tunnel URL changes, update the `/chat-records-live` rewrite
+destination in `vercel.json` and redeploy the site.
+
 ## Future Cloud Version
 
-The local manager is designed so it can later sit behind a tunnel such as
-Cloudflare Tunnel. A future cloud version can add:
+A later cloud version can add:
 
 - Manual upload from local JSON to cloud storage.
 - Manual apply from cloud storage back to local JSON.
 - A public URL protected by a write token.
 - A diff preview before applying cloud edits locally.
-
-For the first version, public forwarding is intentionally left disabled.

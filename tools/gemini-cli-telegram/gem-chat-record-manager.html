@@ -856,6 +856,10 @@
         return json;
       }
 
+      const API_BASE = window.location.pathname.startsWith("/chat-records-live")
+        ? "/chat-records-live"
+        : "";
+
       function renderChats() {
         if (state.chats.length === 0) {
           chatList.innerHTML = '<p class="empty">还没有找到聊天 JSON。</p>';
@@ -1129,7 +1133,7 @@
       }
 
       async function loadChats() {
-        const data = await fetchJson("/api/chats");
+        const data = await fetchJson(`${API_BASE}/api/chats`);
         state.chats = data.chats;
         if (!state.currentWindow && state.chats[0]) {
           state.currentWindow = state.chats[0];
@@ -1146,12 +1150,12 @@
 
       function windowUrl(chat) {
         if (chat.kind === "telegram") {
-          return `/api/telegram/${encodeURIComponent(chat.chatId)}`;
+          return `${API_BASE}/api/telegram/${encodeURIComponent(chat.chatId)}`;
         }
         if (chat.kind === "archive") {
-          return `/api/archives/${encodeURIComponent(chat.chatId)}/${encodeURIComponent(chat.archiveId)}`;
+          return `${API_BASE}/api/archives/${encodeURIComponent(chat.chatId)}/${encodeURIComponent(chat.archiveId)}`;
         }
-        return `/api/chats/${encodeURIComponent(chat.chatId)}`;
+        return `${API_BASE}/api/chats/${encodeURIComponent(chat.chatId)}`;
       }
 
       async function loadWindow(chat) {
@@ -1173,12 +1177,12 @@
       function mutationUrl(action) {
         if (!state.currentWindow) return "";
         if (state.currentWindow.kind === "telegram") {
-          return `/api/telegram/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
+          return `${API_BASE}/api/telegram/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
         }
         if (state.currentWindow.kind === "archive") {
-          return `/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/${action}`;
+          return `${API_BASE}/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/${action}`;
         }
-        return `/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
+        return `${API_BASE}/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/${action}`;
       }
 
       async function deleteMessages() {
@@ -1212,7 +1216,7 @@
         }
         setFeedback("归档当前窗口中...");
         await fetchJson(
-          `/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/archive-window`,
+          `${API_BASE}/api/chats/${encodeURIComponent(state.currentWindow.chatId)}/archive-window`,
           { method: "POST" }
         );
         state.currentWindow = null;
@@ -1225,7 +1229,7 @@
         if (!confirm("确定永久删除这个归档窗口吗？")) return;
         setFeedback("删除归档窗口中...");
         await fetchJson(
-          `/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/delete-window`,
+          `${API_BASE}/api/archives/${encodeURIComponent(state.currentWindow.chatId)}/${encodeURIComponent(state.currentWindow.archiveId)}/delete-window`,
           { method: "POST" }
         );
         state.currentWindow = null;
