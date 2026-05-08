@@ -376,10 +376,7 @@ async function handleChats(req, res) {
   }
 
   const chats = [
-    ...Array.from(activeChatIds).map((chatId) => summarizeTelegramWindow(chatId)),
-    ...listArchiveFiles()
-      .map((filePath) => summarizeState(filePath, "archive"))
-      .filter((chat) => chat.sourceGroup !== "telegram")
+    ...Array.from(activeChatIds).map((chatId) => summarizeTelegramWindow(chatId))
   ].sort((a, b) => {
     return parseTime(b.latestAt || b.updatedAt) - parseTime(a.latestAt || a.updatedAt);
   });

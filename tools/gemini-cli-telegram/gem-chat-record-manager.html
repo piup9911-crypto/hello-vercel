@@ -863,12 +863,6 @@
         }
 
         const telegramChats = state.chats.filter((chat) => chat.kind === "telegram");
-        const gemCliArchives = state.chats.filter(
-          (chat) => chat.kind === "archive" && chat.sourceGroup === "gem-cli"
-        );
-        const otherArchives = state.chats.filter(
-          (chat) => chat.kind === "archive" && chat.sourceGroup !== "gem-cli"
-        );
         const renderGroup = (title, chats) => {
           if (chats.length === 0) return "";
           return `
@@ -901,9 +895,7 @@
         };
 
         chatList.innerHTML =
-          renderGroup("Telegram", telegramChats) +
-          renderGroup("Gem CLI 归档", gemCliArchives) +
-          renderGroup("其他归档", otherArchives);
+          renderGroup("Telegram", telegramChats);
 
         chatList.querySelectorAll("button[data-window-id]").forEach((button) => {
           button.addEventListener("click", () => {

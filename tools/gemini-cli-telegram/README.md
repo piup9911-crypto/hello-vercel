@@ -16,8 +16,11 @@ runtime unless explicitly imported by the website.
 - `independent-memory-store.cjs`: file-backed memory record storage.
 - `independent-memory-manager.cjs` and `.html`: local memory editor.
 - `gem-chat-record-manager.cjs` and `.html`: local Gem bridge chat record
-  manager for Telegram/Gemini CLI context review, deletion, archive viewing,
+  manager for Telegram context review, deletion, archive viewing,
   phone preview, and scroll-date navigation.
+- `scripts/import-gemini-session-archives.cjs`: imports old Telegram bridge
+  Gemini session records into the local Telegram archive display. It
+  intentionally ignores non-Telegram Gemini CLI session folders.
 - `shared-memory-sync.cjs`: compiles readable memory into `INDEPENDENT_MEMORY.md`
   for CLI and Telegram workspaces.
 - `legacy-cloud-memory-migration.cjs`: one-time migration from the old cloud

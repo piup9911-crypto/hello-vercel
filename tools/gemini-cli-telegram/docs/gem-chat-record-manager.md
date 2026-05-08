@@ -12,7 +12,7 @@ The manager exists for two jobs:
   thinking text, or corrupted message should stop affecting the model.
 - Archive a whole chat window, similar to the ChatGPT left sidebar archive
   behavior.
-- Separate Telegram bridge display records from Gemini CLI session archives.
+- Keep the panel focused on Telegram bridge display records only.
 - Preview the mobile layout on desktop when a phone cannot reach the LAN page.
 
 ## Scope
@@ -29,9 +29,8 @@ Archived windows:
 bridge-state\chat-archives\<chatId>\archive-YYYYMMDD-HHMMSS.json
 ```
 
-Imported Gemini CLI sessions can also appear as archived windows. Telegram
-bridge sessions are merged into the Telegram display window; Gemini CLI-only
-sessions stay under the Gem CLI archive group.
+Imported Telegram bridge sessions are merged into the Telegram display window.
+Gemini CLI-only session folders are intentionally ignored.
 
 Out of scope for this version:
 
@@ -76,7 +75,6 @@ The panel provides:
 - A ChatGPT-style left chat list.
 - A Telegram current display window that merges current Telegram bridge records
   with old Telegram bridge sessions.
-- A Gem CLI archive group for local CLI session records.
 - Full message display for the selected chat.
 - Date dividers between messages.
 - A Xiaomi-gallery-style floating date rail that appears while scrolling.
