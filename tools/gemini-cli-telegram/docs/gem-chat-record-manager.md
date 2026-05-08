@@ -146,6 +146,39 @@ memory-docs\generated\independent-memory.md
 Deleting a chat record only changes what the bridge can use as local chat
 context. It does not erase long-term memory.
 
+## Thought Block Cleanup
+
+The local cleanup script removes leaked assistant thinking text from the records
+used by this panel and by Gem bridge context. It does not call Telegram delete
+APIs, so Telegram app messages are not removed.
+
+Preview first:
+
+```powershell
+.\clean-telegram-thought-blocks-preview.cmd
+```
+
+Apply cleanup:
+
+```powershell
+.\clean-telegram-thought-blocks-apply.cmd
+```
+
+The script backs up changed JSON files under:
+
+```text
+bridge-state\thought-cleanup-backups\
+```
+
+It only edits assistant records. It removes obvious `[Thought: true]` prefixes,
+pure assistant thinking messages, long English reasoning blocks, and broken
+artifact blocks that do not look like normal dialogue. When active local chat
+records are changed, `sessionId` is reset so the next Gem bridge reply starts
+from the cleaned local context instead of resuming an old cached session.
+
+New assistant replies are also cleaned before they are saved into local JSON.
+That record cleanup does not change the Telegram message that was sent.
+
 ## Domain Live Path
 
 The public domain does not store chat records. It only forwards requests:

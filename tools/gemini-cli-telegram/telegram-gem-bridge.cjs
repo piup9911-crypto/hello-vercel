@@ -58,8 +58,14 @@ const GEMINI_BUNDLE_PATH = path.join(
 const requireFromTelegramPackage = (name) =>
   require(path.join(TELEGRAM_PACKAGE_ROOT, "node_modules", name));
 
-const MAX_HISTORY_MESSAGES = 20;
-const MAX_HISTORY_CHARS = 12000;
+const MAX_HISTORY_MESSAGES = Number.parseInt(
+  process.env.BRIDGE_PROMPT_HISTORY_MESSAGES || "260",
+  10
+);
+const MAX_HISTORY_CHARS = Number.parseInt(
+  process.env.BRIDGE_PROMPT_HISTORY_CHARS || "500000",
+  10
+);
 const DEFAULT_QUALITY_MODEL =
   process.env.BRIDGE_GEMINI_MODEL_QUALITY ||
   process.env.BRIDGE_GEMINI_MODEL ||
@@ -100,11 +106,7 @@ const MEMORY_INGEST_TURN_THRESHOLD = Math.max(
   Number.parseInt(process.env.BRIDGE_MEMORY_INGEST_TURN_THRESHOLD || "10", 10) ||
     10
 );
-const MEMORY_HISTORY_RETAIN_MESSAGES = Math.max(
-  60,
-  Number.parseInt(process.env.BRIDGE_MEMORY_HISTORY_RETAIN_MESSAGES || "180", 10) ||
-    180
-);
+const MEMORY_HISTORY_RETAIN_MESSAGES = Number.POSITIVE_INFINITY;
 const STREAM_PREVIEW_UPDATE_MS = Math.max(
   250,
   Number.parseInt(process.env.BRIDGE_STREAM_PREVIEW_UPDATE_MS || "900", 10) || 900
@@ -607,7 +609,12 @@ function formatRecentChatContext(history) {
       continue;
     }
     const role = item.role === "assistant" ? "Assistant" : "User";
-    const content = String(item.content).replace(/\r\n/g, "\n").trim();
+    const rawContent = String(item.content).replace(/\r\n/g, "\n").trim();
+    const content =
+      item.role === "assistant"
+        ? getDeliverableReplyText(splitNativeThinkingAndReply(rawContent)) ||
+          sanitizeAssistantReply(rawContent)
+        : rawContent;
     if (!content) {
       continue;
     }
@@ -632,6 +639,52 @@ function formatRecentChatContext(history) {
     "- Use this only to preserve conversational continuity, tone, and references.",
     "- The final User message below is the one to answer now."
   ];
+}
+
+function looksLikeBridgeOrCliArtifact(text) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n").trim();
+  if (!normalized) {
+    return false;
+  }
+  return [
+    "Bridge output contract:",
+    "After TELEGRAM_FINAL_REPLY:",
+    "User message:\n",
+    "Read the full task from stdin and answer it.",
+    "Error authenticating:",
+    "Error generating content via API.",
+    "An unexpected critical error occurred:",
+    "[API Error:",
+    "input token count exceeds the maximum number of tokens allowed",
+    "No capacity available for model",
+    "Full report available at:"
+  ].some((needle) => normalized.includes(needle));
+}
+
+function formatUserVisibleBridgeError(error) {
+  const message = error && error.message ? error.message : String(error || "");
+  if (/No capacity available for model|rateLimitExceeded|RetryableQuotaError/i.test(message)) {
+    return [
+      "桥接出错了：Gemini 3.1 Pro 这轮上游容量不足。",
+      "",
+      "本地聊天记录没有被污染；桥接已经拦住了报错残片。可以稍等一会儿再发，或临时切到 fast 模型。"
+    ].join("\n");
+  }
+  if (/input token count exceeds the maximum number of tokens allowed/i.test(message)) {
+    return [
+      "桥接出错了：这轮上下文超过了 Gemini 的输入上限。",
+      "",
+      "本地完整记录还在，只是这次喂给模型的窗口太大，需要把单轮注入窗口调小一点。"
+    ].join("\n");
+  }
+  if (/ECONNREFUSED 127\.0\.0\.1:10808|tunneling socket|ECONNRESET|Premature close/i.test(message)) {
+    return [
+      "桥接出错了：这轮网络或代理连接断了一下。",
+      "",
+      "本地聊天记录没有被裁掉，可以等代理恢复后再试。"
+    ].join("\n");
+  }
+  return `桥接出错了：\n${message.slice(0, 900)}`;
 }
 
 function buildTurnPrompt(latestUserMessage, options) {
@@ -1213,6 +1266,102 @@ function stripThoughtMarkers(text) {
   return String(text || "")
     .replace(/\[(?:Thought|Thinking):\s*(?:true|ture)\]/gi, "")
     .trim();
+}
+
+function countEnglishWordsForRecordCleanup(text) {
+  return (String(text || "").match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+}
+
+function countChineseCharsForRecordCleanup(text) {
+  return (String(text || "").match(/[\u3400-\u9fff]/g) || []).length;
+}
+
+function looksLikeRecordThoughtBlock(text) {
+  const value = String(text || "");
+  const lower = value.toLowerCase();
+  const englishWords = countEnglishWordsForRecordCleanup(value);
+  if (englishWords < 30) {
+    return false;
+  }
+  const keywordHits = [
+    "analyzing",
+    "interpreting",
+    "formulating",
+    "crafting",
+    "strategy",
+    "goal",
+    "persona",
+    "user's message",
+    "my response",
+    "i need to",
+    "i will",
+    "the user",
+    "response strategy",
+    "plan of action",
+    "thought",
+    "reasoning"
+  ].filter((word) => lower.includes(word)).length;
+  const mostlyEnglish =
+    englishWords >= 45 && countChineseCharsForRecordCleanup(value) <= 20;
+  const markdownThoughtHeading =
+    /^\s*(?:[-*]\s*)?\*\*[A-Z][^*\n]{4,80}\*\*/.test(value);
+  return keywordHits >= 2 || (markdownThoughtHeading && mostlyEnglish);
+}
+
+function findRecordReplyStartAfterThoughtMarker(text) {
+  const value = String(text || "");
+  const paragraphMatch = value.match(/(?:^|\n\s*\n|\n)\s*(?=[（\u3400-\u9fff])/);
+  if (paragraphMatch && typeof paragraphMatch.index === "number") {
+    return paragraphMatch.index + paragraphMatch[0].length;
+  }
+  const charMatch = value.match(/[（\u3400-\u9fff]/);
+  if (charMatch && typeof charMatch.index === "number") {
+    return charMatch.index;
+  }
+  return -1;
+}
+
+function cleanAssistantRecordText(text) {
+  let value = String(text || "").replace(/\r\n/g, "\n");
+  const original = value;
+  const markerRegex = /\[(?:Thought|Thinking)\s*:\s*(?:true|ture)\]/gi;
+  const markerMatches = Array.from(value.matchAll(markerRegex));
+  if (markerMatches.length > 0) {
+    const last = markerMatches[markerMatches.length - 1];
+    const markerEnd = (last.index || 0) + last[0].length;
+    const tail = value.slice(markerEnd);
+    const replyStart = findRecordReplyStartAfterThoughtMarker(tail);
+    if (replyStart >= 0) {
+      const kept = tail.slice(replyStart).trim();
+      if (kept) {
+        value = kept;
+      }
+    } else {
+      value = value.replace(markerRegex, "").trim();
+    }
+  }
+
+  const firstReplyChar = value.search(/[（\u3400-\u9fff]/);
+  if (firstReplyChar > 0) {
+    const prefix = value.slice(0, firstReplyChar);
+    if (looksLikeRecordThoughtBlock(prefix)) {
+      value = value.slice(firstReplyChar).trim();
+    }
+  }
+
+  const blocks = value.split(/\n{2,}/);
+  value = blocks
+    .filter((block) => !looksLikeRecordThoughtBlock(block.trim()))
+    .join("\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (
+    !value &&
+    /\[(?:Thought|Thinking)\s*:\s*(?:true|ture)\]/i.test(original)
+  ) {
+    return "";
+  }
+  return value || String(text || "").trim();
 }
 
 function splitExplicitFinalReplyMarker(text) {
@@ -1800,6 +1949,20 @@ function callGeminiStream(prompt, sessionId, modelId, onReplyPreview) {
       const textParts = buildStreamTextParts();
       const text = getDeliverableReplyText(textParts);
       if (!text.trim()) {
+        return false;
+      }
+      if (
+        looksLikeBridgeOrCliArtifact(text) ||
+        looksLikeBridgeOrCliArtifact(textParts.rawText) ||
+        looksLikeBridgeOrCliArtifact(stderr)
+      ) {
+        log("discarded partial output because it looks like a bridge or CLI artifact", {
+          model: modelId,
+          sessionId: latestSessionId,
+          reason,
+          responsePreview: text.slice(0, 120),
+          stderrPreview: stderr.trim().slice(0, 120)
+        });
         return false;
       }
       log("gemini stream call returned partial output", {
@@ -3067,12 +3230,22 @@ async function handleTelegramMessage(bot, msg) {
       state.modelMode = diskState.modelMode;
       state.customModel = diskState.customModel;
 
+      const assistantRecordText =
+        cleanAssistantRecordText(result.text) || "（思考块已清理）";
+      if (assistantRecordText !== result.text) {
+        log("cleaned assistant text before saving local record", {
+          chatId,
+          originalLength: result.text.length,
+          cleanedLength: assistantRecordText.length
+        });
+      }
+
       state.sessionId = result.sessionId || state.sessionId;
       state.lastUserMessage = messageText;
-      state.lastAssistantMessage = result.text;
+      state.lastAssistantMessage = assistantRecordText;
       state.history.push({
         role: "assistant",
-        content: result.text,
+        content: assistantRecordText,
         at: new Date().toISOString()
       });
       // Count completed dialogue turns here, after the assistant reply exists.
@@ -3156,22 +3329,20 @@ async function handleTelegramMessage(bot, msg) {
         chatId,
         error: error.message
       });
+      const visibleError = formatUserVisibleBridgeError(error);
       if (streamMessageId) {
         // [BUG-T4 FIX] 错误消息统一中文
         await editMessageWithTimeout(
           bot,
           chatId,
           streamMessageId,
-          escapeHtml(`桥接出错了：\n${error.message.slice(0, 3000)}`),
+          escapeHtml(visibleError),
           {
             parse_mode: "HTML"
           }
         ).catch(() => {});
       } else {
-        await bot.sendMessage(
-          chatId,
-          `桥接出错了：\n${error.message.slice(0, 3000)}`
-        );
+        await bot.sendMessage(chatId, visibleError);
       }
     } finally {
       clearInterval(typingTimer);
