@@ -111,7 +111,7 @@ const STREAM_PREVIEW_UPDATE_MS = Math.max(
 );
 const SHARED_MEMORY_PAGE_URL =
   process.env.SHARED_MEMORY_PAGE_URL ||
-  "https://hello-vercel-blush-eight.vercel.app/memory.html";
+  "https://www.naginoumi.com/memory.html";
 const COMMAND_PREFIXES = [
   "/start",
   "/menu",

@@ -39,7 +39,7 @@
 把这些值写到 `bridge.env`：
 
 ```env
-SHARED_MEMORY_URL=https://hello-vercel-blush-eight.vercel.app/api/shared-memory
+SHARED_MEMORY_URL=https://www.naginoumi.com/api/shared-memory
 SHARED_MEMORY_SYNC_TOKEN=replace-this-with-the-same-token-you-set-in-vercel
 ```
 
