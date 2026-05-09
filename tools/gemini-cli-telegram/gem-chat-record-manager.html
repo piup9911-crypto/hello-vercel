@@ -577,6 +577,69 @@
         pointer-events: auto;
       }
 
+      .time-rail.dragging {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .rail-scrub-track {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 28px;
+        z-index: 3;
+        border-radius: 999px;
+        cursor: ns-resize;
+        touch-action: none;
+      }
+
+      .rail-scrub-track::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        right: 11px;
+        bottom: 8px;
+        width: 4px;
+        border-radius: 999px;
+        background: rgba(36, 116, 91, 0.16);
+      }
+
+      .rail-thumb {
+        position: absolute;
+        right: 4px;
+        top: var(--rail-thumb-top, 0%);
+        width: 20px;
+        height: 42px;
+        transform: translateY(-50%);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 8px 20px rgba(31, 38, 35, 0.16);
+      }
+
+      .rail-thumb::before,
+      .rail-thumb::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        width: 0;
+        height: 0;
+        transform: translateX(-50%);
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+      }
+
+      .rail-thumb::before {
+        top: 8px;
+        border-bottom: 6px solid var(--ink);
+      }
+
+      .rail-thumb::after {
+        bottom: 8px;
+        border-top: 6px solid var(--ink);
+      }
+
       .current-time {
         /* 【小白可调】滚动时浮出来的日期气泡。
            right 控制它距离右侧索引条多远。
@@ -585,6 +648,7 @@
            这里按你的要求只显示日期，不显示具体时间。 */
         position: absolute;
         top: 50%;
+        top: var(--current-time-top, 50%);
         right: 72px;
         min-width: 150px;
         transform: translateY(-50%);
@@ -602,6 +666,7 @@
 
       .rail-marks {
         position: relative;
+        z-index: 2;
         height: 100%;
         margin-top: 0;
       }
@@ -718,6 +783,9 @@
           <div id="timeline" class="timeline"></div>
           <aside class="time-rail">
             <div id="currentTime" class="current-time">暂无消息</div>
+            <div id="railScrubTrack" class="rail-scrub-track" aria-label="快速滑动时间线" role="slider" tabindex="0">
+              <div id="railThumb" class="rail-thumb" aria-hidden="true"></div>
+            </div>
             <div id="railMarks" class="rail-marks"></div>
           </aside>
         </section>
@@ -734,7 +802,8 @@
         longPressTimer: null,
         justLongPressed: false,
         railHideTimer: null,
-        activeRailDay: ""
+        activeRailDay: "",
+        railDragging: false
       };
 
       const chatList = document.getElementById("chatList");
@@ -743,6 +812,9 @@
       const feedback = document.getElementById("feedback");
       const timeline = document.getElementById("timeline");
       const currentTime = document.getElementById("currentTime");
+      const timeRail = document.querySelector(".time-rail");
+      const railScrubTrack = document.getElementById("railScrubTrack");
+      const railThumb = document.getElementById("railThumb");
       const railMarks = document.getElementById("railMarks");
       const phonePreviewButton = document.getElementById("phonePreviewButton");
       const refreshButton = document.getElementById("refreshButton");
@@ -1044,6 +1116,7 @@
       function renderRail() {
         if (state.messages.length === 0) {
           railMarks.innerHTML = "";
+          setRailPosition(0);
           return;
         }
         const firstByDay = new Map();
@@ -1093,11 +1166,59 @@
       }
 
       function showTimeRail() {
-        document.querySelector(".time-rail").classList.add("visible");
+        timeRail.classList.add("visible");
         clearTimeout(state.railHideTimer);
         state.railHideTimer = setTimeout(() => {
-          document.querySelector(".time-rail").classList.remove("visible");
+          if (!state.railDragging) {
+            timeRail.classList.remove("visible");
+          }
         }, 1300);
+      }
+
+      function setRailPosition(percent) {
+        const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+        const bubbleTop = Math.max(8, Math.min(92, clamped));
+        timeRail.style.setProperty("--rail-thumb-top", `${clamped}%`);
+        timeRail.style.setProperty("--current-time-top", `${bubbleTop}%`);
+        if (railScrubTrack) {
+          railScrubTrack.setAttribute("aria-valuemin", "0");
+          railScrubTrack.setAttribute("aria-valuemax", "100");
+          railScrubTrack.setAttribute("aria-valuenow", String(Math.round(clamped)));
+        }
+      }
+
+      function messagePercentById(messageId) {
+        const index = state.messages.findIndex((message) => message.id === messageId);
+        if (index < 0 || state.messages.length <= 1) return 0;
+        return (index / (state.messages.length - 1)) * 100;
+      }
+
+      function jumpToRailPercent(percent, behavior = "auto") {
+        if (state.messages.length === 0) return;
+        const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+        const index =
+          state.messages.length === 1
+            ? 0
+            : Math.round((clamped / 100) * (state.messages.length - 1));
+        const message = state.messages[index];
+        if (!message) return;
+        setRailPosition(clamped);
+        state.activeRailDay = dayKey(message.at);
+        currentTime.textContent = formatFloatingDay(message.at);
+        railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
+          mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
+        });
+        document
+          .getElementById(`msg-${message.id}`)
+          ?.scrollIntoView({ block: "center", behavior });
+        showTimeRail();
+      }
+
+      function jumpToRailPointer(event) {
+        const rect = railScrubTrack.getBoundingClientRect();
+        if (!rect.height) return;
+        const percent = ((event.clientY - rect.top) / rect.height) * 100;
+        jumpToRailPercent(percent, "auto");
       }
 
       function updateCurrentTime() {
@@ -1115,6 +1236,7 @@
         });
         state.activeRailDay = dayKey(best.dataset.at);
         currentTime.textContent = formatFloatingDay(best.dataset.at);
+        setRailPosition(messagePercentById(best.dataset.messageId));
         railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
           mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
         });
@@ -1262,6 +1384,50 @@
         updateCurrentTime();
         showTimeRail();
       }, { passive: true });
+      railScrubTrack.addEventListener("pointerdown", (event) => {
+        if (state.messages.length === 0) return;
+        state.railDragging = true;
+        timeRail.classList.add("dragging", "visible");
+        railScrubTrack.setPointerCapture(event.pointerId);
+        jumpToRailPointer(event);
+        event.preventDefault();
+      });
+      railScrubTrack.addEventListener("pointermove", (event) => {
+        if (!state.railDragging) return;
+        jumpToRailPointer(event);
+        event.preventDefault();
+      });
+      railScrubTrack.addEventListener("pointerup", (event) => {
+        state.railDragging = false;
+        timeRail.classList.remove("dragging");
+        railScrubTrack.releasePointerCapture(event.pointerId);
+        showTimeRail();
+      });
+      railScrubTrack.addEventListener("pointercancel", () => {
+        state.railDragging = false;
+        timeRail.classList.remove("dragging");
+        showTimeRail();
+      });
+      railScrubTrack.addEventListener("keydown", (event) => {
+        if (state.messages.length === 0) return;
+        const current = Number(railScrubTrack.getAttribute("aria-valuenow") || 0);
+        if (event.key === "ArrowUp") {
+          jumpToRailPercent(current - 3, "smooth");
+          event.preventDefault();
+        }
+        if (event.key === "ArrowDown") {
+          jumpToRailPercent(current + 3, "smooth");
+          event.preventDefault();
+        }
+        if (event.key === "Home") {
+          jumpToRailPercent(0, "smooth");
+          event.preventDefault();
+        }
+        if (event.key === "End") {
+          jumpToRailPercent(100, "smooth");
+          event.preventDefault();
+        }
+      });
       document.addEventListener("click", (event) => {
         if (!state.selectMode) return;
         if (event.target.closest(".message")) return;
