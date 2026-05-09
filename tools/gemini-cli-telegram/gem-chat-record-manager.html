@@ -29,10 +29,6 @@
         font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
       }
 
-      body.phone-preview {
-        background: #dfe3dc;
-      }
-
       .app {
         display: grid;
         /* 【小白可调】整个页面分成两列：
@@ -43,70 +39,6 @@
            注意：左侧越宽，右侧聊天气泡区域就越窄。 */
         grid-template-columns: 260px minmax(0, 1fr);
         min-height: 100vh;
-      }
-
-      body.phone-preview .app {
-        /* 【小白可调】电脑上的手机预览模式。
-           430px 是手机预览框宽度，860px 是手机预览框高度。
-           这个模式只改变电脑预览外观，不会影响聊天记录数据。 */
-        width: min(430px, calc(100vw - 24px));
-        height: min(860px, calc(100vh - 24px));
-        min-height: 0;
-        margin: 12px auto;
-        overflow: hidden;
-        border: 1px solid rgba(45, 50, 46, 0.18);
-        border-radius: 24px;
-        background: var(--bg);
-        box-shadow: 0 24px 60px rgba(31, 38, 35, 0.22);
-      }
-
-      body.phone-preview .sidebar {
-        display: none;
-      }
-
-      body.phone-preview .app {
-        grid-template-columns: 1fr;
-      }
-
-      body.phone-preview .topbar {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 10px;
-        padding: 12px 14px;
-      }
-
-      body.phone-preview .actions {
-        justify-content: flex-start;
-      }
-
-      body.phone-preview button {
-        min-height: 32px;
-        padding: 0 9px;
-        font-size: 12px;
-      }
-
-      body.phone-preview .message {
-        grid-template-columns: 32px 6px minmax(0, 1fr) 6px 32px;
-        max-width: 100%;
-      }
-
-      body.phone-preview .pixel-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-      }
-
-      body.phone-preview .bubble {
-        max-width: 100%;
-      }
-
-      body.phone-preview .message-head {
-        gap: 6px;
-        font-size: 11px;
-      }
-
-      body.phone-preview .message-body {
-        font-size: 14px;
       }
 
       .sidebar {
@@ -567,8 +499,8 @@
         bottom: 18px;
         width: 92px;
         z-index: 6;
-        opacity: 0;
-        pointer-events: none;
+        opacity: 0.22;
+        pointer-events: auto;
         transition: opacity 0.18s ease;
       }
 
@@ -770,7 +702,6 @@
             <div id="feedback" class="feedback"></div>
           </div>
           <div class="actions">
-            <button id="phonePreviewButton" type="button">手机预览</button>
             <button id="refreshButton" type="button">刷新</button>
             <button id="exportButton" type="button">导出 JSON</button>
             <button id="archiveWindowButton" type="button">归档当前窗口</button>
@@ -816,7 +747,6 @@
       const railScrubTrack = document.getElementById("railScrubTrack");
       const railThumb = document.getElementById("railThumb");
       const railMarks = document.getElementById("railMarks");
-      const phonePreviewButton = document.getElementById("phonePreviewButton");
       const refreshButton = document.getElementById("refreshButton");
       const exportButton = document.getElementById("exportButton");
       const archiveWindowButton = document.getElementById("archiveWindowButton");
@@ -825,16 +755,6 @@
 
       function setFeedback(text) {
         feedback.textContent = text || "";
-      }
-
-      function setPhonePreview(enabled) {
-        document.body.classList.toggle("phone-preview", enabled);
-        phonePreviewButton.textContent = enabled ? "退出手机预览" : "手机预览";
-        localStorage.setItem("gemChatPhonePreview", enabled ? "1" : "0");
-        requestAnimationFrame(() => {
-          updateCurrentTime();
-          showTimeRail();
-        });
       }
 
       function formatDate(value) {
@@ -1172,7 +1092,7 @@
           if (!state.railDragging) {
             timeRail.classList.remove("visible");
           }
-        }, 1300);
+        }, 2500);
       }
 
       function setRailPosition(percent) {
@@ -1187,30 +1107,24 @@
         }
       }
 
-      function messagePercentById(messageId) {
-        const index = state.messages.findIndex((message) => message.id === messageId);
-        if (index < 0 || state.messages.length <= 1) return 0;
-        return (index / (state.messages.length - 1)) * 100;
+      function timelineScrollPercent() {
+        const maxScroll = Math.max(0, timeline.scrollHeight - timeline.clientHeight);
+        if (!maxScroll) return 0;
+        return (timeline.scrollTop / maxScroll) * 100;
       }
 
       function jumpToRailPercent(percent, behavior = "auto") {
         if (state.messages.length === 0) return;
         const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
-        const index =
-          state.messages.length === 1
-            ? 0
-            : Math.round((clamped / 100) * (state.messages.length - 1));
-        const message = state.messages[index];
-        if (!message) return;
+        const maxScroll = Math.max(0, timeline.scrollHeight - timeline.clientHeight);
+        const nextTop = (clamped / 100) * maxScroll;
+        if (behavior === "smooth") {
+          timeline.scrollTo({ top: nextTop, behavior });
+        } else {
+          timeline.scrollTop = nextTop;
+        }
         setRailPosition(clamped);
-        state.activeRailDay = dayKey(message.at);
-        currentTime.textContent = formatFloatingDay(message.at);
-        railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
-          mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
-        });
-        document
-          .getElementById(`msg-${message.id}`)
-          ?.scrollIntoView({ block: "center", behavior });
+        updateCurrentTime();
         showTimeRail();
       }
 
@@ -1236,7 +1150,7 @@
         });
         state.activeRailDay = dayKey(best.dataset.at);
         currentTime.textContent = formatFloatingDay(best.dataset.at);
-        setRailPosition(messagePercentById(best.dataset.messageId));
+        setRailPosition(timelineScrollPercent());
         railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
           mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
         });
@@ -1365,9 +1279,6 @@
       }
 
       refreshButton.addEventListener("click", () => loadChats().catch(reportError));
-      phonePreviewButton.addEventListener("click", () => {
-        setPhonePreview(!document.body.classList.contains("phone-preview"));
-      });
       archiveWindowButton.addEventListener("click", () =>
         archiveCurrentWindow().catch(reportError)
       );
@@ -1381,6 +1292,14 @@
         showTimeRail();
       });
       timeline.addEventListener("wheel", () => {
+        updateCurrentTime();
+        showTimeRail();
+      }, { passive: true });
+      timeline.addEventListener("touchstart", () => {
+        updateCurrentTime();
+        showTimeRail();
+      }, { passive: true });
+      timeline.addEventListener("touchmove", () => {
         updateCurrentTime();
         showTimeRail();
       }, { passive: true });
@@ -1440,7 +1359,6 @@
       }
 
       updateActionButtons();
-      setPhonePreview(localStorage.getItem("gemChatPhonePreview") === "1");
       loadChats().catch(reportError);
     </script>
   </body>
