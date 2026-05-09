@@ -268,14 +268,15 @@
 
       .timeline {
         /* 【小白可调】聊天记录滚动区域。
-           padding: 10px 10px;
+           padding: 10px 110px 10px 10px;
            第一个 10px = 整个聊天列表顶部/底部留白。
-           第二个 10px = 整个聊天列表左边/右边留白。
-           你觉得聊天内容离窗口边缘太远，就把第二个数字改小，比如 6px。 */
+           第二个 110px = 给右侧滑动条预留的宽度，防止挡住气泡。
+           第三个 10px = 底部留白。
+           第四个 10px = 左边留白。
+           你觉得聊天内容离窗口边缘太远，就把最后一个数字改小，比如 6px。 */
         overflow: auto;
         height: 100%;
-        padding: 10px 10px;
-        scroll-behavior: smooth;
+        padding: 10px 110px 10px 10px;
       }
 
       .date-divider {
