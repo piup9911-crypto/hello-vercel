@@ -29,10 +29,6 @@
         font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
       }
 
-      body.phone-preview {
-        background: #dfe3dc;
-      }
-
       .app {
         display: grid;
         /* 【小白可调】整个页面分成两列：
@@ -45,70 +41,6 @@
         min-height: 100vh;
       }
 
-      body.phone-preview .app {
-        /* 【小白可调】电脑上的手机预览模式。
-           430px 是手机预览框宽度，860px 是手机预览框高度。
-           这个模式只改变电脑预览外观，不会影响聊天记录数据。 */
-        width: min(430px, calc(100vw - 24px));
-        height: min(860px, calc(100vh - 24px));
-        min-height: 0;
-        margin: 12px auto;
-        overflow: hidden;
-        border: 1px solid rgba(45, 50, 46, 0.18);
-        border-radius: 24px;
-        background: var(--bg);
-        box-shadow: 0 24px 60px rgba(31, 38, 35, 0.22);
-      }
-
-      body.phone-preview .sidebar {
-        display: none;
-      }
-
-      body.phone-preview .app {
-        grid-template-columns: 1fr;
-      }
-
-      body.phone-preview .topbar {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 10px;
-        padding: 12px 14px;
-      }
-
-      body.phone-preview .actions {
-        justify-content: flex-start;
-      }
-
-      body.phone-preview button {
-        min-height: 32px;
-        padding: 0 9px;
-        font-size: 12px;
-      }
-
-      body.phone-preview .message {
-        grid-template-columns: 32px 6px minmax(0, 1fr) 6px 32px;
-        max-width: 100%;
-      }
-
-      body.phone-preview .pixel-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-      }
-
-      body.phone-preview .bubble {
-        max-width: 100%;
-      }
-
-      body.phone-preview .message-head {
-        gap: 6px;
-        font-size: 11px;
-      }
-
-      body.phone-preview .message-body {
-        font-size: 14px;
-      }
-
       .sidebar {
         /* 【小白可调】左侧菜单栏本身的样式。
            border-right 是右边那条分隔线。
@@ -119,8 +51,19 @@
         padding: 16px 12px;
       }
 
+      .sidebar-backdrop {
+        display: none;
+      }
+
       .brand {
         padding: 8px 10px 16px;
+      }
+
+      .brand-header,
+      .topbar-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
       }
 
       .brand h1 {
@@ -165,6 +108,24 @@
       .chat-button.active {
         border-color: var(--line);
         background: var(--panel);
+      }
+
+      .chat-actions {
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .chat-button.actions-open .chat-actions {
+        display: grid;
+      }
+
+      .chat-action-button {
+        min-height: 30px;
+        width: 100%;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.72);
       }
 
       .chat-title {
@@ -252,6 +213,19 @@
         opacity: 0.5;
       }
 
+      .icon-button {
+        width: 36px;
+        min-width: 36px;
+        padding: 0;
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      .sidebar-toggle,
+      .sidebar-close {
+        display: none;
+      }
+
       .content-shell {
         /* 【小白可调】右侧区域再分成两列：
            minmax(0, 1fr) = 中间聊天记录区域。
@@ -262,6 +236,34 @@
         min-height: 0;
         height: 100%;
         overflow: hidden;
+      }
+
+      .scroll-jump-controls {
+        position: fixed;
+        z-index: 50;
+        right: 14px;
+        top: 56%;
+        display: grid;
+        gap: 8px;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .scroll-jump-controls button {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+        border-color: rgba(36, 116, 91, 0.35);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--accent);
+        box-shadow: 0 8px 18px rgba(31, 38, 35, 0.18);
+        font-size: 16px;
+        font-weight: 700;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
 
       .timeline {
@@ -720,27 +722,123 @@
         text-align: center;
       }
 
-      /* Mobile breakpoint.
-         Below this width, the sidebar stops being a left column and moves above
-         the chat area. Lower this value if you want the left sidebar to stay
-         visible in narrower desktop/in-app browser windows. */
+      /* 手机侧边栏断点。
+         680px 以下时，红框里的窗口列表会变成类似 ChatGPT 的左侧抽屉。
+         默认只显示蓝框里的主聊天界面，点左上角菜单按钮再打开窗口列表。 */
       @media (max-width: 680px) {
         .app {
           grid-template-columns: 1fr;
         }
 
         .sidebar {
-          border-right: 0;
-          border-bottom: 1px solid var(--line);
+          position: fixed;
+          z-index: 30;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: min(84vw, 320px);
+          border-right: 1px solid var(--line);
+          border-bottom: 0;
+          box-shadow: 18px 0 40px rgba(31, 38, 35, 0.18);
+          transform: translateX(-105%);
+          transition: transform 180ms ease;
+          overflow: auto;
+        }
+
+        body.sidebar-open .sidebar {
+          transform: translateX(0);
+        }
+
+        .sidebar-backdrop {
+          position: fixed;
+          z-index: 25;
+          inset: 0;
+          display: block;
+          background: rgba(32, 33, 36, 0.28);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease;
+        }
+
+        body.sidebar-open .sidebar-backdrop {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .sidebar-toggle,
+        .sidebar-close {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .brand-header {
+          justify-content: space-between;
+        }
+
+        .main {
+          min-height: 100vh;
+        }
+
+        .topbar {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 10px;
+          padding: 12px 14px;
+        }
+
+        .topbar-title {
+          width: 100%;
+        }
+
+        .actions {
+          justify-content: flex-start;
+        }
+
+        button {
+          min-height: 32px;
+          padding: 0 9px;
+          font-size: 12px;
         }
 
         .content-shell {
           display: block;
         }
 
+        .message {
+          grid-template-columns: 32px 6px minmax(0, 1fr) 6px 32px;
+          max-width: 100%;
+        }
+
+        .pixel-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+        }
+
+        .bubble {
+          max-width: 100%;
+        }
+
+        .message-head {
+          gap: 6px;
+          font-size: 11px;
+        }
+
+        .message-body {
+          font-size: 14px;
+        }
+
         .time-rail {
           right: 8px;
           width: 76px;
+        }
+
+        .scroll-jump-controls {
+          right: 12px;
         }
 
         .current-time {
@@ -754,33 +852,42 @@
   </head>
   <body>
     <div class="app">
-      <aside class="sidebar">
+      <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+      <aside id="sidebar" class="sidebar" aria-label="聊天窗口列表">
         <div class="brand">
-          <h1>Gem Chat Records</h1>
-          <p>管理 Gem bridge 本地上下文。删除会永久移出当前记录；归档不会喂给模型。</p>
+          <div class="brand-header">
+            <div>
+              <h1>Gem Chat Records</h1>
+              <p>管理 Gem bridge 本地上下文。删除会永久移出当前记录；归档不会喂给模型。</p>
+            </div>
+            <button id="sidebarCloseButton" class="icon-button sidebar-close" type="button" aria-label="关闭侧边栏">×</button>
+          </div>
         </div>
         <div id="chatList" class="chat-list"></div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <div>
-            <h2 id="chatTitle">选择一个聊天</h2>
-            <p id="chatMeta" class="muted"></p>
-            <div id="feedback" class="feedback"></div>
+          <div class="topbar-title">
+            <button id="sidebarToggleButton" class="icon-button sidebar-toggle" type="button" aria-label="打开侧边栏">☰</button>
+            <div>
+              <h2 id="chatTitle">选择一个聊天</h2>
+              <p id="chatMeta" class="muted"></p>
+              <div id="feedback" class="feedback"></div>
+            </div>
           </div>
           <div class="actions">
-            <button id="phonePreviewButton" type="button">手机预览</button>
             <button id="refreshButton" type="button">刷新</button>
-            <button id="exportButton" type="button">导出 JSON</button>
-            <button id="archiveWindowButton" type="button">归档当前窗口</button>
-            <button id="deleteWindowButton" class="danger" type="button">删除归档窗口</button>
             <button id="deleteButton" class="danger" type="button">永久删除选中</button>
           </div>
         </header>
 
         <section class="content-shell">
           <div id="timeline" class="timeline"></div>
+          <div class="scroll-jump-controls" aria-label="快速滚动">
+            <button id="scrollTopButton" type="button" aria-label="回到顶部">↑</button>
+            <button id="scrollBottomButton" type="button" aria-label="回到底部">↓</button>
+          </div>
           <aside class="time-rail">
             <div id="currentTime" class="current-time">暂无消息</div>
             <div id="railScrubTrack" class="rail-scrub-track" aria-label="快速滑动时间线" role="slider" tabindex="0">
@@ -803,7 +910,10 @@
         justLongPressed: false,
         railHideTimer: null,
         activeRailDay: "",
-        railDragging: false
+        railDragging: false,
+        chatActionWindowId: "",
+        chatLongPressTimer: null,
+        justOpenedChatActions: false
       };
 
       const chatList = document.getElementById("chatList");
@@ -816,25 +926,26 @@
       const railScrubTrack = document.getElementById("railScrubTrack");
       const railThumb = document.getElementById("railThumb");
       const railMarks = document.getElementById("railMarks");
-      const phonePreviewButton = document.getElementById("phonePreviewButton");
+      const sidebarToggleButton = document.getElementById("sidebarToggleButton");
+      const sidebarCloseButton = document.getElementById("sidebarCloseButton");
+      const sidebarBackdrop = document.getElementById("sidebarBackdrop");
       const refreshButton = document.getElementById("refreshButton");
-      const exportButton = document.getElementById("exportButton");
-      const archiveWindowButton = document.getElementById("archiveWindowButton");
-      const deleteWindowButton = document.getElementById("deleteWindowButton");
       const deleteButton = document.getElementById("deleteButton");
+      const scrollTopButton = document.getElementById("scrollTopButton");
+      const scrollBottomButton = document.getElementById("scrollBottomButton");
 
       function setFeedback(text) {
         feedback.textContent = text || "";
       }
 
-      function setPhonePreview(enabled) {
-        document.body.classList.toggle("phone-preview", enabled);
-        phonePreviewButton.textContent = enabled ? "退出手机预览" : "手机预览";
-        localStorage.setItem("gemChatPhonePreview", enabled ? "1" : "0");
-        requestAnimationFrame(() => {
-          updateCurrentTime();
-          showTimeRail();
-        });
+      function setSidebarOpen(open) {
+        document.body.classList.toggle("sidebar-open", open);
+        sidebarToggleButton.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      function setChatActionsOpen(windowId) {
+        state.chatActionWindowId = windowId || "";
+        renderChats();
       }
 
       function formatDate(value) {
@@ -950,8 +1061,11 @@
                   chat.windowId === state.currentWindow.windowId
                     ? " active"
                     : "";
+                const actionsOpen = state.chatActionWindowId === chat.windowId;
+                const canArchive = chat.kind === "active" && chat.activeCount > 0;
+                const canDeleteArchive = chat.kind === "archive";
             return `
-              <button class="chat-button${active}" type="button" data-window-id="${escapeText(chat.windowId)}">
+              <div class="chat-button${active}${actionsOpen ? " actions-open" : ""}" role="button" tabindex="0" data-window-id="${escapeText(chat.windowId)}">
                 <div class="chat-title">
                   <span>${escapeText(chat.title)}</span>
                   <span class="pill">${chat.activeCount}</span>
@@ -963,7 +1077,12 @@
                     ? "Telegram 当前总窗口"
                     : `${escapeText(chat.sourceLabel || "归档窗口")} / 归档`
                 }</p>
-              </button>
+                <div class="chat-actions">
+                  <button class="chat-action-button" type="button" data-chat-action="export" data-window-id="${escapeText(chat.windowId)}">导出 JSON</button>
+                  <button class="chat-action-button" type="button" data-chat-action="archive" data-window-id="${escapeText(chat.windowId)}" ${canArchive ? "" : "disabled"}>归档当前窗口</button>
+                  <button class="chat-action-button danger" type="button" data-chat-action="deleteArchive" data-window-id="${escapeText(chat.windowId)}" ${canDeleteArchive ? "" : "disabled"}>删除归档窗口</button>
+                </div>
+              </div>
             `;
               })
               .join("")}
@@ -973,12 +1092,49 @@
         chatList.innerHTML =
           renderGroup("Telegram", telegramChats);
 
-        chatList.querySelectorAll("button[data-window-id]").forEach((button) => {
-          button.addEventListener("click", () => {
+        chatList.querySelectorAll(".chat-button[data-window-id]").forEach((button) => {
+          const openActions = () => {
+            state.justOpenedChatActions = true;
+            setChatActionsOpen(button.dataset.windowId);
+            window.setTimeout(() => {
+              state.justOpenedChatActions = false;
+            }, 0);
+          };
+          button.addEventListener("pointerdown", () => {
+            window.clearTimeout(state.chatLongPressTimer);
+            state.chatLongPressTimer = window.setTimeout(openActions, 520);
+          });
+          button.addEventListener("pointerup", () => {
+            window.clearTimeout(state.chatLongPressTimer);
+          });
+          button.addEventListener("pointercancel", () => {
+            window.clearTimeout(state.chatLongPressTimer);
+          });
+          button.addEventListener("pointerleave", () => {
+            window.clearTimeout(state.chatLongPressTimer);
+          });
+          button.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              button.click();
+            }
+          });
+          button.addEventListener("click", (event) => {
+            const actionButton = event.target.closest("[data-chat-action]");
+            if (actionButton) {
+              event.stopPropagation();
+              runChatAction(actionButton.dataset.chatAction, actionButton.dataset.windowId).catch(reportError);
+              return;
+            }
+            if (state.justOpenedChatActions) return;
             const chat = state.chats.find(
               (item) => item.windowId === button.dataset.windowId
             );
-            if (chat) loadWindow(chat);
+            if (chat) {
+              setChatActionsOpen("");
+              setSidebarOpen(false);
+              loadWindow(chat);
+            }
           });
         });
       }
@@ -1245,13 +1401,9 @@
       function updateActionButtons() {
         const selectedCount = state.selected.size;
         deleteButton.disabled = selectedCount === 0;
-        const hasWindow = Boolean(state.currentWindow);
-        const isActiveWindow = hasWindow && state.currentWindow.kind === "active";
-        const isArchiveWindow = hasWindow && state.currentWindow.kind === "archive";
-        exportButton.disabled = !hasWindow;
-        archiveWindowButton.disabled =
-          !isActiveWindow || state.messages.length === 0;
-        deleteWindowButton.disabled = !isArchiveWindow;
+        const hasMessages = state.messages.length > 0;
+        scrollTopButton.disabled = !hasMessages;
+        scrollBottomButton.disabled = !hasMessages;
       }
 
       async function loadChats() {
@@ -1364,18 +1516,57 @@
         window.open(`${windowUrl(state.currentWindow)}/export`, "_blank", "noopener");
       }
 
+      async function runChatAction(action, windowId) {
+        const chat = state.chats.find((item) => item.windowId === windowId);
+        if (!chat) return;
+        if (!state.currentWindow || state.currentWindow.windowId !== chat.windowId) {
+          await loadWindow(chat);
+        }
+        if (action === "export") {
+          exportCurrentChat();
+        } else if (action === "archive") {
+          await archiveCurrentWindow();
+        } else if (action === "deleteArchive") {
+          await deleteCurrentArchiveWindow();
+        }
+        setChatActionsOpen("");
+        setSidebarOpen(false);
+      }
+
+      function scrollTimelineToTop() {
+        timeline.scrollTop = 0;
+        requestAnimationFrame(() => {
+          updateCurrentTime();
+          showTimeRail();
+        });
+      }
+
+      function scrollTimelineToBottom() {
+        timeline.scrollTop = Math.max(0, timeline.scrollHeight - timeline.clientHeight);
+        requestAnimationFrame(() => {
+          updateCurrentTime();
+          showTimeRail();
+        });
+      }
+
       refreshButton.addEventListener("click", () => loadChats().catch(reportError));
-      phonePreviewButton.addEventListener("click", () => {
-        setPhonePreview(!document.body.classList.contains("phone-preview"));
+      sidebarToggleButton.addEventListener("click", () => {
+        setSidebarOpen(!document.body.classList.contains("sidebar-open"));
       });
-      archiveWindowButton.addEventListener("click", () =>
-        archiveCurrentWindow().catch(reportError)
-      );
-      deleteWindowButton.addEventListener("click", () =>
-        deleteCurrentArchiveWindow().catch(reportError)
-      );
+      sidebarCloseButton.addEventListener("click", () => setSidebarOpen(false));
+      sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setSidebarOpen(false);
+      });
       deleteButton.addEventListener("click", () => deleteMessages().catch(reportError));
-      exportButton.addEventListener("click", exportCurrentChat);
+      scrollTopButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        scrollTimelineToTop();
+      });
+      scrollBottomButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        scrollTimelineToBottom();
+      });
       timeline.addEventListener("scroll", () => {
         updateCurrentTime();
         showTimeRail();
@@ -1440,7 +1631,7 @@
       }
 
       updateActionButtons();
-      setPhonePreview(localStorage.getItem("gemChatPhonePreview") === "1");
+      setSidebarOpen(false);
       loadChats().catch(reportError);
     </script>
   </body>
