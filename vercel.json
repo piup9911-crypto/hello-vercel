@@ -1,16 +1,16 @@
 {
-  "rewrites": [
-    {
-      "source": "/chat-records-live",
-      "destination": "https://learners-undertake-implement-dish.trycloudflare.com/"
-    },
-    {
-      "source": "/chat-records-live/",
-      "destination": "https://learners-undertake-implement-dish.trycloudflare.com/"
-    },
-    {
-      "source": "/chat-records-live/:path*",
-      "destination": "https://learners-undertake-implement-dish.trycloudflare.com/:path*"
-    }
-  ]
+    "rewrites":  [
+                     {
+                         "source":  "/chat-records-live",
+                         "destination":  "https://chat.naginoumi.com/"
+                     },
+                     {
+                         "source":  "/chat-records-live/",
+                         "destination":  "https://chat.naginoumi.com/"
+                     },
+                     {
+                         "source":  "/chat-records-live/:path*",
+                         "destination":  "https://chat.naginoumi.com/:path*"
+                     }
+                 ]
 }
