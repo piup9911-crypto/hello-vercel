@@ -29,6 +29,10 @@
         font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
       }
 
+      body.phone-preview {
+        background: #dfe3dc;
+      }
+
       .app {
         display: grid;
         /* 【小白可调】整个页面分成两列：
@@ -39,6 +43,70 @@
            注意：左侧越宽，右侧聊天气泡区域就越窄。 */
         grid-template-columns: 260px minmax(0, 1fr);
         min-height: 100vh;
+      }
+
+      body.phone-preview .app {
+        /* 【小白可调】电脑上的手机预览模式。
+           430px 是手机预览框宽度，860px 是手机预览框高度。
+           这个模式只改变电脑预览外观，不会影响聊天记录数据。 */
+        width: min(430px, calc(100vw - 24px));
+        height: min(860px, calc(100vh - 24px));
+        min-height: 0;
+        margin: 12px auto;
+        overflow: hidden;
+        border: 1px solid rgba(45, 50, 46, 0.18);
+        border-radius: 24px;
+        background: var(--bg);
+        box-shadow: 0 24px 60px rgba(31, 38, 35, 0.22);
+      }
+
+      body.phone-preview .sidebar {
+        display: none;
+      }
+
+      body.phone-preview .app {
+        grid-template-columns: 1fr;
+      }
+
+      body.phone-preview .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+      }
+
+      body.phone-preview .actions {
+        justify-content: flex-start;
+      }
+
+      body.phone-preview button {
+        min-height: 32px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      body.phone-preview .message {
+        grid-template-columns: 32px 6px minmax(0, 1fr) 6px 32px;
+        max-width: 100%;
+      }
+
+      body.phone-preview .pixel-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+      }
+
+      body.phone-preview .bubble {
+        max-width: 100%;
+      }
+
+      body.phone-preview .message-head {
+        gap: 6px;
+        font-size: 11px;
+      }
+
+      body.phone-preview .message-body {
+        font-size: 14px;
       }
 
       .sidebar {
@@ -499,77 +567,14 @@
         bottom: 18px;
         width: 92px;
         z-index: 6;
-        opacity: 0.22;
-        pointer-events: auto;
+        opacity: 0;
+        pointer-events: none;
         transition: opacity 0.18s ease;
       }
 
       .time-rail.visible {
         opacity: 1;
         pointer-events: auto;
-      }
-
-      .time-rail.dragging {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      .rail-scrub-track {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 28px;
-        z-index: 3;
-        border-radius: 999px;
-        cursor: ns-resize;
-        touch-action: none;
-      }
-
-      .rail-scrub-track::before {
-        content: "";
-        position: absolute;
-        top: 8px;
-        right: 11px;
-        bottom: 8px;
-        width: 4px;
-        border-radius: 999px;
-        background: rgba(36, 116, 91, 0.16);
-      }
-
-      .rail-thumb {
-        position: absolute;
-        right: 4px;
-        top: var(--rail-thumb-top, 0%);
-        width: 20px;
-        height: 42px;
-        transform: translateY(-50%);
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.94);
-        box-shadow: 0 8px 20px rgba(31, 38, 35, 0.16);
-      }
-
-      .rail-thumb::before,
-      .rail-thumb::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        width: 0;
-        height: 0;
-        transform: translateX(-50%);
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-      }
-
-      .rail-thumb::before {
-        top: 8px;
-        border-bottom: 6px solid var(--ink);
-      }
-
-      .rail-thumb::after {
-        bottom: 8px;
-        border-top: 6px solid var(--ink);
       }
 
       .current-time {
@@ -580,7 +585,6 @@
            这里按你的要求只显示日期，不显示具体时间。 */
         position: absolute;
         top: 50%;
-        top: var(--current-time-top, 50%);
         right: 72px;
         min-width: 150px;
         transform: translateY(-50%);
@@ -598,7 +602,6 @@
 
       .rail-marks {
         position: relative;
-        z-index: 2;
         height: 100%;
         margin-top: 0;
       }
@@ -702,6 +705,7 @@
             <div id="feedback" class="feedback"></div>
           </div>
           <div class="actions">
+            <button id="phonePreviewButton" type="button">手机预览</button>
             <button id="refreshButton" type="button">刷新</button>
             <button id="exportButton" type="button">导出 JSON</button>
             <button id="archiveWindowButton" type="button">归档当前窗口</button>
@@ -714,9 +718,6 @@
           <div id="timeline" class="timeline"></div>
           <aside class="time-rail">
             <div id="currentTime" class="current-time">暂无消息</div>
-            <div id="railScrubTrack" class="rail-scrub-track" aria-label="快速滑动时间线" role="slider" tabindex="0">
-              <div id="railThumb" class="rail-thumb" aria-hidden="true"></div>
-            </div>
             <div id="railMarks" class="rail-marks"></div>
           </aside>
         </section>
@@ -733,8 +734,7 @@
         longPressTimer: null,
         justLongPressed: false,
         railHideTimer: null,
-        activeRailDay: "",
-        railDragging: false
+        activeRailDay: ""
       };
 
       const chatList = document.getElementById("chatList");
@@ -743,10 +743,8 @@
       const feedback = document.getElementById("feedback");
       const timeline = document.getElementById("timeline");
       const currentTime = document.getElementById("currentTime");
-      const timeRail = document.querySelector(".time-rail");
-      const railScrubTrack = document.getElementById("railScrubTrack");
-      const railThumb = document.getElementById("railThumb");
       const railMarks = document.getElementById("railMarks");
+      const phonePreviewButton = document.getElementById("phonePreviewButton");
       const refreshButton = document.getElementById("refreshButton");
       const exportButton = document.getElementById("exportButton");
       const archiveWindowButton = document.getElementById("archiveWindowButton");
@@ -755,6 +753,16 @@
 
       function setFeedback(text) {
         feedback.textContent = text || "";
+      }
+
+      function setPhonePreview(enabled) {
+        document.body.classList.toggle("phone-preview", enabled);
+        phonePreviewButton.textContent = enabled ? "退出手机预览" : "手机预览";
+        localStorage.setItem("gemChatPhonePreview", enabled ? "1" : "0");
+        requestAnimationFrame(() => {
+          updateCurrentTime();
+          showTimeRail();
+        });
       }
 
       function formatDate(value) {
@@ -1036,7 +1044,6 @@
       function renderRail() {
         if (state.messages.length === 0) {
           railMarks.innerHTML = "";
-          setRailPosition(0);
           return;
         }
         const firstByDay = new Map();
@@ -1086,53 +1093,11 @@
       }
 
       function showTimeRail() {
-        timeRail.classList.add("visible");
+        document.querySelector(".time-rail").classList.add("visible");
         clearTimeout(state.railHideTimer);
         state.railHideTimer = setTimeout(() => {
-          if (!state.railDragging) {
-            timeRail.classList.remove("visible");
-          }
-        }, 2500);
-      }
-
-      function setRailPosition(percent) {
-        const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
-        const bubbleTop = Math.max(8, Math.min(92, clamped));
-        timeRail.style.setProperty("--rail-thumb-top", `${clamped}%`);
-        timeRail.style.setProperty("--current-time-top", `${bubbleTop}%`);
-        if (railScrubTrack) {
-          railScrubTrack.setAttribute("aria-valuemin", "0");
-          railScrubTrack.setAttribute("aria-valuemax", "100");
-          railScrubTrack.setAttribute("aria-valuenow", String(Math.round(clamped)));
-        }
-      }
-
-      function timelineScrollPercent() {
-        const maxScroll = Math.max(0, timeline.scrollHeight - timeline.clientHeight);
-        if (!maxScroll) return 0;
-        return (timeline.scrollTop / maxScroll) * 100;
-      }
-
-      function jumpToRailPercent(percent, behavior = "auto") {
-        if (state.messages.length === 0) return;
-        const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
-        const maxScroll = Math.max(0, timeline.scrollHeight - timeline.clientHeight);
-        const nextTop = (clamped / 100) * maxScroll;
-        if (behavior === "smooth") {
-          timeline.scrollTo({ top: nextTop, behavior });
-        } else {
-          timeline.scrollTop = nextTop;
-        }
-        setRailPosition(clamped);
-        updateCurrentTime();
-        showTimeRail();
-      }
-
-      function jumpToRailPointer(event) {
-        const rect = railScrubTrack.getBoundingClientRect();
-        if (!rect.height) return;
-        const percent = ((event.clientY - rect.top) / rect.height) * 100;
-        jumpToRailPercent(percent, "auto");
+          document.querySelector(".time-rail").classList.remove("visible");
+        }, 1300);
       }
 
       function updateCurrentTime() {
@@ -1150,7 +1115,6 @@
         });
         state.activeRailDay = dayKey(best.dataset.at);
         currentTime.textContent = formatFloatingDay(best.dataset.at);
-        setRailPosition(timelineScrollPercent());
         railMarks.querySelectorAll(".rail-mark").forEach((mark) => {
           mark.classList.toggle("active", mark.dataset.day === state.activeRailDay);
         });
@@ -1279,6 +1243,9 @@
       }
 
       refreshButton.addEventListener("click", () => loadChats().catch(reportError));
+      phonePreviewButton.addEventListener("click", () => {
+        setPhonePreview(!document.body.classList.contains("phone-preview"));
+      });
       archiveWindowButton.addEventListener("click", () =>
         archiveCurrentWindow().catch(reportError)
       );
@@ -1295,58 +1262,6 @@
         updateCurrentTime();
         showTimeRail();
       }, { passive: true });
-      timeline.addEventListener("touchstart", () => {
-        updateCurrentTime();
-        showTimeRail();
-      }, { passive: true });
-      timeline.addEventListener("touchmove", () => {
-        updateCurrentTime();
-        showTimeRail();
-      }, { passive: true });
-      railScrubTrack.addEventListener("pointerdown", (event) => {
-        if (state.messages.length === 0) return;
-        state.railDragging = true;
-        timeRail.classList.add("dragging", "visible");
-        railScrubTrack.setPointerCapture(event.pointerId);
-        jumpToRailPointer(event);
-        event.preventDefault();
-      });
-      railScrubTrack.addEventListener("pointermove", (event) => {
-        if (!state.railDragging) return;
-        jumpToRailPointer(event);
-        event.preventDefault();
-      });
-      railScrubTrack.addEventListener("pointerup", (event) => {
-        state.railDragging = false;
-        timeRail.classList.remove("dragging");
-        railScrubTrack.releasePointerCapture(event.pointerId);
-        showTimeRail();
-      });
-      railScrubTrack.addEventListener("pointercancel", () => {
-        state.railDragging = false;
-        timeRail.classList.remove("dragging");
-        showTimeRail();
-      });
-      railScrubTrack.addEventListener("keydown", (event) => {
-        if (state.messages.length === 0) return;
-        const current = Number(railScrubTrack.getAttribute("aria-valuenow") || 0);
-        if (event.key === "ArrowUp") {
-          jumpToRailPercent(current - 3, "smooth");
-          event.preventDefault();
-        }
-        if (event.key === "ArrowDown") {
-          jumpToRailPercent(current + 3, "smooth");
-          event.preventDefault();
-        }
-        if (event.key === "Home") {
-          jumpToRailPercent(0, "smooth");
-          event.preventDefault();
-        }
-        if (event.key === "End") {
-          jumpToRailPercent(100, "smooth");
-          event.preventDefault();
-        }
-      });
       document.addEventListener("click", (event) => {
         if (!state.selectMode) return;
         if (event.target.closest(".message")) return;
@@ -1359,6 +1274,7 @@
       }
 
       updateActionButtons();
+      setPhonePreview(localStorage.getItem("gemChatPhonePreview") === "1");
       loadChats().catch(reportError);
     </script>
   </body>
