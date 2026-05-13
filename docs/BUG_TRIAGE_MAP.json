@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "title": "Bug Triage Cockpit Map",
+  "purpose": "按症状快速定位优先读取文件，减少 agent 全仓库遍历和 token 浪费。",
+  "lastUpdated": "2026-05-13",
+  "sourcePolicy": {
+    "mode": "manual-or-semi-manual",
+    "noFullRepoScanner": true,
+    "notes": "第一版为手写排错地图。不要为了生成本文件扫描整个仓库。"
+  },
+  "forbiddenPaths": [
+    "tools/gemini-cli-telegram/bridge-state/**",
+    "tools/gemini-cli-telegram/bridge-home/**",
+    "tools/gemini-cli-telegram/bridge-workspace/INDEPENDENT_MEMORY.md",
+    "tools/gemini-cli-telegram/memory-docs/private/**",
+    "tools/gemini-cli-telegram/memory-docs/trash/**",
+    "tools/gemini-cli-telegram/bridge.env",
+    "**/*.env",
+    "**/*token*",
+    "**/*secret*"
+  ],
+  "outputFormat": [
+    "问题判断",
+    "优先读取文件",
+    "疑似原因",
+    "建议修改范围",
+    "验证方式",
+    "未触碰的敏感路径"
+  ],
+  "verificationDefaults": [
+    "不要读取 env/token/private/bridge-state",
+    "先读本模块 priorityFiles",
+    "只在任务明确允许时读取更多文件",
+    "如果修改 .cjs/.mjs，运行 node --check",
+    "如果修改前端页面，说明手动验证路径"
+  ],
+  "modules": [
+    {
+      "id": "memory-system",
+      "name": "Memory System",
+      "description": "共享记忆、pending/approved 旧云端接口和 Telegram-only 独立记忆边界。",
+      "pages": [
+        "memory.html"
+      ],
+      "apis": [
+        "api/shared-memory.mjs",
+        "api/memory-entries.mjs",
+        "api/independent-memory.mjs",
+        "api/_memory-shared.mjs"
+      ],
+      "docs": [
+        "SHARED_MEMORY_SETUP.md",
+        "SUPABASE_SETUP.md",
+        "tools/gemini-cli-telegram/MEMORY_SYSTEM_OVERVIEW.md",
+        "tools/gemini-cli-telegram/MAINTAINER_GUARDRAILS.md"
+      ],
+      "symptoms": [
+        "保存失败",
+        "pending memory 不显示",
+        "记忆分类错误",
+        "private/trash 泄露到模型可读接口",
+        "API 401/503/500"
+      ],
+      "priorityFiles": [
+        "memory.html",
+        "api/shared-memory.mjs",
+        "api/memory-entries.mjs",
+        "api/_memory-shared.mjs",
+        "SHARED_MEMORY_SETUP.md"
+      ],
+      "recommendedChecks": [
+        "先确认是浏览器登录态问题、服务端 env 缺失，还是 Supabase REST 返回错误。",
+        "检查 api/_memory-shared.mjs 的 authorizeRequest、readConfig、listMemoryEntries。",
+        "检查 api/shared-memory.mjs 是否仍过滤 metadata.independentSection 为 private/trash 的记录。",
+        "检查 memory.html 的 pending 审核、分类 metadata builder 和保存按钮状态。",
+        "不要读取 bridge-state/chats、memory-docs/private、memory-docs/trash 或 bridge.env。"
+      ]
+    },
+    {
+      "id": "gem-bridge-status",
+      "name": "Gem Bridge Status",
+      "description": "Gem 状态舱、小手机 / ST 公网桥接状态、Telegram bridge 状态和本机控制队列。",
+      "pages": [
+        "gem-status.html"
+      ],
+      "apis": [
+        "api/gem-status.mjs",
+        "api/gem-control.mjs"
+      ],
+      "docs": [
+        "tools/gemini-cli-telegram/README.md",
+        "tools/gemini-cli-telegram/MAINTAINER_GUARDRAILS.md"
+      ],
+      "symptoms": [
+        "gem-status 离线",
+        "状态更新时间不刷新",
+        "控制按钮无效",
+        "Telegram bridge 状态异常"
+      ],
+      "priorityFiles": [
+        "gem-status.html",
+        "api/gem-status.mjs",
+        "api/gem-control.mjs",
+        "tools/gemini-cli-telegram/README.md"
+      ],
+      "recommendedChecks": [
+        "区分网页读取云端状态失败、本机状态同步未上报、控制命令未被本机 agent 领取。",
+        "检查 gem-status.html 对 /api/gem-status 和 /api/gem-control 的读取、错误显示和按钮状态。",
+        "检查 api/gem-status.mjs 的状态读写 key 是否仍为 gem_status。",
+        "检查 api/gem-control.mjs 的 allowedActions 和命令状态流转。",
+        "不要启动真实 Telegram bridge，不要读取 bridge.env 或 bridge-state。"
+      ]
+    },
+    {
+      "id": "codex-status",
+      "name": "Codex Status",
+      "description": "Codex 状态舱、祈桥接、CCGram 桥接和本机控制命令队列。",
+      "pages": [
+        "codex-status.html"
+      ],
+      "apis": [
+        "api/codex-status.mjs",
+        "api/codex-control.mjs"
+      ],
+      "docs": [
+        "docs/AGENT_PROJECT_BRIEF.md",
+        "docs/AGENT_COLLABORATION_PROTOCOL.md"
+      ],
+      "symptoms": [
+        "codex 状态离线",
+        "启动/重启请求没反应",
+        "状态上报失败"
+      ],
+      "priorityFiles": [
+        "codex-status.html",
+        "api/codex-status.mjs",
+        "api/codex-control.mjs"
+      ],
+      "recommendedChecks": [
+        "检查 codex-status.html 是否正确读取 /api/codex-status 和 /api/codex-control。",
+        "检查 api/codex-status.mjs 的状态 key 是否仍为 codex_status。",
+        "检查 api/codex-control.mjs allowedActions 是否和页面按钮一致。",
+        "把问题限定在云端状态/命令队列层，不要尝试启动本机 Codex bridge。"
+      ]
+    },
+    {
+      "id": "chat-records",
+      "name": "Chat Records",
+      "description": "聊天记录入口和本地聊天记录管理器前端。",
+      "pages": [
+        "chat-records.html",
+        "gem-chat-record-manager.html"
+      ],
+      "apis": [],
+      "docs": [
+        "tools/gemini-cli-telegram/docs/gem-chat-record-manager.md",
+        "tools/gemini-cli-telegram/README.md"
+      ],
+      "symptoms": [
+        "聊天记录不显示",
+        "气泡布局错乱",
+        "删除/切换窗口异常",
+        "大量消息导致页面卡顿"
+      ],
+      "priorityFiles": [
+        "chat-records.html",
+        "gem-chat-record-manager.html",
+        "tools/gemini-cli-telegram/docs/gem-chat-record-manager.md"
+      ],
+      "recommendedChecks": [
+        "先判断问题在公开入口 chat-records.html，还是本地管理器 gem-chat-record-manager.html。",
+        "检查 API_BASE、窗口切换、删除/归档按钮和大量 DOM 渲染路径。",
+        "只读页面和文档，不要读取真实 bridge-state/chats 聊天记录。",
+        "如需真实数据复现，必须由人类提供脱敏样例。"
+      ]
+    },
+    {
+      "id": "magic-static-pages",
+      "name": "Magic / Static Pages",
+      "description": "静态互动页、首页登录态、秘密日记页面和轻量前端行为。",
+      "pages": [
+        "magic.html",
+        "index.html",
+        "secret-diary.html"
+      ],
+      "apis": [
+        "api/supabase-config.mjs"
+      ],
+      "docs": [
+        "CODE_REVIEW_FIXES.md",
+        "SUPABASE_SETUP.md"
+      ],
+      "symptoms": [
+        "按钮点击无效",
+        "动画残留",
+        "页面滚动/粒子位置错乱",
+        "登录态显示异常"
+      ],
+      "priorityFiles": [
+        "magic.html",
+        "index.html",
+        "secret-diary.html",
+        "shared/supabase-auth.js",
+        "CODE_REVIEW_FIXES.md"
+      ],
+      "recommendedChecks": [
+        "检查点击事件是否被按钮/a 标签过滤逻辑影响。",
+        "检查动画结束后 transform/transition 是否重置。",
+        "检查粒子使用 pageX/pageY 还是 clientX/clientY。",
+        "登录态问题优先读 shared/supabase-auth.js 和 index.html。"
+      ]
+    }
+  ],
+  "knownBugs": [
+    {
+      "bugId": "BUG-4",
+      "title": "memory.html memory kind classification logic error",
+      "file": "memory.html",
+      "symptom": "important-event entries 被错误分类",
+      "searchTag": "[BUG-4 FIX]",
+      "regressionRisk": "medium",
+      "recommendedChecks": [
+        "检查 getMemoryKind()",
+        "检查 pendingList click handler",
+        "检查 metadata builder 是否仍保持三分类"
+      ]
+    },
+    {
+      "bugId": "BUG-2",
+      "title": "magic.html flip animation leaves residual transform",
+      "file": "magic.html",
+      "symptom": "翻转动画后卡片缩小或 transform 残留",
+      "searchTag": "[BUG-2 FIX]",
+      "regressionRisk": "medium",
+      "recommendedChecks": [
+        "检查 flip 动画触发逻辑",
+        "检查动画结束后 transform 是否重置",
+        "检查 mousemove transform 是否继续接管"
+      ]
+    },
+    {
+      "bugId": "BUG-3",
+      "title": "magic.html particle coordinates and click filter",
+      "file": "magic.html",
+      "symptom": "滚动后粒子位置错乱或按钮点击触发烟花",
+      "searchTag": "[BUG-3 FIX]",
+      "regressionRisk": "medium",
+      "recommendedChecks": [
+        "检查点击过滤是否包含 button",
+        "检查粒子坐标是否使用 pageX/pageY",
+        "检查页面滚动后粒子定位"
+      ]
+    },
+    {
+      "bugId": "BUG-5",
+      "title": "memory.html save button text switches to English",
+      "file": "memory.html",
+      "symptom": "保存按钮变成英文",
+      "searchTag": "[BUG-5 FIX]",
+      "regressionRisk": "low",
+      "recommendedChecks": [
+        "检查保存按钮 loading 文案",
+        "检查保存失败和成功后的按钮文案恢复"
+      ]
+    },
+    {
+      "bugId": "BUG-6",
+      "title": "index.html signout error invisible to user",
+      "file": "index.html",
+      "symptom": "退出登录失败但用户看不到错误",
+      "searchTag": "[BUG-6 FIX]",
+      "regressionRisk": "low",
+      "recommendedChecks": [
+        "检查 signOut catch 分支",
+        "检查错误是否显示在当前可见视图"
+      ]
+    },
+    {
+      "bugId": "BUG-7",
+      "title": "shared/notion-app.js missing AppAuth guard in catch",
+      "file": "shared/notion-app.js",
+      "symptom": "AppAuth 未加载时错误处理再次报错",
+      "searchTag": "[BUG-7 FIX]",
+      "regressionRisk": "low",
+      "recommendedChecks": [
+        "检查 boot error handler",
+        "检查 window.AppAuth guard",
+        "检查 alert 使用的错误文本来源"
+      ]
+    },
+    {
+      "bugId": "BUG-1",
+      "title": "secret-diary.html dead legacy script block",
+      "file": "secret-diary.html",
+      "symptom": "旧 localStorage 脚本块混淆维护者",
+      "searchTag": "[BUG-1 FIX]",
+      "regressionRisk": "low",
+      "recommendedChecks": [
+        "确认没有恢复 text/plain 旧脚本",
+        "检查 Git history 而不是复制旧实现"
+      ]
+    }
+  ],
+  "promptPackTemplate": {
+    "title": "最小排查上下文",
+    "instructions": [
+      "请只围绕给定症状和优先文件排查。",
+      "不要全仓库扫描，除非优先文件无法解释问题。",
+      "不要读取 forbidden paths。",
+      "输出修改建议前先说明证据。"
+    ]
+  }
+}

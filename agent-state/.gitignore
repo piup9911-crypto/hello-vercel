@@ -1,0 +1,8 @@
+logs/*
+locks/*.lock
+!.gitkeep
+!README.md
+!.gitignore
+!plans/.gitkeep
+!logs/.gitkeep
+!locks/.gitkeep

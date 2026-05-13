@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bug Triage Cockpit</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --panel-soft: #f9fbff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #d9e0ea;
+      --accent: #2563eb;
+      --accent-soft: #eaf1ff;
+      --ok: #15803d;
+      --warn: #b45309;
+      --danger: #b91c1c;
+      --shadow: 0 14px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 30px;
+      padding: 6px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 12px 0 8px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 76ch;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      text-decoration: none;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      border-color: transparent;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0 12px;
+      background: rgba(246, 248, 251, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .tab {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 9px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      border-color: rgba(37, 99, 235, 0.28);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-body { padding: 18px; }
+
+    .module-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .module-btn {
+      width: 100%;
+      display: grid;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 11px;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .module-btn.active {
+      border-color: rgba(37, 99, 235, 0.32);
+      background: var(--accent-soft);
+    }
+
+    .module-btn strong {
+      font-size: 14px;
+    }
+
+    .module-btn span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 20px 0 10px;
+      font-size: 16px;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 14px;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.warn {
+      border-color: rgba(180, 83, 9, 0.25);
+      background: #fff7ed;
+      color: var(--warn);
+    }
+
+    .pill.danger {
+      border-color: rgba(185, 28, 28, 0.25);
+      background: #fef2f2;
+      color: var(--danger);
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    code,
+    pre {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .copy-note {
+      min-height: 22px;
+      color: var(--ok);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 860px) {
+      .topbar,
+      .grid,
+      .split,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Bug Triage Cockpit · 只读</div>
+        <h1>按症状定位相关文件</h1>
+        <p class="lead">这个页面不是普通后台，也不展示所有数据库内容。它只用手写排错地图帮助人类和 agent 快速收敛上下文，避免一上来全仓库遍历。</p>
+      </div>
+      <a class="button" href="index.html">返回首页</a>
+    </div>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <section class="section active" data-section="Overview">
+      <div class="cards" id="overview-cards"></div>
+    </section>
+
+    <section class="section" data-section="Bug Triage">
+      <div class="grid">
+        <aside class="panel">
+          <div class="panel-body">
+            <h2>模块</h2>
+            <div class="module-list" id="module-list"></div>
+          </div>
+        </aside>
+        <article class="panel">
+          <div class="panel-body" id="module-detail"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="Project Map">
+      <div class="panel">
+        <div class="panel-body" id="project-map"></div>
+      </div>
+    </section>
+
+    <section class="section" data-section="Runtime Health">
+      <div class="panel">
+        <div class="panel-body">
+          <h2>Runtime Health</h2>
+          <p class="muted">第一版保持只读。这里不启动、不重启、不清理任何本机服务；只提供相关状态入口和排查文件。</p>
+          <div class="cards" id="runtime-health"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-section="Agent State">
+      <div class="panel">
+        <div class="panel-body">
+          <h2>Agent State</h2>
+          <p class="muted">协作状态保存在仓库内的非敏感目录，未来可以被后端可视化读取。AI 开工前应先读 active plan。</p>
+          <div class="cards" id="agent-state"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-section="Known Bugs">
+      <div class="panel">
+        <div class="panel-body" id="known-bugs"></div>
+      </div>
+    </section>
+
+    <section class="section" data-section="Safety Check">
+      <div class="panel">
+        <div class="panel-body" id="safety-check"></div>
+      </div>
+    </section>
+
+    <section class="section" data-section="Prompt Packs">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="toolbar">
+            <div>
+              <h2>Prompt Packs</h2>
+              <p class="muted">选择一个模块或症状后，复制最小排查上下文给 Codex / cc / gem。</p>
+            </div>
+            <button class="button primary" id="copy-current">复制当前模块排查 prompt</button>
+          </div>
+          <div class="copy-note" id="copy-note"></div>
+          <pre id="prompt-preview"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SECTIONS = [
+      "Overview",
+      "Bug Triage",
+      "Project Map",
+      "Runtime Health",
+      "Agent State",
+      "Known Bugs",
+      "Safety Check",
+      "Prompt Packs"
+    ];
+
+    const state = {
+      overview: null,
+      triage: null,
+      selectedModuleId: null
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function list(items) {
+      return `<ul>${(items || []).map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join("")}</ul>`;
+    }
+
+    function pillList(items, tone = "") {
+      return `<div class="pill-row">${(items || []).map((item) => `<span class="pill ${tone}">${escapeHtml(item)}</span>`).join("")}</div>`;
+    }
+
+    async function loadOverview() {
+      try {
+        const response = await fetch("/api/backend-overview", { cache: "no-store" });
+        if (!response.ok) throw new Error(`backend-overview ${response.status}`);
+        return await response.json();
+      } catch (apiError) {
+        const response = await fetch("docs/BUG_TRIAGE_MAP.json", { cache: "no-store" });
+        if (!response.ok) throw apiError;
+        const map = await response.json();
+        return {
+          cockpit: { name: "Bug Triage Cockpit", mode: "read-only", sections: SECTIONS },
+          triage: map,
+          safety: {
+            noFullRepoScan: true,
+            noEnvRead: true,
+            noTokenRead: true,
+            noPrivateMemoryRead: true,
+            noBridgeStateRead: true,
+            writeActions: []
+          },
+          agentState: {
+            plans: "agent-state/plans/",
+            tasks: "agent-state/tasks/",
+            handoffs: "agent-state/handoffs/",
+            reviews: "agent-state/reviews/",
+            locks: "agent-state/locks/"
+          }
+        };
+      }
+    }
+
+    function renderTabs() {
+      const tabs = document.getElementById("tabs");
+      tabs.innerHTML = SECTIONS.map((name, index) => (
+        `<button class="tab ${index === 0 ? "active" : ""}" type="button" data-section="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+      )).join("");
+      tabs.addEventListener("click", (event) => {
+        const button = event.target.closest(".tab");
+        if (!button) return;
+        document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item === button));
+        document.querySelectorAll(".section").forEach((section) => {
+          section.classList.toggle("active", section.dataset.section === button.dataset.section);
+        });
+      });
+    }
+
+    function renderOverview() {
+      const triage = state.triage;
+      document.getElementById("overview-cards").innerHTML = [
+        ["Cockpit", "Bug Triage Cockpit", "只读排查入口，不展示所有数据库内容。"],
+        ["Modules", String((triage.modules || []).length), "按症状定位页面、API、文档和优先读取文件。"],
+        ["Known Bugs", String((triage.knownBugs || []).length), "来自 CODE_REVIEW_FIXES.md 的历史修复标签索引。"]
+      ].map(([label, value, body]) => (
+        `<div class="card"><span class="pill">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p class="muted">${escapeHtml(body)}</p></div>`
+      )).join("");
+    }
+
+    function selectedModule() {
+      return (state.triage.modules || []).find((item) => item.id === state.selectedModuleId) || (state.triage.modules || [])[0];
+    }
+
+    function renderModules() {
+      const modules = state.triage.modules || [];
+      if (!state.selectedModuleId && modules[0]) state.selectedModuleId = modules[0].id;
+      document.getElementById("module-list").innerHTML = modules.map((item) => (
+        `<button class="module-btn ${item.id === state.selectedModuleId ? "active" : ""}" type="button" data-module="${escapeHtml(item.id)}">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml((item.symptoms || []).slice(0, 2).join(" / "))}</span>
+        </button>`
+      )).join("");
+      document.getElementById("module-list").onclick = (event) => {
+        const button = event.target.closest(".module-btn");
+        if (!button) return;
+        state.selectedModuleId = button.dataset.module;
+        renderModules();
+        renderPromptPreview();
+      };
+      renderModuleDetail();
+    }
+
+    function renderModuleDetail() {
+      const item = selectedModule();
+      if (!item) return;
+      document.getElementById("module-detail").innerHTML = `
+        <div class="toolbar">
+          <div>
+            <h2>${escapeHtml(item.name)}</h2>
+            <p class="muted">${escapeHtml(item.description || "")}</p>
+          </div>
+          <button class="button primary" type="button" id="copy-module">复制排查 prompt</button>
+        </div>
+        <h3>症状</h3>${pillList(item.symptoms || [], "warn")}
+        <div class="split">
+          <div><h3>相关页面</h3>${list(item.pages)}</div>
+          <div><h3>相关 API</h3>${list(item.apis)}</div>
+        </div>
+        <div class="split">
+          <div><h3>相关文档</h3>${list(item.docs)}</div>
+          <div><h3>优先读取文件</h3>${list(item.priorityFiles)}</div>
+        </div>
+        <h3>建议检查步骤</h3>${list(item.recommendedChecks)}
+        <h3>禁止读取路径</h3>${pillList(state.triage.forbiddenPaths || [], "danger")}
+      `;
+      document.getElementById("copy-module").onclick = copyCurrentPrompt;
+    }
+
+    function renderProjectMap() {
+      document.getElementById("project-map").innerHTML = `
+        <h2>Project Map</h2>
+        <p class="muted">第一版使用手写模块地图，不做全仓库扫描。</p>
+        ${(state.triage.modules || []).map((item) => `
+          <div class="card">
+            <strong>${escapeHtml(item.name)}</strong>
+            <div class="split">
+              <div><h3>Pages</h3>${list(item.pages)}</div>
+              <div><h3>APIs</h3>${list(item.apis)}</div>
+            </div>
+            <h3>Docs</h3>${list(item.docs)}
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function renderRuntimeHealth() {
+      const modules = ["gem-bridge-status", "codex-status", "memory-system"].map((id) => {
+        const item = (state.triage.modules || []).find((module) => module.id === id);
+        return item ? `<div class="card"><strong>${escapeHtml(item.name)}</strong><p class="muted">入口：${escapeHtml((item.pages || []).join(", "))}</p>${list(item.apis)}</div>` : "";
+      }).join("");
+      document.getElementById("runtime-health").innerHTML = modules;
+    }
+
+    function renderAgentState() {
+      const agentState = state.overview.agentState || {};
+      document.getElementById("agent-state").innerHTML = Object.entries(agentState).map(([key, value]) => (
+        `<div class="card"><strong>${escapeHtml(key)}</strong><code>${escapeHtml(value)}</code></div>`
+      )).join("");
+    }
+
+    function renderKnownBugs() {
+      document.getElementById("known-bugs").innerHTML = `
+        <div class="toolbar">
+          <div>
+            <h2>Known Bugs</h2>
+            <p class="muted">历史 bug 索引链接到 <code>CODE_REVIEW_FIXES.md</code>，第一版由 BUG_TRIAGE_MAP.json 手动维护。</p>
+          </div>
+          <a class="button" href="CODE_REVIEW_FIXES.md">打开 CODE_REVIEW_FIXES.md</a>
+        </div>
+        ${(state.triage.knownBugs || []).map((bug) => `
+          <div class="card">
+            <span class="pill warn">${escapeHtml(bug.bugId)}</span>
+            <strong>${escapeHtml(bug.title)}</strong>
+            <p class="muted">文件：<code>${escapeHtml(bug.file)}</code> · 症状：${escapeHtml(bug.symptom)} · 风险：${escapeHtml(bug.regressionRisk)}</p>
+            <p class="muted">搜索标签：<code>${escapeHtml(bug.searchTag)}</code></p>
+            ${list(bug.recommendedChecks)}
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function renderSafety() {
+      const safety = state.overview.safety || {};
+      document.getElementById("safety-check").innerHTML = `
+        <h2>Safety Check</h2>
+        <p class="muted">本 cockpit 第一版只允许刷新页面、刷新状态、复制 prompt。没有启动、重启、删除、清理、写记忆、改数据库按钮。</p>
+        <div class="cards">
+          <div class="card"><strong>不全仓库扫描</strong><span class="pill">${safety.noFullRepoScan ? "true" : "unknown"}</span></div>
+          <div class="card"><strong>不读 env/token</strong><span class="pill">${safety.noEnvRead && safety.noTokenRead ? "true" : "unknown"}</span></div>
+          <div class="card"><strong>不读 private/bridge-state</strong><span class="pill">${safety.noPrivateMemoryRead && safety.noBridgeStateRead ? "true" : "unknown"}</span></div>
+        </div>
+        <h3>Forbidden Paths</h3>${pillList(state.triage.forbiddenPaths || [], "danger")}
+      `;
+    }
+
+    function buildPrompt(module) {
+      const forbidden = state.triage.forbiddenPaths || [];
+      const output = state.triage.outputFormat || [];
+      const verification = state.triage.verificationDefaults || [];
+      return [
+        "请做一次最小上下文 bug 排查，不要全仓库扫描。",
+        "",
+        `模块：${module.name}`,
+        `症状：${(module.symptoms || []).join(" / ")}`,
+        "",
+        "优先读取文件：",
+        ...(module.priorityFiles || []).map((item) => `- ${item}`),
+        "",
+        "不要读取的 forbidden paths：",
+        ...forbidden.map((item) => `- ${item}`),
+        "",
+        "推荐检查步骤：",
+        ...(module.recommendedChecks || []).map((item) => `- ${item}`),
+        "",
+        "输出格式：",
+        ...output.map((item) => `- ${item}`),
+        "",
+        "验证方式：",
+        ...verification.map((item) => `- ${item}`),
+        "",
+        "不要复制真实记忆、真实聊天、env、token、secret。"
+      ].join("\n");
+    }
+
+    function renderPromptPreview() {
+      const item = selectedModule();
+      document.getElementById("prompt-preview").textContent = item ? buildPrompt(item) : "";
+    }
+
+    async function copyCurrentPrompt() {
+      const item = selectedModule();
+      if (!item) return;
+      await navigator.clipboard.writeText(buildPrompt(item));
+      const note = document.getElementById("copy-note");
+      note.textContent = `已复制：${item.name}`;
+      window.setTimeout(() => { note.textContent = ""; }, 1800);
+    }
+
+    async function boot() {
+      renderTabs();
+      state.overview = await loadOverview();
+      state.triage = state.overview.triage;
+      renderOverview();
+      renderModules();
+      renderProjectMap();
+      renderRuntimeHealth();
+      renderAgentState();
+      renderKnownBugs();
+      renderSafety();
+      renderPromptPreview();
+      document.getElementById("copy-current").onclick = copyCurrentPrompt;
+    }
+
+    boot().catch((error) => {
+      document.body.innerHTML = `<main class="shell"><div class="panel"><div class="panel-body"><h1>加载失败</h1><pre>${escapeHtml(error.message || String(error))}</pre></div></div></main>`;
+    });
+  </script>
+</body>
+</html>
