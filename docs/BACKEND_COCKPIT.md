@@ -1,4 +1,4 @@
-# Backend Cockpit v0.1
+# Backend Cockpit / Bug Triage Cockpit
 
 `backend-cockpit.html` 当前定位为 Bug Triage Cockpit。它不是普通数据库后台，也不展示所有数据库内容；它是一个只读排查导航，用手写 / 半手写的 bug triage map 帮人类和 agent 按症状快速找到应该优先阅读的文件。
 

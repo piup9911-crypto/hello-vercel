@@ -94,6 +94,52 @@
       color: #fff;
     }
 
+    .guide {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+      margin: 18px 0 12px;
+    }
+
+    .guide-step {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      margin-top: 10px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .guide-step strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 14px;
+    }
+
+    .guide-step p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .simple-note {
+      border: 1px solid rgba(180, 83, 9, 0.22);
+      background: #fffaf0;
+    }
+
     .tabs {
       position: sticky;
       top: 0;
@@ -173,6 +219,31 @@
     .search-input:focus {
       border-color: rgba(37, 99, 235, 0.44);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .example-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .example-btn {
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 5px 9px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .example-btn:hover {
+      border-color: rgba(37, 99, 235, 0.3);
+      color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .module-btn {
@@ -344,6 +415,7 @@
     @media (max-width: 860px) {
       .topbar,
       .grid,
+      .guide,
       .split,
       .cards {
         grid-template-columns: 1fr;
@@ -366,13 +438,49 @@
       <a class="button" href="index.html">返回首页</a>
     </div>
 
+    <section class="guide">
+      <div class="panel">
+        <div class="panel-body">
+          <h2>怎么用这个页面</h2>
+          <div class="guide-step">
+            <span class="step-number">1</span>
+            <div>
+              <strong>输入你遇到的症状</strong>
+              <p>比如：保存失败 / 401 / 页面空白 / 状态离线。</p>
+            </div>
+          </div>
+          <div class="guide-step">
+            <span class="step-number">2</span>
+            <div>
+              <strong>选择最像的问题模块或症状</strong>
+              <p>不用理解全部代码，只要点最接近的模块或症状标签。</p>
+            </div>
+          </div>
+          <div class="guide-step">
+            <span class="step-number">3</span>
+            <div>
+              <strong>复制排查指令</strong>
+              <p>把生成的指令发给 Codex / cc / gem，让它只读必要文件。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel simple-note">
+        <div class="panel-body">
+          <h2>简单模式说明</h2>
+          <p class="muted">平时只需要用“找 Bug”和“复制给 AI 的排查指令”。其他区域主要给 Codex / cc / gem 或以后维护时看。</p>
+          <p class="muted">“运行状态”当前不是完整实时监控，只是排查入口和相关文件导航。</p>
+        </div>
+      </div>
+    </section>
+
     <nav class="tabs" id="tabs"></nav>
 
-    <section class="section active" data-section="Overview">
+    <section class="section active" data-section="overview">
       <div class="cards" id="overview-cards"></div>
     </section>
 
-    <section class="section" data-section="Bug Triage">
+    <section class="section" data-section="bug-triage">
       <div class="grid">
         <aside class="panel">
           <div class="panel-body">
@@ -380,6 +488,7 @@
             <div class="search-box">
               <label for="triage-search">搜索模块 / 症状 / 页面 / API / known bug</label>
               <input class="search-input" id="triage-search" type="search" placeholder="例如：保存失败、401、magic、BUG-4">
+              <div class="example-row" id="example-row"></div>
               <div class="status" id="search-status"></div>
             </div>
             <div class="module-list" id="module-list"></div>
@@ -391,53 +500,53 @@
       </div>
     </section>
 
-    <section class="section" data-section="Project Map">
+    <section class="section" data-section="project-map">
       <div class="panel">
         <div class="panel-body" id="project-map"></div>
       </div>
     </section>
 
-    <section class="section" data-section="Runtime Health">
+    <section class="section" data-section="runtime-health">
       <div class="panel">
         <div class="panel-body">
-          <h2>Runtime Health</h2>
-          <p class="muted">第一版保持只读。这里不启动、不重启、不清理任何本机服务；只提供相关状态入口和排查文件。</p>
+          <h2>运行状态</h2>
+          <p class="muted">当前不是完整实时监控。这里不启动、不重启、不清理任何本机服务；只提供排查入口和相关文件导航。</p>
           <div class="cards" id="runtime-health"></div>
         </div>
       </div>
     </section>
 
-    <section class="section" data-section="Agent State">
+    <section class="section" data-section="agent-state">
       <div class="panel">
         <div class="panel-body">
-          <h2>Agent State</h2>
+          <h2>Agent 协作状态</h2>
           <p class="muted">协作状态保存在仓库内的非敏感目录，未来可以被后端可视化读取。AI 开工前应先读 active plan。</p>
           <div class="cards" id="agent-state"></div>
         </div>
       </div>
     </section>
 
-    <section class="section" data-section="Known Bugs">
+    <section class="section" data-section="known-bugs">
       <div class="panel">
         <div class="panel-body" id="known-bugs"></div>
       </div>
     </section>
 
-    <section class="section" data-section="Safety Check">
+    <section class="section" data-section="safety-check">
       <div class="panel">
         <div class="panel-body" id="safety-check"></div>
       </div>
     </section>
 
-    <section class="section" data-section="Prompt Packs">
+    <section class="section" data-section="prompt-packs">
       <div class="panel">
         <div class="panel-body">
           <div class="toolbar">
             <div>
-              <h2>Prompt Packs</h2>
-              <p class="muted">选择一个模块或症状后，复制最小排查上下文给 Codex / cc / gem。</p>
+              <h2>复制给 AI 的排查指令</h2>
+              <p class="muted">选择一个模块或症状后，复制这段给 Codex / cc / gem。</p>
             </div>
-            <button class="button primary" id="copy-current">复制当前模块排查 prompt</button>
+            <button class="button primary" id="copy-current">复制排查指令</button>
           </div>
           <div class="copy-note" id="copy-note"></div>
           <pre id="prompt-preview"></pre>
@@ -448,14 +557,23 @@
 
   <script>
     const SECTIONS = [
-      "Overview",
-      "Bug Triage",
-      "Project Map",
-      "Runtime Health",
-      "Agent State",
-      "Known Bugs",
-      "Safety Check",
-      "Prompt Packs"
+      { id: "overview", label: "总览", hint: "Overview" },
+      { id: "bug-triage", label: "找 Bug", hint: "Bug Triage" },
+      { id: "project-map", label: "项目地图", hint: "Project Map" },
+      { id: "runtime-health", label: "运行状态", hint: "Runtime Health" },
+      { id: "agent-state", label: "Agent 协作状态", hint: "Agent State" },
+      { id: "known-bugs", label: "历史 Bug", hint: "Known Bugs" },
+      { id: "safety-check", label: "安全边界", hint: "Safety Check" },
+      { id: "prompt-packs", label: "复制给 AI 的排查指令", hint: "Prompt Packs" }
+    ];
+
+    const SEARCH_EXAMPLES = [
+      "保存失败",
+      "401",
+      "页面空白",
+      "状态离线",
+      "聊天记录不显示",
+      "BUG-4"
     ];
 
     const state = {
@@ -527,7 +645,7 @@
         if (!response.ok) throw apiError;
         const map = await response.json();
         return {
-          cockpit: { name: "Bug Triage Cockpit", mode: "read-only", sections: SECTIONS },
+          cockpit: { name: "Bug Triage Cockpit", mode: "read-only", sections: SECTIONS.map((item) => item.label) },
           triage: map,
           safety: {
             noFullRepoScan: true,
@@ -550,8 +668,8 @@
 
     function renderTabs() {
       const tabs = document.getElementById("tabs");
-      tabs.innerHTML = SECTIONS.map((name, index) => (
-        `<button class="tab ${index === 0 ? "active" : ""}" type="button" data-section="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+      tabs.innerHTML = SECTIONS.map((item, index) => (
+        `<button class="tab ${index === 0 ? "active" : ""}" type="button" data-section="${escapeHtml(item.id)}">${escapeHtml(item.label)} <span class="status">${escapeHtml(item.hint)}</span></button>`
       )).join("");
       tabs.addEventListener("click", (event) => {
         const button = event.target.closest(".tab");
@@ -566,9 +684,9 @@
     function renderOverview() {
       const triage = state.triage;
       document.getElementById("overview-cards").innerHTML = [
-        ["Cockpit", "Bug Triage Cockpit", "只读排查入口，不展示所有数据库内容。"],
-        ["Modules", String((triage.modules || []).length), "按症状定位页面、API、文档和优先读取文件。"],
-        ["Known Bugs", String((triage.knownBugs || []).length), "来自 CODE_REVIEW_FIXES.md 的历史修复标签索引。"]
+        ["驾驶舱", "Bug Triage Cockpit", "只读排查入口，不展示所有数据库内容。"],
+        ["模块", String((triage.modules || []).length), "按症状定位页面、API、文档和优先读取文件。"],
+        ["历史 Bug", String((triage.knownBugs || []).length), "来自 CODE_REVIEW_FIXES.md 的历史修复标签索引。"]
       ].map(([label, value, body]) => (
         `<div class="card"><span class="pill">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p class="muted">${escapeHtml(body)}</p></div>`
       )).join("");
@@ -615,7 +733,7 @@
             <h2>${escapeHtml(item.name)}</h2>
             <p class="muted">${escapeHtml(item.description || "")}</p>
           </div>
-          <button class="button primary" type="button" id="copy-module">复制排查 prompt</button>
+          <button class="button primary" type="button" id="copy-module">复制排查指令</button>
         </div>
         <h3>症状</h3>${symptomButtons(item.symptoms || [])}
         <div class="split">
@@ -641,7 +759,7 @@
 
     function renderProjectMap() {
       document.getElementById("project-map").innerHTML = `
-        <h2>Project Map</h2>
+        <h2>项目地图</h2>
         <p class="muted">第一版使用手写模块地图，不做全仓库扫描。</p>
         ${(state.triage.modules || []).map((item) => `
           <div class="card">
@@ -675,7 +793,7 @@
       document.getElementById("known-bugs").innerHTML = `
         <div class="toolbar">
           <div>
-            <h2>Known Bugs</h2>
+            <h2>历史 Bug</h2>
             <p class="muted">历史 bug 索引链接到 <code>CODE_REVIEW_FIXES.md</code>，第一版由 BUG_TRIAGE_MAP.json 手动维护。</p>
           </div>
           <a class="button" href="CODE_REVIEW_FIXES.md">打开 CODE_REVIEW_FIXES.md</a>
@@ -695,7 +813,7 @@
     function renderSafety() {
       const safety = state.overview.safety || {};
       document.getElementById("safety-check").innerHTML = `
-        <h2>Safety Check</h2>
+        <h2>安全边界</h2>
         <p class="muted">本 cockpit 第一版只允许刷新页面、刷新状态、复制 prompt。没有启动、重启、删除、清理、写记忆、改数据库按钮。</p>
         <div class="cards">
           <div class="card"><strong>不全仓库扫描</strong><span class="pill">${safety.noFullRepoScan ? "true" : "unknown"}</span></div>
@@ -741,6 +859,23 @@
       document.getElementById("prompt-preview").textContent = item ? buildPrompt(item) : "";
     }
 
+    function renderExamples() {
+      const row = document.getElementById("example-row");
+      row.innerHTML = SEARCH_EXAMPLES.map((item) => (
+        `<button class="example-btn" type="button" data-example="${escapeHtml(item)}">${escapeHtml(item)}</button>`
+      )).join("");
+      row.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-example]");
+        if (!button) return;
+        const input = document.getElementById("triage-search");
+        input.value = button.dataset.example;
+        state.searchQuery = input.value;
+        state.selectedSymptom = "";
+        renderModules();
+        renderPromptPreview();
+      });
+    }
+
     async function copyCurrentPrompt() {
       const item = selectedModule();
       if (!item) return;
@@ -756,6 +891,7 @@
       state.triage = state.overview.triage;
       renderOverview();
       renderModules();
+      renderExamples();
       renderProjectMap();
       renderRuntimeHealth();
       renderAgentState();
