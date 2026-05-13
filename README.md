@@ -31,5 +31,6 @@
 
 - [Shared Memory Setup](SHARED_MEMORY_SETUP.md)
 - [Supabase Setup](SUPABASE_SETUP.md)
+- [Backend Cockpit v0.1](docs/BACKEND_COCKPIT.md)
 - [Telegram bridge guardrails](tools/gemini-cli-telegram/MAINTAINER_GUARDRAILS.md)
 - [Telegram-only memory overview](tools/gemini-cli-telegram/MEMORY_SYSTEM_OVERVIEW.md)

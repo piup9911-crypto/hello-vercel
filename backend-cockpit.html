@@ -146,6 +146,35 @@
       gap: 8px;
     }
 
+    .search-box {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .search-box label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 9px 11px;
+      font: inherit;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: rgba(37, 99, 235, 0.44);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
     .module-btn {
       width: 100%;
       display: grid;
@@ -234,6 +263,17 @@
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
+    }
+
+    .pill-button {
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .pill-button.active {
+      border-color: rgba(37, 99, 235, 0.36);
+      background: var(--accent-soft);
+      color: var(--accent);
     }
 
     .pill.warn {
@@ -337,6 +377,11 @@
         <aside class="panel">
           <div class="panel-body">
             <h2>模块</h2>
+            <div class="search-box">
+              <label for="triage-search">搜索模块 / 症状 / 页面 / API / known bug</label>
+              <input class="search-input" id="triage-search" type="search" placeholder="例如：保存失败、401、magic、BUG-4">
+              <div class="status" id="search-status"></div>
+            </div>
             <div class="module-list" id="module-list"></div>
           </div>
         </aside>
@@ -416,7 +461,9 @@
     const state = {
       overview: null,
       triage: null,
-      selectedModuleId: null
+      selectedModuleId: null,
+      searchQuery: "",
+      selectedSymptom: ""
     };
 
     function escapeHtml(value) {
@@ -433,6 +480,41 @@
 
     function pillList(items, tone = "") {
       return `<div class="pill-row">${(items || []).map((item) => `<span class="pill ${tone}">${escapeHtml(item)}</span>`).join("")}</div>`;
+    }
+
+    function symptomButtons(items) {
+      return `<div class="pill-row">${(items || []).map((item) => (
+        `<button class="pill pill-button warn ${item === state.selectedSymptom ? "active" : ""}" type="button" data-symptom="${escapeHtml(item)}">${escapeHtml(item)}</button>`
+      )).join("")}</div>`;
+    }
+
+    function searchableText(module) {
+      const knownBugText = (state.triage.knownBugs || [])
+        .filter((bug) => (bug.file && [
+          ...(module.pages || []),
+          ...(module.apis || []),
+          ...(module.priorityFiles || [])
+        ].includes(bug.file)) || (module.symptoms || []).some((symptom) => String(bug.symptom || "").includes(symptom)))
+        .map((bug) => [bug.bugId, bug.title, bug.file, bug.symptom, bug.searchTag].join(" "))
+        .join(" ");
+      return [
+        module.id,
+        module.name,
+        module.description,
+        ...(module.symptoms || []),
+        ...(module.pages || []),
+        ...(module.apis || []),
+        ...(module.docs || []),
+        ...(module.priorityFiles || []),
+        knownBugText
+      ].join(" ").toLowerCase();
+    }
+
+    function filteredModules() {
+      const modules = state.triage.modules || [];
+      const query = state.searchQuery.trim().toLowerCase();
+      if (!query) return modules;
+      return modules.filter((module) => searchableText(module).includes(query));
     }
 
     async function loadOverview() {
@@ -493,22 +575,31 @@
     }
 
     function selectedModule() {
-      return (state.triage.modules || []).find((item) => item.id === state.selectedModuleId) || (state.triage.modules || [])[0];
+      const modules = filteredModules();
+      return modules.find((item) => item.id === state.selectedModuleId) || modules[0] || (state.triage.modules || [])[0];
     }
 
     function renderModules() {
-      const modules = state.triage.modules || [];
+      const modules = filteredModules();
       if (!state.selectedModuleId && modules[0]) state.selectedModuleId = modules[0].id;
+      if (modules.length > 0 && !modules.some((item) => item.id === state.selectedModuleId)) {
+        state.selectedModuleId = modules[0].id;
+        state.selectedSymptom = "";
+      }
+      document.getElementById("search-status").textContent = state.searchQuery
+        ? `匹配 ${modules.length} 个模块`
+        : `共 ${(state.triage.modules || []).length} 个模块`;
       document.getElementById("module-list").innerHTML = modules.map((item) => (
         `<button class="module-btn ${item.id === state.selectedModuleId ? "active" : ""}" type="button" data-module="${escapeHtml(item.id)}">
           <strong>${escapeHtml(item.name)}</strong>
           <span>${escapeHtml((item.symptoms || []).slice(0, 2).join(" / "))}</span>
         </button>`
-      )).join("");
+      )).join("") || `<p class="muted">没有匹配结果。</p>`;
       document.getElementById("module-list").onclick = (event) => {
         const button = event.target.closest(".module-btn");
         if (!button) return;
         state.selectedModuleId = button.dataset.module;
+        state.selectedSymptom = "";
         renderModules();
         renderPromptPreview();
       };
@@ -526,7 +617,7 @@
           </div>
           <button class="button primary" type="button" id="copy-module">复制排查 prompt</button>
         </div>
-        <h3>症状</h3>${pillList(item.symptoms || [], "warn")}
+        <h3>症状</h3>${symptomButtons(item.symptoms || [])}
         <div class="split">
           <div><h3>相关页面</h3>${list(item.pages)}</div>
           <div><h3>相关 API</h3>${list(item.apis)}</div>
@@ -539,6 +630,13 @@
         <h3>禁止读取路径</h3>${pillList(state.triage.forbiddenPaths || [], "danger")}
       `;
       document.getElementById("copy-module").onclick = copyCurrentPrompt;
+      document.getElementById("module-detail").querySelectorAll("[data-symptom]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.selectedSymptom = state.selectedSymptom === button.dataset.symptom ? "" : button.dataset.symptom;
+          renderModuleDetail();
+          renderPromptPreview();
+        });
+      });
     }
 
     function renderProjectMap() {
@@ -612,11 +710,12 @@
       const forbidden = state.triage.forbiddenPaths || [];
       const output = state.triage.outputFormat || [];
       const verification = state.triage.verificationDefaults || [];
+      const symptoms = state.selectedSymptom ? [state.selectedSymptom] : (module.symptoms || []);
       return [
         "请做一次最小上下文 bug 排查，不要全仓库扫描。",
         "",
         `模块：${module.name}`,
-        `症状：${(module.symptoms || []).join(" / ")}`,
+        `症状：${symptoms.join(" / ")}`,
         "",
         "优先读取文件：",
         ...(module.priorityFiles || []).map((item) => `- ${item}`),
@@ -664,6 +763,12 @@
       renderSafety();
       renderPromptPreview();
       document.getElementById("copy-current").onclick = copyCurrentPrompt;
+      document.getElementById("triage-search").addEventListener("input", (event) => {
+        state.searchQuery = event.target.value;
+        state.selectedSymptom = "";
+        renderModules();
+        renderPromptPreview();
+      });
     }
 
     boot().catch((error) => {
