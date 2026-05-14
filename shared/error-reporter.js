@@ -30,10 +30,7 @@
             column: errorData.column,
             userAction: window._lastUserAction || null
           })
-        }).catch(e => {
-            // Silently fail if the reporter itself errors, to prevent infinite loops
-            console.error('ErrorReporter failed:', e);
-        });
+        }).catch(() => {});
       } catch(e) {}
     }
   
@@ -56,14 +53,15 @@
   
     // 追踪用户的最后一步交互，方便复现
     document.addEventListener('click', function(e) {
-      if (e.target && e.target.tagName) {
-        let action = `Clicked ${e.target.tagName}`;
-        if (e.target.id) action += ` #${e.target.id}`;
-        if (e.target.className && typeof e.target.className === 'string') {
-            action += ` .${e.target.className.trim().replace(/\s+/g, '.')}`;
-        }
-        window._lastUserAction = action.slice(0, 150);
+      const target = e.target && e.target.closest
+        ? e.target.closest('button,a,[role="button"]')
+        : null;
+      if (target && target.tagName) {
+        let action = `Clicked ${target.tagName}`;
+        if (target.id) action += ` #${target.id}`;
+        if (target.getAttribute('aria-label')) action += ` ${target.getAttribute('aria-label')}`;
+        if (target.textContent) action += ` ${target.textContent.trim().slice(0, 80)}`;
+        window._lastUserAction = action.slice(0, 200);
       }
     }, { capture: true, passive: true });
   })();
-  

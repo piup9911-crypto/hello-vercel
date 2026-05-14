@@ -50,45 +50,15 @@
 3. 生成的 Prompt 会将**“案发现场（错误摘要、文件、行号）”**与**“排查心法（优先读取文件、推荐检查步骤、禁止读取的敏感路径）”**无缝拼接。
 4. 人类直接将该 Prompt 发给 Agent，Agent 即可精准降落到对应模块展开排查。
 
-## SQL 草案 (如果需要接入线上 Supabase)
+## 当前存储方式
 
-第一版代码在没有建表时采用内存兜底 (in-memory mock)，若要持久化保存错误，可在 Supabase 中执行以下草案：
+v0 第一版不新增 Supabase schema，也不依赖 `@supabase/supabase-js` npm 包。
 
-```sql
-create table if not exists public.error_events (
-  id uuid primary key default gen_random_uuid(),
-  source text not null default 'unknown',
-  level text not null default 'error',
-  page text,
-  api text,
-  route text,
-  status int,
-  message text not null default '',
-  module_hint text,
-  request_id text,
-  user_action text,
-  stack_summary text,
-  file text,
-  line int,
-  column_num int,
-  created_at timestamptz not null default timezone('utc', now())
-);
+`api/error-events.mjs` 复用现有 `api/_memory-shared.mjs` 里的 `readConfig`、`callSupabase` 和 `json`，把最近错误作为安全摘要写入现有 `agent_shared_memory` 表的 `error_events` key。
 
-create index if not exists error_events_created_at_idx
-  on public.error_events (created_at desc);
+这样做的好处是：
 
-alter table public.error_events enable row level security;
-
--- 允许所有认证用户查看错误（根据权限需要可收紧）
-create policy "Authenticated users can read error events"
-on public.error_events
-for select
-to authenticated
-using (true);
-
--- 允许任何来源插入错误（供前端匿名收集）
-create policy "Anyone can insert error events"
-on public.error_events
-for insert
-with check (true);
-```
+- 不需要新增 `package.json` 或安装依赖。
+- 不需要修改 `supabase/schema.sql`。
+- Error Inbox 可以先稳定显示最近错误。
+- 以后如果需要长期审计，再单独设计专用表和 RLS。
