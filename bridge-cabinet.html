@@ -1,187 +1,170 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>桥接工具箱</title>
-    <style>
-        :root {
-            --bg: #f8f5ff;
-            --panel: rgba(255, 255, 255, 0.9);
-            --panel-strong: rgba(255, 255, 255, 0.96);
-            --text: #2f2940;
-            --muted: #7d738f;
-            --line: #e7dff4;
-            --primary: #8b5cf6;
-            --shadow: 0 24px 60px rgba(76, 48, 128, 0.16);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>桥接工具箱</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --text: #243044;
+      --muted: #657186;
+      --line: #dfe6ef;
+      --primary: #2563eb;
+      --shadow: 0 18px 48px rgba(31, 45, 70, 0.12);
+    }
 
-        * { box-sizing: border-box; }
+    * { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            padding: 24px;
-            color: var(--text);
-            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 32%),
-                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.36), transparent 24%),
-                linear-gradient(160deg, #fcfaff 0%, #f8f5ff 48%, #f6fbff 100%);
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+    }
 
-        .shell {
-            width: min(100%, 920px);
-            margin: 0 auto;
-            display: grid;
-            gap: 18px;
-        }
+    .shell {
+      width: min(100%, 920px);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
 
-        .panel {
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.75);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(18px);
-            background: var(--panel);
-            padding: 30px;
-        }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      background: var(--panel);
+      padding: 26px;
+    }
 
-        .topbar {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
 
-        .eyebrow {
-            display: inline-flex;
-            width: fit-content;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.82);
-            border: 1px solid var(--line);
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 700;
-        }
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f4f7fb;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
 
-        h1 {
-            margin: 18px 0 12px;
-            font-size: clamp(36px, 7vw, 58px);
-            line-height: 1.05;
-        }
+    h1 {
+      margin: 14px 0 10px;
+      font-size: 42px;
+      line-height: 1.08;
+    }
 
-        .lead {
-            max-width: 58ch;
-            color: var(--muted);
-            line-height: 1.8;
-            font-size: 15px;
-        }
+    .lead {
+      max-width: 62ch;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 15px;
+    }
 
-        .back-link,
-        .tool-card {
-            color: inherit;
-            text-decoration: none;
-        }
+    .back-link,
+    .tool-card {
+      color: inherit;
+      text-decoration: none;
+    }
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 42px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.86);
-            font-weight: 700;
-        }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-weight: 700;
+    }
 
-        .tool-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-        }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
 
-        .tool-card {
-            display: grid;
-            gap: 10px;
-            min-height: 190px;
-            padding: 22px;
-            border-radius: 26px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-        }
+    .tool-card {
+      display: grid;
+      gap: 10px;
+      min-height: 170px;
+      padding: 20px;
+      border-radius: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
 
-        .tool-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(139, 92, 246, 0.28);
-            box-shadow: 0 18px 36px rgba(139, 92, 246, 0.12);
-        }
+    .tool-title {
+      font-size: 20px;
+      font-weight: 800;
+    }
 
-        .tool-icon {
-            font-size: 34px;
-        }
+    .tool-body {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
 
-        .tool-title {
-            font-size: 20px;
-            font-weight: 800;
-        }
+    .tool-tag {
+      width: fit-content;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #edf4ff;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 800;
+    }
 
-        .tool-body {
-            color: var(--muted);
-            line-height: 1.75;
-            font-size: 14px;
-        }
-
-        .tool-tag {
-            width: fit-content;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(139, 92, 246, 0.1);
-            color: var(--primary);
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        @media (max-width: 760px) {
-            body { padding: 16px; }
-            .panel { padding: 22px; }
-            .tool-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      .panel { padding: 18px; }
+      h1 { font-size: 34px; }
+      .tool-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-    <main class="shell">
-        <section class="panel">
-            <div class="topbar">
-                <div>
-                    <div class="eyebrow">🧩 首页收纳页</div>
-                    <h1>桥接工具箱</h1>
-                    <div class="lead">
-                        这里只收纳两个桥接相关入口。想看工具说明就进 Gemini 工具桥；想看运行状态就进桥接状态总舱。
-                    </div>
-                </div>
-                <a class="back-link" href="index.html">返回首页</a>
-            </div>
-        </section>
+  <main class="shell">
+    <section class="panel">
+      <div class="topbar">
+        <div>
+          <div class="eyebrow">首页收纳页</div>
+          <h1>桥接工具箱</h1>
+          <div class="lead">
+            这里收纳桥接相关入口。流程诊断已经放进各个状态页的机器人分区里，打开对应状态页就能看它跑到哪一步。
+          </div>
+        </div>
+        <a class="back-link" href="index.html">返回首页</a>
+      </div>
+    </section>
 
-        <section class="tool-grid">
-            <a class="tool-card" href="bridge-tools.html">
-                <div class="tool-icon">🧰</div>
-                <div class="tool-title">Gemini 工具桥</div>
-                <div class="tool-body">查看 Telegram 桥接、Gemini CLI、本地聊天记录面板和启动说明。</div>
-                <div class="tool-tag">工具说明</div>
-            </a>
+    <section class="tool-grid">
+      <a class="tool-card" href="bridge-tools.html">
+        <div class="tool-title">Gemini 工具箱</div>
+        <div class="tool-body">查看 Telegram 桥接、Gemini CLI、本地聊天记录面板和启动说明。</div>
+        <div class="tool-tag">工具说明</div>
+      </a>
 
-            <a class="tool-card" href="bridge-status.html">
-                <div class="tool-icon">🛰️</div>
-                <div class="tool-title">桥接状态总舱</div>
-                <div class="tool-body">查看 Gem 和 Codex 两个桥接系统的运行状态、日志和远程控制入口。</div>
-                <div class="tool-tag">运行状态</div>
-            </a>
-        </section>
-    </main>
+      <a class="tool-card" href="bridge-status.html">
+        <div class="tool-title">桥接状态总舱</div>
+        <div class="tool-body">查看 Gem 和 Codex 两个桥接系统的运行状态、日志、远程控制和分区流程诊断。</div>
+        <div class="tool-tag">运行状态</div>
+      </a>
+    </section>
+  </main>
 </body>
 </html>

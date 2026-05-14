@@ -6,13 +6,6 @@ const {
   INDEPENDENT_MEMORY_FILE_NAME,
   syncSharedMemory
 } = require("./shared-memory-sync.cjs");
-// 主动消息模块：让 bot 像真人一样随机主动找你聊天
-const {
-  startProactiveMessages,
-  updateLastChatTime,
-  setProactiveEnabled,
-  getProactiveStatus
-} = require("./proactive-messages.cjs");
 
 const VERSION = "0.3.0";
 const ROOT = __dirname;
@@ -26,6 +19,7 @@ const CHAT_STATE_DIR = path.join(BRIDGE_STATE_DIR, "chats");
 const BRIDGE_LOG_PATH = path.join(BRIDGE_STATE_DIR, "bridge.log");
 const BRIDGE_LOCK_PATH = path.join(BRIDGE_STATE_DIR, "bridge.lock.json");
 const BRIDGE_ENV_PATH = path.join(ROOT, "bridge.env");
+const LOCAL_FLOW_EVENTS_PATH = path.join(BRIDGE_STATE_DIR, "flow-events.json");
 const SHARED_MEMORY_CACHE_PATH = path.join(
   BRIDGE_STATE_DIR,
   "shared-memory-cache.json"
@@ -177,6 +171,19 @@ const IMAGE_EXTENSION_MIME_TYPES = new Map([
 const memoryIngestCooldowns = new Map();
 const memoryIngestTimers = new Map();
 let bridgeLockHeld = false;
+const FLOW_RUN_ID = new Date().toISOString();
+let proactiveModuleLoaded = false;
+let startProactiveMessages = () => {};
+let updateLastChatTime = () => {};
+let setProactiveEnabled = () => false;
+let getProactiveStatus = () => ({
+  enabled: false,
+  running: false,
+  plan: [],
+  lastChatAt: "",
+  available: false,
+  reason: "proactive-messages.cjs is not loaded"
+});
 const THINKING_MODE_ALIASES = new Map([
   ["on", "hidden"],
   ["off", "off"],
@@ -261,6 +268,130 @@ function loadEnvFile(filePath, overrideExisting) {
   }
 }
 
+function deriveFlowEventsUrl() {
+  if (process.env.FLOW_EVENTS_URL) return process.env.FLOW_EVENTS_URL;
+  const base =
+    process.env.SHARED_MEMORY_URL || process.env.BRIDGE_SHARED_MEMORY_URL || "";
+  if (!base) return "";
+  return base.replace(/\/api\/shared-memory(?:\?.*)?$/i, "/api/flow-events");
+}
+
+function safeFlowText(value, maxLength = 700) {
+  const text = String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  if (/token|authorization|bearer|secret|password|api[_\s-]*key|\.env/i.test(text)) {
+    return "[redacted]";
+  }
+  return text.slice(0, maxLength);
+}
+
+function writeLocalFlowEvent(event) {
+  try {
+    ensureDir(BRIDGE_STATE_DIR);
+    const current = readJson(LOCAL_FLOW_EVENTS_PATH, { events: [] });
+    const events = Array.isArray(current.events) ? current.events : [];
+    writeJson(LOCAL_FLOW_EVENTS_PATH, {
+      schemaVersion: 1,
+      updatedAt: new Date().toISOString(),
+      events: [event, ...events].slice(0, 80)
+    });
+  } catch (error) {
+    log("local flow event write failed", error && error.message ? error.message : String(error));
+  }
+}
+
+function reportFlowEvent(event) {
+  const url = deriveFlowEventsUrl();
+  const token = process.env.SHARED_MEMORY_SYNC_TOKEN || process.env.MEMORY_SYNC_TOKEN || "";
+  const payload = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    program: "telegram-gem-bridge",
+    runId: FLOW_RUN_ID,
+    createdAt: new Date().toISOString(),
+    ...event,
+    message: safeFlowText(event && event.message),
+    hint: safeFlowText(event && event.hint, 500),
+    impact: safeFlowText(event && event.impact, 500),
+    nextAction: safeFlowText(event && event.nextAction, 700)
+  };
+
+  writeLocalFlowEvent(payload);
+  if (!url || !token) return;
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Memory-Sync-Token": token,
+      "X-Memory-Client": "telegram-gem-bridge"
+    },
+    body: JSON.stringify(payload)
+  }).catch((error) => {
+    log("flow event report failed", error && error.message ? error.message : String(error));
+  });
+}
+
+function reportFlowError(step, stepLabel, error, details = {}) {
+  reportFlowEvent({
+    step,
+    stepLabel,
+    status: "error",
+    message: error && error.message ? error.message : String(error),
+    ...details
+  });
+}
+
+function loadProactiveModule() {
+  reportFlowEvent({
+    step: "load-proactive-module",
+    stepLabel: "加载主动消息模块",
+    status: "started",
+    message: "正在加载 proactive-messages.cjs",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
+  });
+
+  try {
+    const proactive = require("./proactive-messages.cjs");
+    startProactiveMessages = proactive.startProactiveMessages;
+    updateLastChatTime = proactive.updateLastChatTime;
+    setProactiveEnabled = proactive.setProactiveEnabled;
+    getProactiveStatus = proactive.getProactiveStatus;
+    proactiveModuleLoaded = true;
+    reportFlowEvent({
+      step: "load-proactive-module",
+      stepLabel: "加载主动消息模块",
+      status: "ok",
+      message: "主动消息模块加载成功",
+      file: "tools/gemini-cli-telegram/proactive-messages.cjs",
+      moduleHint: "telegram-bridge"
+    });
+  } catch (error) {
+    const missingProactive =
+      error &&
+      error.code === "MODULE_NOT_FOUND" &&
+      String(error.message || "").includes("proactive-messages.cjs");
+    reportFlowError("load-proactive-module", "加载主动消息模块", error, {
+      file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+      hint: missingProactive
+        ? "缺少 proactive-messages.cjs"
+        : "主动消息模块加载失败",
+      impact: missingProactive
+        ? "主动消息功能不可用；bridge 会先继续启动。"
+        : "主动消息模块异常，可能影响 bridge 启动。",
+      nextAction: missingProactive
+        ? "补回 proactive-messages.cjs，或保留 fallback 并关闭主动消息功能。"
+        : "优先检查 proactive-messages.cjs 的语法和依赖。",
+      moduleHint: "telegram-bridge"
+    });
+    if (!missingProactive) throw error;
+    log("proactive module missing; continuing with fallback", error.message);
+  }
+}
+
 loadEnvFile(path.join(SOURCE_GEMINI_DIR, ".env"), false);
 loadEnvFile(BRIDGE_ENV_PATH, true);
 
@@ -281,11 +412,44 @@ const PROACTIVE_DEFAULT_ENABLED = parseEnvBoolean(
   false
 );
 
+reportFlowEvent({
+  step: "read-config",
+  stepLabel: "读取配置",
+  status: "ok",
+  message: "配置文件已读取，敏感内容不会上报。",
+  file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+  moduleHint: "telegram-bridge"
+});
+reportFlowEvent({
+  step: "check-telegram-token",
+  stepLabel: "检查 Telegram token",
+  status: "started",
+  message: "正在确认 Telegram token 是否存在。",
+  moduleHint: "telegram-bridge"
+});
 if (!TELEGRAM_TOKEN) {
+  reportFlowEvent({
+    step: "check-telegram-token",
+    stepLabel: "检查 Telegram token",
+    status: "error",
+    message: "Telegram token 没有配置。",
+    hint: "缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_TOKEN。",
+    impact: "Telegram bridge 无法连接 Telegram，也就无法启动监听。",
+    nextAction: "检查 bridge.env 或用户级 .env，但不要把 token 内容复制到网页或聊天里。",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
+  });
   throw new Error(
     "Missing TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN. Put it in ~/.gemini/.env or bridge.env."
   );
 }
+reportFlowEvent({
+  step: "check-telegram-token",
+  stepLabel: "检查 Telegram token",
+  status: "ok",
+  message: "Telegram token 已配置。",
+  moduleHint: "telegram-bridge"
+});
 
 function printHelp() {
   process.stdout.write(
@@ -2926,6 +3090,16 @@ async function handleTelegramMessage(bot, msg) {
     return;
   }
 
+  reportFlowEvent({
+    step: "receive-message",
+    stepLabel: "收到消息",
+    status: "ok",
+    message: hasTelegramAttachment ? "收到一条带附件的 Telegram 消息。" : "收到一条 Telegram 消息。",
+    impact: "bridge 已经收到消息，下一步会判断命令或调用 Gemini CLI。",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
+  });
+
   const command = hasTelegramAttachment ? null : commandOf(rawMessageText);
   const menuAction = hasTelegramAttachment ? null : menuActionOf(rawMessageText);
 
@@ -3209,12 +3383,42 @@ async function handleTelegramMessage(bot, msg) {
       };
 
       geminiStartedAt = Date.now();
-      const result = await callGeminiStream(
-        prompt,
-        state.sessionId,
-        activeModel,
-        queuePreviewUpdate
-      );
+      reportFlowEvent({
+        step: "call-gemini-cli",
+        stepLabel: "调用 Gemini CLI",
+        status: "started",
+        message: "正在调用 Gemini CLI 生成回复。",
+        impact: "如果这里卡住，Telegram 会一直等待回复。",
+        file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+        moduleHint: "telegram-bridge"
+      });
+      let result = null;
+      try {
+        result = await callGeminiStream(
+          prompt,
+          state.sessionId,
+          activeModel,
+          queuePreviewUpdate
+        );
+        reportFlowEvent({
+          step: "call-gemini-cli",
+          stepLabel: "调用 Gemini CLI",
+          status: "ok",
+          message: "Gemini CLI 已返回回复。",
+          impact: "下一步会保存聊天记录并发送 Telegram 回复。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+      } catch (error) {
+        reportFlowError("call-gemini-cli", "调用 Gemini CLI", error, {
+          hint: "Gemini CLI 调用失败或超时。",
+          impact: "这条 Telegram 消息无法正常生成回复。",
+          nextAction: "优先查看 bridge.log 中的 gemini stream call failed / timed out 记录。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+        throw error;
+      }
       geminiFinishedAt = Date.now();
       log("gemini stream returned to telegram handler", {
         chatId,
@@ -3270,7 +3474,34 @@ async function handleTelegramMessage(bot, msg) {
         historyCount: state.history.length,
         completedTurnsSinceMemoryIngest: state.completedTurnsSinceMemoryIngest
       });
-      saveChatState(state);
+      reportFlowEvent({
+        step: "save-chat-record",
+        stepLabel: "保存聊天记录",
+        status: "started",
+        message: "正在保存本地聊天记录。",
+        file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+        moduleHint: "telegram-bridge"
+      });
+      try {
+        saveChatState(state);
+        reportFlowEvent({
+          step: "save-chat-record",
+          stepLabel: "保存聊天记录",
+          status: "ok",
+          message: "本地聊天记录已保存。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+      } catch (error) {
+        reportFlowError("save-chat-record", "保存聊天记录", error, {
+          hint: "写入本地聊天状态失败。",
+          impact: "这次回复可能能发出，但后续上下文可能丢失。",
+          nextAction: "优先查看 bridge-state/chats 目录权限和磁盘状态。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+        throw error;
+      }
       log("chat state saved", {
         chatId,
         updatedAt: state.updatedAt
@@ -3289,23 +3520,50 @@ async function handleTelegramMessage(bot, msg) {
         hasThinking: Boolean(thinkingText && thinkingText.trim())
       });
       const telegramFinalizeStartedAt = Date.now();
-      if (streamMessageId) {
-        await finalizeStreamedReplyWithThinking(
-          bot,
-          chatId,
-          streamMessageId,
-          result.text,
-          thinkingText,
-          state.thinkingMode
-        );
-      } else {
-        await sendReplyWithThinking(
-          bot,
-          chatId,
-          result.text,
-          thinkingText,
-          state.thinkingMode
-        );
+      reportFlowEvent({
+        step: "send-telegram-reply",
+        stepLabel: "发送 Telegram 回复",
+        status: "started",
+        message: "正在把回复发回 Telegram。",
+        file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+        moduleHint: "telegram-bridge"
+      });
+      try {
+        if (streamMessageId) {
+          await finalizeStreamedReplyWithThinking(
+            bot,
+            chatId,
+            streamMessageId,
+            result.text,
+            thinkingText,
+            state.thinkingMode
+          );
+        } else {
+          await sendReplyWithThinking(
+            bot,
+            chatId,
+            result.text,
+            thinkingText,
+            state.thinkingMode
+          );
+        }
+        reportFlowEvent({
+          step: "send-telegram-reply",
+          stepLabel: "发送 Telegram 回复",
+          status: "ok",
+          message: "Telegram 回复已发送。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+      } catch (error) {
+        reportFlowError("send-telegram-reply", "发送 Telegram 回复", error, {
+          hint: "Telegram 回复发送失败。",
+          impact: "Gemini 已生成回复，但用户可能没有在 Telegram 收到。",
+          nextAction: "优先查看 Telegram sendMessage/editMessageText 的错误和网络代理状态。",
+          file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+          moduleHint: "telegram-bridge"
+        });
+        throw error;
       }
       log("sent telegram reply", {
         chatId,
@@ -3387,11 +3645,73 @@ async function runHealthcheck() {
 }
 
 async function startBridge() {
+  reportFlowEvent({
+    step: "start-bridge",
+    stepLabel: "启动 bridge",
+    status: "started",
+    message: "Telegram bridge 开始启动。",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
+  });
   const TelegramBot = requireFromTelegramPackage("node-telegram-bot-api");
-  acquireBridgeLock();
-  ensureBridgeHome();
-  await refreshSharedMemory(true);
+  try {
+    acquireBridgeLock();
+    ensureBridgeHome();
+    reportFlowEvent({
+      step: "start-bridge",
+      stepLabel: "启动 bridge",
+      status: "ok",
+      message: "基础目录和单实例锁检查完成。",
+      file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+      moduleHint: "telegram-bridge"
+    });
+  } catch (error) {
+    reportFlowError("start-bridge", "启动 bridge", error, {
+      file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+      hint: "启动前检查失败，可能已有旧进程或锁文件异常。",
+      impact: "Telegram bridge 没有继续启动。",
+      nextAction: "优先查看 bridge-state/bridge.lock.json 和当前 node 进程。",
+      moduleHint: "telegram-bridge"
+    });
+    throw error;
+  }
 
+  reportFlowEvent({
+    step: "sync-memory",
+    stepLabel: "同步记忆",
+    status: "started",
+    message: "正在刷新共享记忆快照。",
+    moduleHint: "telegram-bridge"
+  });
+  try {
+    await refreshSharedMemory(true);
+    reportFlowEvent({
+      step: "sync-memory",
+      stepLabel: "同步记忆",
+      status: "ok",
+      message: "共享记忆快照刷新完成。",
+      moduleHint: "telegram-bridge"
+    });
+  } catch (error) {
+    reportFlowError("sync-memory", "同步记忆", error, {
+      hint: "共享记忆同步失败。",
+      impact: "bridge 启动被中断，或启动后拿不到最新记忆。",
+      nextAction: "优先查看 shared-memory-sync.cjs 和网络/代理状态。",
+      file: "tools/gemini-cli-telegram/shared-memory-sync.cjs",
+      moduleHint: "telegram-bridge"
+    });
+    throw error;
+  }
+
+  loadProactiveModule();
+
+  reportFlowEvent({
+    step: "connect-telegram",
+    stepLabel: "连接 Telegram / 启动监听",
+    status: "started",
+    message: "正在创建 Telegram polling 监听。",
+    moduleHint: "telegram-bridge"
+  });
   const bot = new TelegramBot(TELEGRAM_TOKEN, {
     polling: true,
     filepath: false
@@ -3423,6 +3743,17 @@ async function startBridge() {
   bot.on("polling_error", (error) => {
     const message = error && error.message ? error.message : String(error);
     log("polling error", message);
+    reportFlowEvent({
+      step: "connect-telegram",
+      stepLabel: "连接 Telegram / 启动监听",
+      status: "warning",
+      message,
+      hint: "Telegram polling 遇到网络或长轮询错误。",
+      impact: "如果持续出现，bot 可能收不到新消息。",
+      nextAction: "优先查看代理端口和 bridge.log 里的 polling error。",
+      file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+      moduleHint: "telegram-bridge"
+    });
   });
 
   let botInfo = null;
@@ -3436,6 +3767,15 @@ async function startBridge() {
     defaultQualityModel: DEFAULT_QUALITY_MODEL,
     defaultFastModel: DEFAULT_FAST_MODEL,
     allowedChatIds: ALLOWED_CHAT_IDS
+  });
+  reportFlowEvent({
+    step: "connect-telegram",
+    stepLabel: "连接 Telegram / 启动监听",
+    status: "ok",
+    message: "Telegram polling 已启动。",
+    impact: "bot 已经可以等待 Telegram 消息。",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
   });
 
   // 启动主动消息系统：bot 会在随机时间主动发消息
@@ -3475,6 +3815,17 @@ async function main() {
 
 main().catch((error) => {
   releaseBridgeLock();
+  reportFlowEvent({
+    step: "start-bridge",
+    stepLabel: "启动 bridge",
+    status: "error",
+    message: error && error.message ? error.message : String(error),
+    hint: "bridge 主流程异常退出。",
+    impact: "Telegram bridge 没有继续运行。",
+    nextAction: "优先查看 bridge.log 和最近一条 flow event。",
+    file: "tools/gemini-cli-telegram/telegram-gem-bridge.cjs",
+    moduleHint: "telegram-bridge"
+  });
   log("fatal", error.message);
   process.exit(1);
 });

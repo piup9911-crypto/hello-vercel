@@ -278,6 +278,61 @@
       white-space: pre-wrap;
     }
 
+    .flow-box {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-event {
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .flow-event.error {
+      border-color: rgba(178, 59, 59, 0.3);
+      background: rgba(255, 242, 238, 0.78);
+    }
+
+    .flow-event.warning,
+    .flow-event.started {
+      border-color: rgba(183, 121, 31, 0.28);
+      background: rgba(255, 248, 229, 0.78);
+    }
+
+    .flow-event.ok {
+      border-color: rgba(47, 143, 98, 0.24);
+      background: rgba(239, 250, 245, 0.78);
+    }
+
+    .flow-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-weight: 850;
+    }
+
+    .flow-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .flow-detail {
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 13px;
+    }
+
+    .flow-copy {
+      margin-top: 10px;
+      padding: 7px 11px;
+      font-size: 12px;
+    }
+
     .control-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -376,6 +431,14 @@
 
           <article class="card wide">
             <div class="card-title">
+              <span>流程诊断</span>
+              <span class="pill"><span class="dot"></span><span>按步骤看</span></span>
+            </div>
+            <div class="flow-box" id="openai-flow">暂无流程事件。</div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-title">
               <span>远程控制</span>
               <span class="pill" id="openai-control-pill"><span class="dot"></span><span>待命</span></span>
             </div>
@@ -415,6 +478,14 @@
               <span class="pill" id="telegram-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="telegram-log">暂无日志。</div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-title">
+              <span>流程诊断</span>
+              <span class="pill"><span class="dot"></span><span>按步骤看</span></span>
+            </div>
+            <div class="flow-box" id="telegram-flow">暂无流程事件。</div>
           </article>
 
           <article class="card wide">
@@ -459,6 +530,14 @@
             </div>
             <div class="value log mono" id="rp-log">暂无日志。</div>
           </article>
+
+          <article class="card wide">
+            <div class="card-title">
+              <span>流程诊断</span>
+              <span class="pill"><span class="dot"></span><span>按步骤看</span></span>
+            </div>
+            <div class="flow-box" id="rp-flow">暂无流程事件。</div>
+          </article>
         </div>
       </div>
     </div>
@@ -472,6 +551,8 @@
   <script>
     const API_URL = "/api/gem-status";
     const CONTROL_API_URL = "/api/gem-control";
+    const FLOW_API_URL = "/api/flow-events";
+    const LOCAL_PREVIEW = new URLSearchParams(location.search).get("local") === "1";
     let accessToken = "";
     let latestPublicUrl = "";
 
@@ -484,8 +565,10 @@
       telegramPill: document.getElementById("telegram-pill"),
       telegramValue: document.getElementById("telegram-value"),
       openaiLog: document.getElementById("openai-log"),
+      openaiFlow: document.getElementById("openai-flow"),
       telegramFreshPill: document.getElementById("telegram-fresh-pill"),
       telegramLog: document.getElementById("telegram-log"),
+      telegramFlow: document.getElementById("telegram-flow"),
       memoryPill: document.getElementById("memory-pill"),
       memoryValue: document.getElementById("memory-value"),
       rpPill: document.getElementById("rp-pill"),
@@ -494,6 +577,7 @@
       rpRecordsValue: document.getElementById("rp-records-value"),
       rpFreshPill: document.getElementById("rp-fresh-pill"),
       rpLog: document.getElementById("rp-log"),
+      rpFlow: document.getElementById("rp-flow"),
       updatedAt: document.getElementById("updated-at"),
       reporter: document.getElementById("reporter"),
       refreshBtn: document.getElementById("refresh-btn"),
@@ -521,6 +605,105 @@
       return date.toLocaleString("zh-CN", {
         hour12: false
       });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function flowStatusText(status) {
+      return {
+        started: "进行中",
+        ok: "成功",
+        warning: "警告",
+        error: "失败"
+      }[status] || "未知";
+    }
+
+    function buildFlowPrompt(event) {
+      return [
+        "请修复这个 bridge 流程错误：",
+        `程序：${event.program || ""}`,
+        `失败步骤：${event.stepLabel || event.step || ""}`,
+        `错误原因：${event.message || ""}`,
+        `影响：${event.impact || ""}`,
+        `相关文件：${event.file || ""}${event.line ? `:${event.line}` : ""}`,
+        `建议优先读取：${event.file || event.moduleHint || ""}`,
+        "",
+        "不要读取 env/token/private/bridge-state 内容。",
+        "请给出最小修改方案并说明怎么验证。"
+      ].join("\n");
+    }
+
+    function renderFlowEvents(node, events) {
+      if (!node) return;
+      const items = (events || []).slice(0, 3);
+      if (!items.length) {
+        node.innerHTML = '<div class="flow-detail">暂无这个机器人的流程事件。启动或操作一次后，这里会显示它跑到哪一步。</div>';
+        return;
+      }
+      node.innerHTML = items.map((event) => {
+        const status = event.status || "warning";
+        const file = event.file ? `${event.file}${event.line ? `:${event.line}` : ""}` : "暂无";
+        const reason = event.message || (status === "error" ? "这里失败了，所以程序没有继续按预期运行。" : "这一步有状态更新。");
+        return `
+          <div class="flow-event ${escapeHtml(status)}">
+            <div class="flow-head">
+              <div>
+                <div>${escapeHtml(event.stepLabel || event.step || "未知步骤")}</div>
+                <div class="flow-meta">${escapeHtml(event.program || "未知程序")} · ${escapeHtml(formatTime(event.createdAt))}</div>
+              </div>
+              <span class="pill ${status === "ok" ? "good" : status === "error" ? "bad" : ""}"><span class="dot"></span><span>${escapeHtml(flowStatusText(status))}</span></span>
+            </div>
+            <div class="flow-detail">原因：${escapeHtml(reason)}</div>
+            <div class="flow-detail">影响：${escapeHtml(event.impact || "暂无明显影响说明。")}</div>
+            <div class="flow-detail">下一步：${escapeHtml(event.nextAction || "让 Codex 查看相关文件和最近流程事件。")}</div>
+            <div class="flow-detail mono">文件：${escapeHtml(file)}</div>
+            ${status === "error" ? `<button class="flow-copy" type="button" data-flow-id="${escapeHtml(event.id)}">复制给 Codex 修复</button>` : ""}
+          </div>
+        `;
+      }).join("");
+      node.querySelectorAll("[data-flow-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const event = items.find((item) => item.id === button.dataset.flowId);
+          if (!event) return;
+          await navigator.clipboard.writeText(buildFlowPrompt(event));
+          button.textContent = "已复制";
+          setTimeout(() => { button.textContent = "复制给 Codex 修复"; }, 1400);
+        });
+      });
+    }
+
+    function flowBucketFor(event) {
+      const value = `${event.program || ""} ${event.moduleHint || ""} ${event.step || ""}`.toLowerCase();
+      if (value.includes("openai")) return "openai";
+      if (value.includes("rp")) return "rp";
+      if (value.includes("telegram") || value.includes("gem-bridge")) return "telegram";
+      return "";
+    }
+
+    async function requestFlowEvents() {
+      let payload = null;
+      try {
+        const response = await fetch(FLOW_API_URL, { headers: { Accept: "application/json" } });
+        payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `流程事件读取失败：${response.status}`);
+      } catch {
+        const localResponse = await fetch("tools/gemini-cli-telegram/bridge-state/flow-events.json", { cache: "no-store" });
+        payload = await localResponse.json();
+      }
+      const buckets = { openai: [], telegram: [], rp: [] };
+      (Array.isArray(payload.events) ? payload.events : []).forEach((event) => {
+        const bucket = flowBucketFor(event);
+        if (bucket && buckets[bucket]) buckets[bucket].push(event);
+      });
+      renderFlowEvents(el.openaiFlow, buckets.openai);
+      renderFlowEvents(el.telegramFlow, buckets.telegram);
+      renderFlowEvents(el.rpFlow, buckets.rp);
     }
 
     function minutesSince(value) {
@@ -647,6 +830,12 @@
     }
 
     async function requestStatus() {
+      if (LOCAL_PREVIEW) {
+        const response = await fetch("tools/gemini-cli-telegram/bridge-state/gem-status-local.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("本地预览还没有 gem-status-local.json。先运行一次 gem-status-agent。");
+        renderStatus(await response.json());
+        return;
+      }
       const response = await fetch(API_URL, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -700,6 +889,7 @@
     }
 
     async function requestControl() {
+      if (LOCAL_PREVIEW) return;
       const response = await fetch(CONTROL_API_URL, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -749,15 +939,24 @@
     }
 
     async function init() {
+      if (LOCAL_PREVIEW) {
+        accessToken = "";
+        await requestStatus().catch((error) => {
+          el.openaiLog.textContent = error && error.message ? error.message : String(error);
+        });
+        await requestFlowEvents().catch(() => {});
+        return;
+      }
       const auth = await window.AppAuth.requireUser();
       if (auth.redirected) return;
       accessToken = auth.session.access_token;
       await requestStatus();
       await requestControl();
+      await requestFlowEvents().catch(() => {});
     }
 
     el.refreshBtn.addEventListener("click", () => {
-      Promise.all([requestStatus(), requestControl()]).catch((error) => {
+      Promise.all([requestStatus(), requestControl(), requestFlowEvents()]).catch((error) => {
         el.openaiLog.textContent = error && error.message ? error.message : String(error);
       });
     });

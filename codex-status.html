@@ -109,6 +109,15 @@
     .value { color: var(--ink); font-size: 14px; line-height: 1.7; word-break: break-word; }
     .mono { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; font-size: 13px; }
     .log { max-height: 180px; overflow: auto; border-radius: 14px; padding: 12px; background: rgba(37,33,25,0.05); white-space: pre-wrap; }
+    .flow-box { display: grid; gap: 10px; }
+    .flow-event { border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 12px; background: rgba(255,255,255,0.62); }
+    .flow-event.error { border-color: rgba(178,59,59,0.3); background: rgba(255,242,238,0.78); }
+    .flow-event.warning, .flow-event.started { border-color: rgba(183,121,31,0.28); background: rgba(255,248,229,0.78); }
+    .flow-event.ok { border-color: rgba(47,143,98,0.24); background: rgba(239,250,245,0.78); }
+    .flow-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-weight: 850; }
+    .flow-meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .flow-detail { color: var(--muted); line-height: 1.65; font-size: 13px; }
+    .flow-copy { margin-top: 10px; padding: 7px 11px; font-size: 12px; }
     .control-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .control-buttons button { font-size: 13px; padding: 8px 14px; }
     .qi .control-buttons button { border-color: var(--qi-border); }
@@ -168,6 +177,13 @@
           </article>
           <article class="card wide">
             <div class="card-title">
+              <span>流程诊断</span>
+              <span class="pill"><span class="dot"></span><span>按步骤看</span></span>
+            </div>
+            <div class="flow-box" id="qi-flow">暂无流程事件。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
               <span>远程控制</span>
               <span class="pill" id="qi-ctrl-pill"><span class="dot"></span><span>待命</span></span>
             </div>
@@ -210,6 +226,13 @@
           </article>
           <article class="card wide">
             <div class="card-title">
+              <span>流程诊断</span>
+              <span class="pill"><span class="dot"></span><span>按步骤看</span></span>
+            </div>
+            <div class="flow-box" id="cc-flow">暂无流程事件。</div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
               <span>远程控制</span>
               <span class="pill" id="cc-ctrl-pill"><span class="dot"></span><span>待命</span></span>
             </div>
@@ -233,6 +256,8 @@
   <script>
     const API_URL = "/api/codex-status";
     const CONTROL_API_URL = "/api/codex-control";
+    const FLOW_API_URL = "/api/flow-events";
+    const LOCAL_PREVIEW = new URLSearchParams(location.search).get("local") === "1";
     let accessToken = "";
 
     function setPill(node, state, label) {
@@ -272,6 +297,97 @@
       }
       output.push(service.lastLine || "没有新的日志记录。");
       return output.join("\n\n");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function flowStatusText(status) {
+      return { started: "进行中", ok: "成功", warning: "警告", error: "失败" }[status] || "未知";
+    }
+
+    function buildFlowPrompt(event) {
+      return [
+        "请修复这个 bridge 流程错误：",
+        `程序：${event.program || ""}`,
+        `失败步骤：${event.stepLabel || event.step || ""}`,
+        `错误原因：${event.message || ""}`,
+        `影响：${event.impact || ""}`,
+        `相关文件：${event.file || ""}${event.line ? `:${event.line}` : ""}`,
+        `建议优先读取：${event.file || event.moduleHint || ""}`,
+        "",
+        "不要读取 env/token/private/bridge-state 内容。",
+        "请给出最小修改方案并说明怎么验证。"
+      ].join("\n");
+    }
+
+    function renderFlowEvents(node, events) {
+      if (!node) return;
+      const items = (events || []).slice(0, 3);
+      if (!items.length) {
+        node.innerHTML = '<div class="flow-detail">暂无这个机器人的流程事件。启动或操作一次后，这里会显示它跑到哪一步。</div>';
+        return;
+      }
+      node.innerHTML = items.map((event) => {
+        const status = event.status || "warning";
+        const file = event.file ? `${event.file}${event.line ? `:${event.line}` : ""}` : "暂无";
+        return `
+          <div class="flow-event ${escapeHtml(status)}">
+            <div class="flow-head">
+              <div>
+                <div>${escapeHtml(event.stepLabel || event.step || "未知步骤")}</div>
+                <div class="flow-meta">${escapeHtml(event.program || "未知程序")} · ${escapeHtml(formatTime(event.createdAt))}</div>
+              </div>
+              <span class="pill ${status === "ok" ? "good" : status === "error" ? "bad" : ""}"><span class="dot"></span><span>${escapeHtml(flowStatusText(status))}</span></span>
+            </div>
+            <div class="flow-detail">原因：${escapeHtml(event.message || "这一步有状态更新。")}</div>
+            <div class="flow-detail">影响：${escapeHtml(event.impact || "暂无明显影响说明。")}</div>
+            <div class="flow-detail">下一步：${escapeHtml(event.nextAction || "让 Codex 查看相关文件和最近流程事件。")}</div>
+            <div class="flow-detail mono">文件：${escapeHtml(file)}</div>
+            ${status === "error" ? `<button class="flow-copy" type="button" data-flow-id="${escapeHtml(event.id)}">复制给 Codex 修复</button>` : ""}
+          </div>
+        `;
+      }).join("");
+      node.querySelectorAll("[data-flow-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const event = items.find((item) => item.id === button.dataset.flowId);
+          if (!event) return;
+          await navigator.clipboard.writeText(buildFlowPrompt(event));
+          button.textContent = "已复制";
+          setTimeout(() => { button.textContent = "复制给 Codex 修复"; }, 1400);
+        });
+      });
+    }
+
+    function flowBucketFor(event) {
+      const value = `${event.program || ""} ${event.moduleHint || ""} ${event.step || ""}`.toLowerCase();
+      if (value.includes("ccgram")) return "cc";
+      if (value.includes("codex") || value.includes("qi")) return "qi";
+      return "";
+    }
+
+    async function requestFlowEvents() {
+      let payload = null;
+      try {
+        const response = await fetch(FLOW_API_URL, { headers: { Accept: "application/json" } });
+        payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `流程事件读取失败：${response.status}`);
+      } catch {
+        const localResponse = await fetch("tools/gemini-cli-telegram/bridge-state/flow-events.json", { cache: "no-store" });
+        payload = await localResponse.json();
+      }
+      const buckets = { qi: [], cc: [] };
+      (Array.isArray(payload.events) ? payload.events : []).forEach((event) => {
+        const bucket = flowBucketFor(event);
+        if (bucket && buckets[bucket]) buckets[bucket].push(event);
+      });
+      renderFlowEvents(document.getElementById("qi-flow"), buckets.qi);
+      renderFlowEvents(document.getElementById("cc-flow"), buckets.cc);
     }
 
     function renderStatus(status) {
@@ -323,7 +439,16 @@
     }
 
     async function refresh() {
-      try { renderStatus(await fetchApi(API_URL)); } catch (e) {
+      try {
+        if (LOCAL_PREVIEW) {
+          const response = await fetch("tools/gemini-cli-telegram/bridge-state/codex-status-local.json", { cache: "no-store" });
+          if (!response.ok) throw new Error("本地预览还没有 codex-status-local.json。先运行一次 codex-status-agent。");
+          renderStatus(await response.json());
+        } else {
+          renderStatus(await fetchApi(API_URL));
+        }
+        await requestFlowEvents().catch(() => {});
+      } catch (e) {
         document.getElementById("qi-log").textContent = e.message || String(e);
         setPill(document.getElementById("qi-fresh-pill"), "bad", "读取失败");
       }
@@ -345,6 +470,11 @@
     }
 
     async function init() {
+      if (LOCAL_PREVIEW) {
+        accessToken = "";
+        await refresh();
+        return;
+      }
       const auth = await window.AppAuth.requireUser();
       if (auth.redirected) return;
       accessToken = auth.session.access_token;
