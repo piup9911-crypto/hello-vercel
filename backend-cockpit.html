@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bug Triage Cockpit</title>
+  <script src="shared/error-reporter.js"></script>
   <style>
     :root {
       --bg: #f6f8fb;
@@ -874,6 +875,100 @@
         renderModules();
         renderPromptPreview();
       });
+    }
+
+    async function loadErrors() {
+      const list = document.getElementById("error-list");
+      if(!list) return;
+      list.innerHTML = "加载中...";
+      try {
+        const response = await fetch("/api/error-events", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        
+        if (!data.events || data.events.length === 0) {
+          list.innerHTML = '<div class="empty">当前没有记录到任何错误。</div>';
+          return;
+        }
+
+        list.innerHTML = data.events.map(err => {
+          const date = new Date(err.created_at || err.createdAt).toLocaleString();
+          return `
+            <div class="card" style="margin-bottom: 12px;">
+              <div class="toolbar" style="margin-bottom: 8px;">
+                <div>
+                  <span class="pill danger">${escapeHtml(err.level || 'error')}</span>
+                  <span class="pill">${escapeHtml(err.source)}</span>
+                  <strong>${escapeHtml(err.page || err.api || '未知位置')}</strong>
+                </div>
+                <button class="button primary copy-error-prompt" type="button" data-error="${escapeHtml(encodeURIComponent(JSON.stringify(err)))}">复制修 Bug Prompt</button>
+              </div>
+              <p class="muted" style="margin-bottom: 8px;">${date} ${err.status ? ' | 状态码: ' + err.status : ''}</p>
+              <pre style="margin-top: 0;">${escapeHtml(err.message)}</pre>
+              ${err.file ? `<p class="muted" style="font-size: 12px;">文件: <code>${escapeHtml(err.file)}</code>${err.line ? ':' + err.line : ''}</p>` : ''}
+              ${err.user_action || err.userAction ? `<p class="muted" style="font-size: 12px;">操作: ${escapeHtml(err.user_action || err.userAction)}</p>` : ''}
+              ${err.stack_summary || err.stackSummary ? `<details><summary style="cursor: pointer; font-size: 12px; color: var(--muted); margin-top: 8px;">查看 Stack</summary><pre style="margin-top: 4px;">${escapeHtml(err.stack_summary || err.stackSummary)}</pre></details>` : ''}
+            </div>
+          `;
+        }).join('');
+
+        document.querySelectorAll('.copy-error-prompt').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const err = JSON.parse(decodeURIComponent(e.target.dataset.error));
+            await copyErrorPrompt(err);
+            const originalText = e.target.textContent;
+            e.target.textContent = "已复制！";
+            setTimeout(() => e.target.textContent = originalText, 2000);
+          });
+        });
+      } catch (err) {
+        list.innerHTML = `<div class="empty feedback error">加载错误列表失败: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function copyErrorPrompt(error) {
+      const modules = state.triage.modules || [];
+      let matchedModule = modules.find(m => {
+          const text = (error.page || '') + ' ' + (error.api || '') + ' ' + (error.file || '') + ' ' + (error.module_hint || error.moduleHint || '');
+          return (m.pages && m.pages.some(p => text.includes(p))) || (m.apis && m.apis.some(a => text.includes(a)));
+      });
+      if (!matchedModule) matchedModule = modules[0];
+
+      const forbidden = state.triage.forbiddenPaths || [];
+      const verification = state.triage.verificationDefaults || [];
+      const outputFormat = state.triage.outputFormat || [];
+      
+      const prompt = [
+          "请做一次最小上下文 bug 排查，不要全仓库扫描。",
+          "",
+          `【最新错误报告】`,
+          `来源：${error.source || '未知'}`,
+          `位置：${error.page || error.api || '未知'}`,
+          `文件：${error.file || '未知'}${error.line ? ':' + error.line : ''}`,
+          `错误信息：${error.message || '未知'}`,
+          `操作路径：${error.user_action || error.userAction || '未知'}`,
+          `Stack 摘要：\\n${error.stack_summary || error.stackSummary || '无'}`,
+          "",
+          `【相关模块：${matchedModule ? matchedModule.name : '未知'}】`,
+          "优先读取文件：",
+          ...(matchedModule ? (matchedModule.priorityFiles || []) : []).map((item) => `- ${item}`),
+          "",
+          "不要读取的 forbidden paths：",
+          ...forbidden.map((item) => `- ${item}`),
+          "",
+          "推荐检查步骤：",
+          ...(matchedModule ? (matchedModule.recommendedChecks || []) : []).map((item) => `- ${item}`),
+          "",
+          "输出格式：",
+          ...outputFormat.map((item) => `- ${item}`),
+          "",
+          "验证方式：",
+          ...verification.map((item) => `- ${item}`),
+          "",
+          "不要复制真实记忆、真实聊天、env、token、secret。"
+      ].join("\\n");
+
+      await navigator.clipboard.writeText(prompt);
     }
 
     async function copyCurrentPrompt() {

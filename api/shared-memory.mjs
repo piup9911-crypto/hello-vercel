@@ -57,8 +57,29 @@ export async function GET(request) {
       pendingEntries
     });
   } catch (error) {
+    const errorMessage = error && error.message ? error.message : String(error);
+    
+    try {
+      const proto = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('host');
+      if (host) {
+        await fetch(`${proto}://${host}/api/error-events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'api',
+            api: '/api/shared-memory',
+            level: 'error',
+            message: errorMessage,
+            stackSummary: error && error.stack ? error.stack : null,
+            status: 500
+          })
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
     return json(500, {
-      error: error && error.message ? error.message : String(error)
+      error: errorMessage
     });
   }
 }
@@ -98,8 +119,29 @@ export async function PUT(request) {
       updatedAt: memory.updatedAt
     });
   } catch (error) {
+    const errorMessage = error && error.message ? error.message : String(error);
+    
+    try {
+      const proto = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('host');
+      if (host) {
+        await fetch(`${proto}://${host}/api/error-events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'api',
+            api: '/api/shared-memory',
+            level: 'error',
+            message: errorMessage,
+            stackSummary: error && error.stack ? error.stack : null,
+            status: 500
+          })
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
     return json(500, {
-      error: error && error.message ? error.message : String(error)
+      error: errorMessage
     });
   }
 }
