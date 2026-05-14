@@ -11,10 +11,21 @@ const {
 } = require("./cloud-memory-client.cjs");
 
 const PROJECT_ROOT = path.resolve(ROOT, "..", "..", "..");
+const LEGACY_GEM_ROOT =
+  process.env.GEM_LEGACY_BRIDGE_ROOT ||
+  path.join(os.homedir(), "Documents", "Codex", "2026-04-21-gemini-cli-telegram");
 const RP_BOT_ROOT = path.join(PROJECT_ROOT, "telegram-rp-bot");
-const TELEGRAM_LOCK_PATH = path.join(ROOT, "bridge-state", "bridge.lock.json");
-const TELEGRAM_LOG_PATH = path.join(ROOT, "bridge-state", "bridge.log");
-const OPENAI_LOG_PATH = path.join(ROOT, "st-bridge-state", "openai-bridge.log");
+const GEM_ROOTS = [ROOT, LEGACY_GEM_ROOT].filter((item, index, all) => item && all.indexOf(item) === index);
+const TELEGRAM_LOCK_PATHS = GEM_ROOTS.map((root) => path.join(root, "bridge-state", "bridge.lock.json"));
+const TELEGRAM_LOG_PATHS = GEM_ROOTS.map((root) => path.join(root, "bridge-state", "bridge.log"));
+const OPENAI_LOG_PATHS = GEM_ROOTS.map((root) => path.join(root, "st-bridge-state", "openai-bridge.log"));
+const PUBLIC_URL_PATHS = GEM_ROOTS.map((root) => path.join(root, "st-bridge-state", "public-openai-bridge-url.txt"));
+const TUNNEL_LOG_PATHS = GEM_ROOTS.flatMap((root) => [
+  path.join(root, "st-bridge-state", "cloudflared.out.log"),
+  path.join(root, "st-bridge-state", "cloudflared-test.log"),
+  path.join(root, "st-bridge-state", "localhostrun.out.log"),
+  path.join(root, "st-bridge-state", "localhostrun-json.out.log")
+]);
 const RP_PID_PATH = path.join(RP_BOT_ROOT, "data", "bot.pid");
 const RP_LOG_PATH = path.join(RP_BOT_ROOT, "data", "bot.log");
 const RP_ERR_LOG_PATH = path.join(RP_BOT_ROOT, "data", "bot.err.log");
@@ -76,7 +87,26 @@ function readLastLine(filePath) {
   const text = readText(filePath).trim();
   if (!text) return "";
   const lines = text.split(/\r?\n/).filter(Boolean);
-  return lines.length ? lines[lines.length - 1].slice(0, 800) : "";
+  return lines.length ? lines[lines.length - 1].replace(/\x1b\[[0-9;]*m/g, "").slice(0, 800) : "";
+}
+
+function firstExisting(paths) {
+  return paths.find((filePath) => fs.existsSync(filePath)) || paths[0] || "";
+}
+
+function newestExisting(paths) {
+  let best = "";
+  let bestTime = 0;
+  for (const filePath of paths) {
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.mtimeMs >= bestTime) {
+        best = filePath;
+        bestTime = stat.mtimeMs;
+      }
+    } catch {}
+  }
+  return best || paths[0] || "";
 }
 
 function fileUpdatedAt(filePath) {
@@ -85,6 +115,61 @@ function fileUpdatedAt(filePath) {
   } catch {
     return null;
   }
+}
+
+function findProcessByCommand(pattern) {
+  if (!pattern) return null;
+  const escaped = pattern.replace(/'/g, "''");
+  const script = [
+    "$pattern = '" + escaped + "';",
+    "Get-CimInstance Win32_Process",
+    "| Where-Object { $_.CommandLine -and $_.CommandLine -like \"*$pattern*\" }",
+    "| Select-Object -First 1 ProcessId,CommandLine",
+    "|",
+    "ConvertTo-Json -Compress"
+  ].join(" ");
+  try {
+    const output = require("child_process").execFileSync("powershell.exe", ["-NoProfile", "-Command", script], {
+      encoding: "utf8",
+      timeout: 5000,
+      windowsHide: true
+    });
+    if (!output.trim()) return null;
+    const parsed = JSON.parse(output);
+    return parsed && parsed.ProcessId ? { pid: parsed.ProcessId, commandLine: parsed.CommandLine || "" } : null;
+  } catch {
+    return null;
+  }
+}
+
+function getListeningPid(port) {
+  try {
+    const output = require("child_process").execFileSync("netstat", ["-ano"], {
+      encoding: "utf8",
+      timeout: 5000,
+      windowsHide: true
+    });
+    const pattern = new RegExp(`^\\s*TCP\\s+\\S+:${String(port)}\\s+\\S+\\s+LISTENING\\s+(\\d+)`, "im");
+    const match = output.match(pattern);
+    return match ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function findPublicUrl() {
+  for (const filePath of PUBLIC_URL_PATHS) {
+    const saved = readText(filePath).trim();
+    if (saved) return saved;
+  }
+  for (const filePath of TUNNEL_LOG_PATHS) {
+    const text = readText(filePath);
+    const cloudflareMatch = text.match(/https:\/\/[A-Za-z0-9-]+\.trycloudflare\.com/i);
+    if (cloudflareMatch && cloudflareMatch[0]) return `${cloudflareMatch[0].replace(/[.,;]+$/, "")}/v1`;
+    const localhostRunMatch = text.match(/tunneled with tls termination,\s+(https:\/\/[A-Za-z0-9.-]+)/i);
+    if (localhostRunMatch && localhostRunMatch[1]) return `${localhostRunMatch[1].replace(/[.,;]+$/, "")}/v1`;
+  }
+  return process.env.GEM_PUBLIC_URL || process.env.PUBLIC_OPENAI_BRIDGE_URL || "";
 }
 
 function processAlive(pid) {
@@ -139,37 +224,42 @@ function requestLocalJson(urlString, headers = {}) {
 
 async function getOpenAiBridgeStatus(checkedAt) {
   const port = Number.parseInt(process.env.OPENAI_BRIDGE_PORT || "4141", 10) || 4141;
+  const pid = getListeningPid(port);
   const apiKey = process.env.OPENAI_BRIDGE_API_KEY || "";
   const health = await requestLocalJson(`http://127.0.0.1:${port}/v1/models`, {
     Accept: "application/json",
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
   });
   return {
-    online: health.ok,
+    online: Boolean(pid) || health.ok,
     checkedAt,
     port,
-    pid: null,
+    pid,
     model:
       process.env.OPENAI_BRIDGE_DEFAULT_MODEL ||
       process.env.BRIDGE_GEMINI_MODEL_QUALITY ||
       process.env.BRIDGE_GEMINI_MODEL ||
       "gemini-3.1-pro-preview",
-    logUpdatedAt: fileUpdatedAt(OPENAI_LOG_PATH),
-    lastLine: readLastLine(OPENAI_LOG_PATH)
+    logUpdatedAt: fileUpdatedAt(newestExisting(OPENAI_LOG_PATHS)),
+    lastLine: readLastLine(newestExisting(OPENAI_LOG_PATHS))
   };
 }
 
 function getTelegramBridgeStatus(checkedAt) {
-  const lock = readJson(TELEGRAM_LOCK_PATH);
-  const pid = lock && lock.pid ? lock.pid : null;
+  const lockPath = firstExisting(TELEGRAM_LOCK_PATHS);
+  const logPath = newestExisting(TELEGRAM_LOG_PATHS);
+  const lock = readJson(lockPath);
+  const commandProcess = findProcessByCommand("telegram-gem-bridge.cjs");
+  const pid = lock && lock.pid ? lock.pid : commandProcess && commandProcess.pid ? commandProcess.pid : null;
   return {
     online: processAlive(pid),
     checkedAt,
     pid,
     lockFile: Boolean(lock),
     startedAt: lock && lock.startedAt ? lock.startedAt : null,
-    logUpdatedAt: fileUpdatedAt(TELEGRAM_LOG_PATH),
-    lastLine: readLastLine(TELEGRAM_LOG_PATH)
+    root: path.dirname(path.dirname(logPath || lockPath || ROOT)),
+    logUpdatedAt: fileUpdatedAt(logPath),
+    lastLine: readLastLine(logPath)
   };
 }
 
@@ -183,10 +273,15 @@ function getMemoryStatus(config, checkedAt) {
 }
 
 function getPublicTunnelStatus(checkedAt) {
+  const url = findPublicUrl();
+  const cloudflared = findProcessByCommand("cloudflared");
+  const sshTunnel = findProcessByCommand("localhost.run");
   return {
     checkedAt,
-    online: false,
-    lastLine: ""
+    online: Boolean(url && (cloudflared || sshTunnel)),
+    url,
+    pid: cloudflared && cloudflared.pid ? cloudflared.pid : sshTunnel && sshTunnel.pid ? sshTunnel.pid : null,
+    lastLine: readLastLine(newestExisting(TUNNEL_LOG_PATHS))
   };
 }
 
@@ -226,7 +321,7 @@ async function buildStatus(config) {
       rpTelegramBot: getRpBotStatus(checkedAt)
     },
     links: {
-      publicUrl: process.env.GEM_PUBLIC_URL || process.env.PUBLIC_OPENAI_BRIDGE_URL || ""
+      publicUrl: findPublicUrl()
     },
     notes: ""
   };
