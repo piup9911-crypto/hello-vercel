@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RP Studio</title>
+    <style>
+      :root {
+        --bg: #f4f5f1;
+        --panel: #ffffff;
+        --ink: #202124;
+        --muted: #687078;
+        --line: #d8ddd6;
+        --accent: #1f7a68;
+        --accent-soft: #e2f1ec;
+        --warn: #a15c18;
+        --danger: #a14237;
+        --code: #151917;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 260px minmax(360px, 0.95fr) minmax(420px, 1.25fr);
+      }
+
+      aside,
+      main,
+      .preview {
+        min-width: 0;
+        padding: 18px;
+      }
+
+      aside {
+        border-right: 1px solid var(--line);
+        background: #edf0eb;
+      }
+
+      main {
+        border-right: 1px solid var(--line);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      h2 {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+
+      h3 {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 18px 0 8px;
+      }
+
+      .muted,
+      label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 9px 10px;
+        background: #fff;
+        color: var(--ink);
+        outline: none;
+      }
+
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+        line-height: 1.45;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      button {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        border-radius: 6px;
+        padding: 9px 12px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #fff;
+        color: var(--accent);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .chat-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .chat-item {
+        width: 100%;
+        text-align: left;
+        color: var(--ink);
+        background: #fff;
+        border-color: var(--line);
+      }
+
+      .chat-item.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0 0;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 999px;
+        padding: 5px 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .status {
+        min-height: 18px;
+        color: var(--warn);
+        font-size: 12px;
+      }
+
+      .preview-head {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .fact {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .fact strong {
+        display: block;
+        font-size: 13px;
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+
+      pre {
+        min-height: 520px;
+        margin: 0;
+        padding: 14px;
+        overflow: auto;
+        color: #eef5ee;
+        background: var(--code);
+        border-radius: 8px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        aside,
+        main {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .preview-head,
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="top">
+          <div>
+            <h1>RP Studio</h1>
+            <div class="muted">Gem Chat Records</div>
+          </div>
+          <button class="secondary" id="refreshBtn">刷新</button>
+        </div>
+
+        <div class="panel stack">
+          <label for="manualChatId">当前会话</label>
+          <input id="manualChatId" value="telegram_rp_7541487750" />
+          <button id="useManualBtn">使用这个会话</button>
+        </div>
+
+        <h3>telegram_rp 会话</h3>
+        <div class="chat-list" id="chatList"></div>
+        <div class="status" id="leftStatus"></div>
+      </aside>
+
+      <main>
+        <section class="panel stack">
+          <h2>绑定</h2>
+          <label for="presetSelect">Preset</label>
+          <select id="presetSelect"></select>
+          <label for="characterSelect">Character</label>
+          <select id="characterSelect"></select>
+          <button id="saveBindingBtn">保存绑定</button>
+          <div class="pill-row">
+            <span class="pill" id="currentChatPill">chatId: -</span>
+            <span class="pill" id="presetPill">preset: 未绑定</span>
+            <span class="pill" id="characterPill">character: 未绑定</span>
+          </div>
+        </section>
+
+        <section class="panel stack">
+          <h2>新建 Preset</h2>
+          <input id="presetName" placeholder="Preset 名称" />
+          <textarea id="presetSystemPrompt" placeholder="system_prompt"></textarea>
+          <div class="row">
+            <input id="presetTemperature" type="number" step="0.1" min="0" max="2" value="0.8" />
+            <input id="presetMaxTokens" type="number" min="1" value="1200" />
+          </div>
+          <textarea id="presetStops" placeholder="stop_strings，一行一个"></textarea>
+          <button id="createPresetBtn">创建 Preset</button>
+        </section>
+
+        <section class="panel stack">
+          <h2>新建 Character</h2>
+          <input id="characterName" placeholder="角色名称" />
+          <textarea id="characterDescription" placeholder="description"></textarea>
+          <textarea id="characterPersonality" placeholder="personality"></textarea>
+          <textarea id="characterScenario" placeholder="scenario"></textarea>
+          <textarea id="characterFirstMes" placeholder="first_mes"></textarea>
+          <textarea id="characterMesExample" placeholder="mes_example"></textarea>
+          <button id="createCharacterBtn">创建 Character</button>
+        </section>
+      </main>
+
+      <section class="preview">
+        <div class="top">
+          <div>
+            <h2>Prompt Preview</h2>
+            <div class="muted" id="previewUpdated">等待读取</div>
+          </div>
+          <button class="secondary" id="previewBtn">重新生成</button>
+        </div>
+        <div class="preview-head">
+          <div class="fact"><span class="muted">chatId</span><strong id="previewChatId">-</strong></div>
+          <div class="fact"><span class="muted">preset</span><strong id="previewPreset">未绑定</strong></div>
+          <div class="fact"><span class="muted">character</span><strong id="previewCharacter">未绑定</strong></div>
+        </div>
+        <pre id="promptPreview">等待选择会话。</pre>
+      </section>
+    </div>
+
+    <script>
+      const state = {
+        chatId: "telegram_rp_7541487750",
+        presets: [],
+        characters: []
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+          }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "请求失败");
+        return data;
+      }
+
+      function setBusy(button, busy) {
+        button.disabled = busy;
+      }
+
+      function rpChatId(chatId) {
+        const value = String(chatId || "").trim();
+        return value.startsWith("telegram_rp_") ? value : `telegram_rp_${value}`;
+      }
+
+      function option(label, value) {
+        const item = document.createElement("option");
+        item.textContent = label;
+        item.value = value;
+        return item;
+      }
+
+      function renderConfigSelects(binding = {}) {
+        $("presetSelect").replaceChildren(option("未绑定", ""));
+        for (const preset of state.presets) {
+          $("presetSelect").appendChild(option(preset.name, preset.id));
+        }
+        $("characterSelect").replaceChildren(option("未绑定", ""));
+        for (const character of state.characters) {
+          $("characterSelect").appendChild(option(character.name, character.id));
+        }
+        $("presetSelect").value = binding.active_preset_id || "";
+        $("characterSelect").value = binding.active_character_id || "";
+      }
+
+      function renderPreview(payload) {
+        const preview = payload.promptPreview || {};
+        $("currentChatPill").textContent = `chatId: ${payload.chatId || state.chatId}`;
+        $("presetPill").textContent = `preset: ${preview.presetName || "未绑定"}`;
+        $("characterPill").textContent = `character: ${preview.characterName || "未绑定"}`;
+        $("previewChatId").textContent = preview.chatId || state.chatId;
+        $("previewPreset").textContent = preview.presetName || "未绑定";
+        $("previewCharacter").textContent = preview.characterName || "未绑定";
+        $("promptPreview").textContent = preview.prompt || "暂无 prompt。";
+        $("previewUpdated").textContent = new Date().toLocaleString();
+        renderConfigSelects(payload.binding || {});
+      }
+
+      async function loadConfig() {
+        const [presets, characters] = await Promise.all([
+          api("/api/rp/presets"),
+          api("/api/rp/characters")
+        ]);
+        state.presets = presets.presets || [];
+        state.characters = characters.characters || [];
+      }
+
+      async function loadChats() {
+        const data = await api("/api/chats");
+        const chats = data.chats || [];
+        $("chatList").replaceChildren();
+        for (const chat of chats) {
+          const id = rpChatId(chat.chatId);
+          const button = document.createElement("button");
+          button.className = `chat-item${id === state.chatId ? " active" : ""}`;
+          button.textContent = id;
+          button.onclick = () => selectChat(id);
+          $("chatList").appendChild(button);
+        }
+        $("leftStatus").textContent = chats.length ? "" : "还没有读到会话列表。";
+      }
+
+      async function loadContext() {
+        const payload = await api(`/api/rp/${encodeURIComponent(state.chatId)}/context`);
+        renderPreview(payload);
+      }
+
+      async function refreshAll() {
+        await loadConfig();
+        await loadChats();
+        await loadContext();
+      }
+
+      async function selectChat(chatId) {
+        state.chatId = rpChatId(chatId);
+        $("manualChatId").value = state.chatId;
+        await loadChats();
+        await loadContext();
+      }
+
+      $("refreshBtn").onclick = () => refreshAll().catch(showError);
+      $("previewBtn").onclick = () => loadContext().catch(showError);
+      $("useManualBtn").onclick = () => selectChat($("manualChatId").value).catch(showError);
+
+      $("saveBindingBtn").onclick = async () => {
+        const button = $("saveBindingBtn");
+        setBusy(button, true);
+        try {
+          const payload = await api(`/api/rp/${encodeURIComponent(state.chatId)}/context`, {
+            method: "POST",
+            body: JSON.stringify({
+              active_preset_id: $("presetSelect").value,
+              active_character_id: $("characterSelect").value,
+              active_lorebook_ids: []
+            })
+          });
+          renderPreview(payload);
+        } catch (error) {
+          showError(error);
+        } finally {
+          setBusy(button, false);
+        }
+      };
+
+      $("createPresetBtn").onclick = async () => {
+        const button = $("createPresetBtn");
+        setBusy(button, true);
+        try {
+          const data = await api("/api/rp/presets", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("presetName").value,
+              system_prompt: $("presetSystemPrompt").value,
+              temperature: $("presetTemperature").value,
+              max_tokens: $("presetMaxTokens").value,
+              stop_strings: $("presetStops").value
+            })
+          });
+          state.presets = data.presets || [];
+          $("presetSelect").value = data.preset.id;
+          $("presetName").value = "";
+          $("presetSystemPrompt").value = "";
+          $("presetStops").value = "";
+          renderConfigSelects({ active_preset_id: data.preset.id, active_character_id: $("characterSelect").value });
+        } catch (error) {
+          showError(error);
+        } finally {
+          setBusy(button, false);
+        }
+      };
+
+      $("createCharacterBtn").onclick = async () => {
+        const button = $("createCharacterBtn");
+        setBusy(button, true);
+        try {
+          const data = await api("/api/rp/characters", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("characterName").value,
+              description: $("characterDescription").value,
+              personality: $("characterPersonality").value,
+              scenario: $("characterScenario").value,
+              first_mes: $("characterFirstMes").value,
+              mes_example: $("characterMesExample").value
+            })
+          });
+          state.characters = data.characters || [];
+          $("characterSelect").value = data.character.id;
+          for (const id of [
+            "characterName",
+            "characterDescription",
+            "characterPersonality",
+            "characterScenario",
+            "characterFirstMes",
+            "characterMesExample"
+          ]) {
+            $(id).value = "";
+          }
+          renderConfigSelects({ active_preset_id: $("presetSelect").value, active_character_id: data.character.id });
+        } catch (error) {
+          showError(error);
+        } finally {
+          setBusy(button, false);
+        }
+      };
+
+      function showError(error) {
+        $("leftStatus").textContent = error && error.message ? error.message : String(error);
+      }
+
+      refreshAll().catch(showError);
+    </script>
+  </body>
+</html>
