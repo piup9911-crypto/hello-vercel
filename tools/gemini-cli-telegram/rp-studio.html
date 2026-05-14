@@ -6,15 +6,14 @@
     <title>RP Studio</title>
     <style>
       :root {
-        --bg: #f4f5f1;
+        --bg: #f5f6f2;
         --panel: #ffffff;
         --ink: #202124;
-        --muted: #687078;
+        --muted: #667079;
         --line: #d8ddd6;
         --accent: #1f7a68;
-        --accent-soft: #e2f1ec;
-        --warn: #a15c18;
-        --danger: #a14237;
+        --accent-soft: #e3f1ed;
+        --warn: #9a5b16;
         --code: #151917;
       }
 
@@ -32,72 +31,108 @@
       .app {
         min-height: 100vh;
         display: grid;
-        grid-template-columns: 260px minmax(360px, 0.95fr) minmax(420px, 1.25fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
       }
 
-      aside,
-      main,
-      .preview {
-        min-width: 0;
-        padding: 18px;
+      header {
+        padding: 18px 22px 12px;
+        background: #eef1ed;
+        border-bottom: 1px solid var(--line);
       }
 
-      aside {
-        border-right: 1px solid var(--line);
-        background: #edf0eb;
-      }
-
-      main {
-        border-right: 1px solid var(--line);
-      }
-
-      h1,
-      h2,
-      h3 {
-        margin: 0;
-        letter-spacing: 0;
-      }
-
-      h1 {
-        font-size: 20px;
-      }
-
-      h2 {
-        font-size: 16px;
-        margin-bottom: 10px;
-      }
-
-      h3 {
-        font-size: 13px;
-        color: var(--muted);
-        margin: 18px 0 8px;
-      }
-
-      .muted,
-      label {
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .top {
+      .header-row,
+      .section-head,
+      .actions,
+      .item-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 16px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 18px;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .muted,
+      .hint,
+      label span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        padding: 12px 22px;
+        border-bottom: 1px solid var(--line);
+        background: #f9faf7;
+        overflow-x: auto;
+      }
+
+      .tab {
+        min-width: 108px;
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid var(--line);
+      }
+
+      .tab.active {
+        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .view {
+        display: none;
+        padding: 20px 22px 28px;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
+        gap: 16px;
+      }
+
+      .library-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
       }
 
       .panel {
         background: var(--panel);
         border: 1px solid var(--line);
         border-radius: 8px;
-        padding: 14px;
-        margin-bottom: 14px;
+        padding: 16px;
       }
 
       .stack {
         display: grid;
-        gap: 10px;
+        gap: 12px;
       }
 
       input,
@@ -120,9 +155,9 @@
       }
 
       textarea {
-        min-height: 86px;
+        min-height: 92px;
         resize: vertical;
-        line-height: 1.45;
+        line-height: 1.5;
       }
 
       input:focus,
@@ -132,6 +167,13 @@
         box-shadow: 0 0 0 3px var(--accent-soft);
       }
 
+      label {
+        display: grid;
+        gap: 5px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
       button {
         border: 1px solid var(--accent);
         background: var(--accent);
@@ -139,6 +181,7 @@
         border-radius: 6px;
         padding: 9px 12px;
         cursor: pointer;
+        white-space: nowrap;
       }
 
       button.secondary {
@@ -151,23 +194,21 @@
         cursor: wait;
       }
 
-      .row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      .chat-list {
+      .chat-list,
+      .item-list {
         display: grid;
         gap: 8px;
       }
 
-      .chat-item {
+      .chat-item,
+      .item {
         width: 100%;
         text-align: left;
         color: var(--ink);
         background: #fff;
-        border-color: var(--line);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 11px 12px;
       }
 
       .chat-item.active {
@@ -175,20 +216,51 @@
         background: var(--accent-soft);
       }
 
-      .pill-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 10px 0 0;
+      .item {
+        cursor: default;
       }
 
-      .pill {
-        border: 1px solid var(--line);
-        background: #fff;
-        border-radius: 999px;
-        padding: 5px 8px;
-        font-size: 12px;
+      .item-title {
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .item-body {
+        margin-top: 6px;
         color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .fact {
+        background: #fbfcfa;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 11px;
+      }
+
+      .fact strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .hidden {
+        display: none;
       }
 
       .status {
@@ -197,30 +269,15 @@
         font-size: 12px;
       }
 
-      .preview-head {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .fact {
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 10px;
-      }
-
-      .fact strong {
-        display: block;
-        font-size: 13px;
-        margin-top: 4px;
-        overflow-wrap: anywhere;
+      .record-link {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
       }
 
       pre {
         min-height: 520px;
-        margin: 0;
+        margin: 12px 0 0;
         padding: 14px;
         overflow: auto;
         color: #eef5ee;
@@ -232,98 +289,200 @@
       }
 
       @media (max-width: 980px) {
-        .app {
-          grid-template-columns: 1fr;
-        }
-
-        aside,
-        main {
-          border-right: 0;
-          border-bottom: 1px solid var(--line);
-        }
-
-        .preview-head,
+        .grid,
+        .library-grid,
+        .facts,
         .row {
           grid-template-columns: 1fr;
+        }
+
+        .header-row,
+        .section-head,
+        .actions {
+          align-items: flex-start;
+          flex-direction: column;
         }
       }
     </style>
   </head>
   <body>
     <div class="app">
-      <aside>
-        <div class="top">
+      <header>
+        <div class="header-row">
           <div>
             <h1>RP Studio</h1>
-            <div class="muted">Gem Chat Records</div>
+            <p class="muted">给 telegram_rp 会话选择 preset 和 character，然后检查最终 prompt。</p>
           </div>
           <button class="secondary" id="refreshBtn">刷新</button>
         </div>
+      </header>
 
-        <div class="panel stack">
-          <label for="manualChatId">当前会话</label>
-          <input id="manualChatId" value="telegram_rp_7541487750" />
-          <button id="useManualBtn">使用这个会话</button>
-        </div>
+      <nav class="tabs" aria-label="RP Studio sections">
+        <button class="tab active" data-tab="session">当前会话</button>
+        <button class="tab" data-tab="library">设定库</button>
+        <button class="tab" data-tab="preview">Prompt Preview</button>
+      </nav>
 
-        <h3>telegram_rp 会话</h3>
-        <div class="chat-list" id="chatList"></div>
-        <div class="status" id="leftStatus"></div>
-      </aside>
+      <section class="view active" id="tab-session">
+        <div class="grid">
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>选择会话</h2>
+                <p class="muted">同一个 chatId 只会显示一次。</p>
+              </div>
+            </div>
 
-      <main>
-        <section class="panel stack">
-          <h2>绑定</h2>
-          <label for="presetSelect">Preset</label>
-          <select id="presetSelect"></select>
-          <label for="characterSelect">Character</label>
-          <select id="characterSelect"></select>
-          <button id="saveBindingBtn">保存绑定</button>
-          <div class="pill-row">
-            <span class="pill" id="currentChatPill">chatId: -</span>
-            <span class="pill" id="presetPill">preset: 未绑定</span>
-            <span class="pill" id="characterPill">character: 未绑定</span>
+            <label>
+              手动输入 chatId
+              <span>例如 telegram_rp_7541487750；只填数字也会自动补前缀。</span>
+              <input id="manualChatId" value="telegram_rp_7541487750" />
+            </label>
+            <button id="useManualBtn">使用这个会话</button>
+
+            <div class="chat-list" id="chatList"></div>
+            <div class="status" id="leftStatus"></div>
           </div>
-        </section>
 
-        <section class="panel stack">
-          <h2>新建 Preset</h2>
-          <input id="presetName" placeholder="Preset 名称" />
-          <textarea id="presetSystemPrompt" placeholder="system_prompt"></textarea>
-          <div class="row">
-            <input id="presetTemperature" type="number" step="0.1" min="0" max="2" value="0.8" />
-            <input id="presetMaxTokens" type="number" min="1" value="1200" />
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>当前绑定</h2>
+                <p class="muted">这里决定这个会话下次预览时注入哪套设定。</p>
+              </div>
+              <a class="record-link" href="/" target="_blank">打开聊天记录</a>
+            </div>
+
+            <div class="facts">
+              <div class="fact"><span class="muted">chatId</span><strong id="currentChatFact">-</strong></div>
+              <div class="fact"><span class="muted">Preset</span><strong id="currentPresetFact">未绑定</strong></div>
+              <div class="fact"><span class="muted">Character</span><strong id="currentCharacterFact">未绑定</strong></div>
+            </div>
+
+            <label>
+              选择 preset
+              <span>会注入 system_prompt、temperature、max_tokens、stop_strings。</span>
+              <select id="presetSelect"></select>
+            </label>
+            <label>
+              选择 character
+              <span>会注入角色说明、性格、场景、开场白和示例对话。</span>
+              <select id="characterSelect"></select>
+            </label>
+            <button id="saveBindingBtn">保存绑定</button>
           </div>
-          <textarea id="presetStops" placeholder="stop_strings，一行一个"></textarea>
-          <button id="createPresetBtn">创建 Preset</button>
-        </section>
+        </div>
+      </section>
 
-        <section class="panel stack">
-          <h2>新建 Character</h2>
-          <input id="characterName" placeholder="角色名称" />
-          <textarea id="characterDescription" placeholder="description"></textarea>
-          <textarea id="characterPersonality" placeholder="personality"></textarea>
-          <textarea id="characterScenario" placeholder="scenario"></textarea>
-          <textarea id="characterFirstMes" placeholder="first_mes"></textarea>
-          <textarea id="characterMesExample" placeholder="mes_example"></textarea>
-          <button id="createCharacterBtn">创建 Character</button>
-        </section>
-      </main>
+      <section class="view" id="tab-library">
+        <div class="library-grid">
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>Preset 列表</h2>
+                <p class="muted">保存提示词和生成参数。</p>
+              </div>
+              <button class="secondary" id="togglePresetFormBtn">新建</button>
+            </div>
+            <div class="item-list" id="presetList"></div>
 
-      <section class="preview">
-        <div class="top">
-          <div>
-            <h2>Prompt Preview</h2>
-            <div class="muted" id="previewUpdated">等待读取</div>
+            <div class="stack hidden" id="presetForm">
+              <h3>新建 Preset</h3>
+              <label>
+                名称
+                <span>方便你在绑定时识别这套设定。</span>
+                <input id="presetName" placeholder="例如：日常 RP 基础设定" />
+              </label>
+              <label>
+                system_prompt
+                <span>最上层规则，会放在 prompt 的 [System] 区块。</span>
+                <textarea id="presetSystemPrompt"></textarea>
+              </label>
+              <div class="row">
+                <label>
+                  temperature
+                  <span>回复发散程度，常用 0.7 - 1.0。</span>
+                  <input id="presetTemperature" type="number" step="0.1" min="0" max="2" value="0.8" />
+                </label>
+                <label>
+                  max_tokens
+                  <span>占位参数，先保存，暂时不接真实模型。</span>
+                  <input id="presetMaxTokens" type="number" min="1" value="1200" />
+                </label>
+              </div>
+              <label>
+                stop_strings
+                <span>一行一个停止词；本轮只保存和预览，不做真实生成。</span>
+                <textarea id="presetStops"></textarea>
+              </label>
+              <button id="createPresetBtn">创建 Preset</button>
+            </div>
           </div>
-          <button class="secondary" id="previewBtn">重新生成</button>
+
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>Character 列表</h2>
+                <p class="muted">保存角色卡的最小字段。</p>
+              </div>
+              <button class="secondary" id="toggleCharacterFormBtn">新建</button>
+            </div>
+            <div class="item-list" id="characterList"></div>
+
+            <div class="stack hidden" id="characterForm">
+              <h3>新建 Character</h3>
+              <label>
+                名称
+                <span>角色名，会显示在 [Character] 区块。</span>
+                <input id="characterName" />
+              </label>
+              <label>
+                description
+                <span>角色身份、外观、背景。</span>
+                <textarea id="characterDescription"></textarea>
+              </label>
+              <label>
+                personality
+                <span>性格、说话方式、边界。</span>
+                <textarea id="characterPersonality"></textarea>
+              </label>
+              <label>
+                scenario
+                <span>当前故事场景和关系状态。</span>
+                <textarea id="characterScenario"></textarea>
+              </label>
+              <label>
+                first_mes
+                <span>角色第一句示例。</span>
+                <textarea id="characterFirstMes"></textarea>
+              </label>
+              <label>
+                mes_example
+                <span>几段示例对话，用来稳定语气。</span>
+                <textarea id="characterMesExample"></textarea>
+              </label>
+              <button id="createCharacterBtn">创建 Character</button>
+            </div>
+          </div>
         </div>
-        <div class="preview-head">
-          <div class="fact"><span class="muted">chatId</span><strong id="previewChatId">-</strong></div>
-          <div class="fact"><span class="muted">preset</span><strong id="previewPreset">未绑定</strong></div>
-          <div class="fact"><span class="muted">character</span><strong id="previewCharacter">未绑定</strong></div>
+      </section>
+
+      <section class="view" id="tab-preview">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Prompt Preview</h2>
+              <p class="muted" id="previewUpdated">等待读取</p>
+            </div>
+            <button class="secondary" id="previewBtn">重新生成</button>
+          </div>
+          <div class="facts">
+            <div class="fact"><span class="muted">chatId</span><strong id="previewChatId">-</strong></div>
+            <div class="fact"><span class="muted">preset</span><strong id="previewPreset">未绑定</strong></div>
+            <div class="fact"><span class="muted">character</span><strong id="previewCharacter">未绑定</strong></div>
+          </div>
+          <pre id="promptPreview">等待选择会话。</pre>
         </div>
-        <pre id="promptPreview">等待选择会话。</pre>
       </section>
     </div>
 
@@ -349,10 +508,6 @@
         return data;
       }
 
-      function setBusy(button, busy) {
-        button.disabled = busy;
-      }
-
       function rpChatId(chatId) {
         const value = String(chatId || "").trim();
         return value.startsWith("telegram_rp_") ? value : `telegram_rp_${value}`;
@@ -365,30 +520,63 @@
         return item;
       }
 
-      function renderConfigSelects(binding = {}) {
+      function showTab(name) {
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.tab === name);
+        });
+        document.querySelectorAll(".view").forEach((view) => {
+          view.classList.toggle("active", view.id === `tab-${name}`);
+        });
+      }
+
+      function renderSelects(binding = {}) {
         $("presetSelect").replaceChildren(option("未绑定", ""));
-        for (const preset of state.presets) {
-          $("presetSelect").appendChild(option(preset.name, preset.id));
-        }
+        for (const preset of state.presets) $("presetSelect").appendChild(option(preset.name, preset.id));
         $("characterSelect").replaceChildren(option("未绑定", ""));
-        for (const character of state.characters) {
-          $("characterSelect").appendChild(option(character.name, character.id));
-        }
+        for (const character of state.characters) $("characterSelect").appendChild(option(character.name, character.id));
         $("presetSelect").value = binding.active_preset_id || "";
         $("characterSelect").value = binding.active_character_id || "";
       }
 
+      function renderLists() {
+        $("presetList").replaceChildren();
+        for (const preset of state.presets) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-head"><div class="item-title"></div><span class="hint"></span></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = preset.name;
+          item.querySelector(".hint").textContent = `temp ${preset.temperature} / max ${preset.max_tokens}`;
+          item.querySelector(".item-body").textContent = preset.system_prompt || "没有 system_prompt";
+          $("presetList").appendChild(item);
+        }
+        if (!state.presets.length) $("presetList").textContent = "还没有 preset。";
+
+        $("characterList").replaceChildren();
+        for (const character of state.characters) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-title"></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = character.name;
+          item.querySelector(".item-body").textContent =
+            character.description || character.personality || character.scenario || "没有角色说明";
+          $("characterList").appendChild(item);
+        }
+        if (!state.characters.length) $("characterList").textContent = "还没有 character。";
+      }
+
       function renderPreview(payload) {
         const preview = payload.promptPreview || {};
-        $("currentChatPill").textContent = `chatId: ${payload.chatId || state.chatId}`;
-        $("presetPill").textContent = `preset: ${preview.presetName || "未绑定"}`;
-        $("characterPill").textContent = `character: ${preview.characterName || "未绑定"}`;
+        const presetName = preview.presetName || "未绑定";
+        const characterName = preview.characterName || "未绑定";
+        $("currentChatFact").textContent = payload.chatId || state.chatId;
+        $("currentPresetFact").textContent = presetName;
+        $("currentCharacterFact").textContent = characterName;
         $("previewChatId").textContent = preview.chatId || state.chatId;
-        $("previewPreset").textContent = preview.presetName || "未绑定";
-        $("previewCharacter").textContent = preview.characterName || "未绑定";
+        $("previewPreset").textContent = presetName;
+        $("previewCharacter").textContent = characterName;
         $("promptPreview").textContent = preview.prompt || "暂无 prompt。";
         $("previewUpdated").textContent = new Date().toLocaleString();
-        renderConfigSelects(payload.binding || {});
+        renderSelects(payload.binding || {});
       }
 
       async function loadConfig() {
@@ -398,21 +586,22 @@
         ]);
         state.presets = presets.presets || [];
         state.characters = characters.characters || [];
+        renderLists();
       }
 
       async function loadChats() {
         const data = await api("/api/chats");
-        const chats = data.chats || [];
+        const ids = [...new Set((data.chats || []).map((chat) => rpChatId(chat.chatId)))];
+        if (!ids.includes(state.chatId)) ids.unshift(state.chatId);
         $("chatList").replaceChildren();
-        for (const chat of chats) {
-          const id = rpChatId(chat.chatId);
+        for (const id of ids) {
           const button = document.createElement("button");
           button.className = `chat-item${id === state.chatId ? " active" : ""}`;
           button.textContent = id;
           button.onclick = () => selectChat(id);
           $("chatList").appendChild(button);
         }
-        $("leftStatus").textContent = chats.length ? "" : "还没有读到会话列表。";
+        $("leftStatus").textContent = ids.length ? "" : "还没有读到会话列表。";
       }
 
       async function loadContext() {
@@ -433,13 +622,9 @@
         await loadContext();
       }
 
-      $("refreshBtn").onclick = () => refreshAll().catch(showError);
-      $("previewBtn").onclick = () => loadContext().catch(showError);
-      $("useManualBtn").onclick = () => selectChat($("manualChatId").value).catch(showError);
-
-      $("saveBindingBtn").onclick = async () => {
+      async function saveBinding() {
         const button = $("saveBindingBtn");
-        setBusy(button, true);
+        button.disabled = true;
         try {
           const payload = await api(`/api/rp/${encodeURIComponent(state.chatId)}/context`, {
             method: "POST",
@@ -450,16 +635,17 @@
             })
           });
           renderPreview(payload);
+          showTab("preview");
         } catch (error) {
           showError(error);
         } finally {
-          setBusy(button, false);
+          button.disabled = false;
         }
-      };
+      }
 
-      $("createPresetBtn").onclick = async () => {
+      async function createPreset() {
         const button = $("createPresetBtn");
-        setBusy(button, true);
+        button.disabled = true;
         try {
           const data = await api("/api/rp/presets", {
             method: "POST",
@@ -472,21 +658,22 @@
             })
           });
           state.presets = data.presets || [];
-          $("presetSelect").value = data.preset.id;
+          renderLists();
+          renderSelects({ active_preset_id: data.preset.id, active_character_id: $("characterSelect").value });
           $("presetName").value = "";
           $("presetSystemPrompt").value = "";
           $("presetStops").value = "";
-          renderConfigSelects({ active_preset_id: data.preset.id, active_character_id: $("characterSelect").value });
+          $("presetForm").classList.add("hidden");
         } catch (error) {
           showError(error);
         } finally {
-          setBusy(button, false);
+          button.disabled = false;
         }
-      };
+      }
 
-      $("createCharacterBtn").onclick = async () => {
+      async function createCharacter() {
         const button = $("createCharacterBtn");
-        setBusy(button, true);
+        button.disabled = true;
         try {
           const data = await api("/api/rp/characters", {
             method: "POST",
@@ -500,7 +687,8 @@
             })
           });
           state.characters = data.characters || [];
-          $("characterSelect").value = data.character.id;
+          renderLists();
+          renderSelects({ active_preset_id: $("presetSelect").value, active_character_id: data.character.id });
           for (const id of [
             "characterName",
             "characterDescription",
@@ -508,20 +696,30 @@
             "characterScenario",
             "characterFirstMes",
             "characterMesExample"
-          ]) {
-            $(id).value = "";
-          }
-          renderConfigSelects({ active_preset_id: $("presetSelect").value, active_character_id: data.character.id });
+          ]) $(id).value = "";
+          $("characterForm").classList.add("hidden");
         } catch (error) {
           showError(error);
         } finally {
-          setBusy(button, false);
+          button.disabled = false;
         }
-      };
+      }
 
       function showError(error) {
         $("leftStatus").textContent = error && error.message ? error.message : String(error);
       }
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.onclick = () => showTab(tab.dataset.tab);
+      });
+      $("togglePresetFormBtn").onclick = () => $("presetForm").classList.toggle("hidden");
+      $("toggleCharacterFormBtn").onclick = () => $("characterForm").classList.toggle("hidden");
+      $("refreshBtn").onclick = () => refreshAll().catch(showError);
+      $("previewBtn").onclick = () => loadContext().catch(showError);
+      $("useManualBtn").onclick = () => selectChat($("manualChatId").value).catch(showError);
+      $("saveBindingBtn").onclick = saveBinding;
+      $("createPresetBtn").onclick = createPreset;
+      $("createCharacterBtn").onclick = createCharacter;
 
       refreshAll().catch(showError);
     </script>
