@@ -79,6 +79,14 @@ function readLastLine(filePath) {
   return lines.length ? lines[lines.length - 1].slice(0, 800) : "";
 }
 
+function fileUpdatedAt(filePath) {
+  try {
+    return fs.statSync(filePath).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 function processAlive(pid) {
   const n = Number.parseInt(String(pid || ""), 10);
   if (!Number.isInteger(n) || n <= 0) return false;
@@ -146,6 +154,7 @@ async function getOpenAiBridgeStatus(checkedAt) {
       process.env.BRIDGE_GEMINI_MODEL_QUALITY ||
       process.env.BRIDGE_GEMINI_MODEL ||
       "gemini-3.1-pro-preview",
+    logUpdatedAt: fileUpdatedAt(OPENAI_LOG_PATH),
     lastLine: readLastLine(OPENAI_LOG_PATH)
   };
 }
@@ -159,6 +168,7 @@ function getTelegramBridgeStatus(checkedAt) {
     pid,
     lockFile: Boolean(lock),
     startedAt: lock && lock.startedAt ? lock.startedAt : null,
+    logUpdatedAt: fileUpdatedAt(TELEGRAM_LOG_PATH),
     lastLine: readLastLine(TELEGRAM_LOG_PATH)
   };
 }
@@ -193,6 +203,7 @@ function getRpBotStatus(checkedAt) {
     stateFile: fs.existsSync(RP_STATE_PATH),
     gemChatRecordsUrl: process.env.GEM_CHAT_RECORDS_URL || "http://127.0.0.1:4144",
     lastMessageAt: state && state.updatedAt ? state.updatedAt : null,
+    logUpdatedAt: fileUpdatedAt(lastErr ? RP_ERR_LOG_PATH : RP_LOG_PATH),
     lastLine: lastErr || readLastLine(RP_LOG_PATH)
   };
 }

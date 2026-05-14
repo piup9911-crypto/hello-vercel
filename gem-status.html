@@ -368,7 +368,7 @@
 
           <article class="card wide">
             <div class="card-title">
-              <span>最近请求</span>
+              <span>运行信息</span>
               <span class="pill" id="openai-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="openai-log">暂无日志。</div>
@@ -411,7 +411,7 @@
 
           <article class="card wide">
             <div class="card-title">
-              <span>最近日志</span>
+              <span>运行信息</span>
               <span class="pill" id="telegram-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="telegram-log">暂无日志。</div>
@@ -454,7 +454,7 @@
 
           <article class="card wide">
             <div class="card-title">
-              <span>最近日志</span>
+              <span>运行信息</span>
               <span class="pill" id="rp-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="rp-log">暂无日志。</div>
@@ -530,6 +530,25 @@
       return Math.round((Date.now() - date.getTime()) / 60000);
     }
 
+    function statusText(value) {
+      if (value === true) return "在线";
+      if (value === false) return "离线";
+      return "未知";
+    }
+
+    function renderRuntimeInfo(service, fallbackCheckedAt, lines) {
+      const output = [
+        `最后检查：${formatTime(service.checkedAt || fallbackCheckedAt)}`,
+        `当前状态：${statusText(service.online)}`
+      ];
+      if (service.logUpdatedAt) {
+        output.push(`日志更新：${formatTime(service.logUpdatedAt)}`);
+      }
+      const body = Array.isArray(lines) ? lines.filter(Boolean).join("\n") : lines;
+      output.push(body || "没有新的日志记录。");
+      return output.join("\n\n");
+    }
+
     function renderStatus(status) {
       const services = status.services || {};
       const links = status.links || {};
@@ -581,18 +600,9 @@
       const openaiLines = [];
       if (openai.lastLine) openaiLines.push(`[OpenAI] ${openai.lastLine}`);
       if (publicTunnel.lastLine) openaiLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
-      el.openaiLog.textContent = [
-        `最后检查：${formatTime(openai.checkedAt || status.updatedAt)}`,
-        openaiLines.length ? openaiLines.join("\n\n") : "暂无日志。"
-      ].join("\n\n");
-      el.telegramLog.textContent = [
-        `最后检查：${formatTime(telegram.checkedAt || status.updatedAt)}`,
-        telegram.lastLine || "暂无日志。"
-      ].join("\n\n");
-      el.rpLog.textContent = [
-        `最后检查：${formatTime(rp.checkedAt || status.updatedAt)}`,
-        rp.lastLine || rp.lastLog || "暂无日志。"
-      ].join("\n\n");
+      el.openaiLog.textContent = renderRuntimeInfo(openai, status.updatedAt, openaiLines);
+      el.telegramLog.textContent = renderRuntimeInfo(telegram, status.updatedAt, telegram.lastLine);
+      el.rpLog.textContent = renderRuntimeInfo(rp, status.updatedAt, rp.lastLine || rp.lastLog);
 
       el.updatedAt.textContent = `更新时间：${formatTime(status.updatedAt)}`;
       el.reporter.textContent = `上报端：${status.reporter && status.reporter.hostname ? status.reporter.hostname : "暂无"}`;

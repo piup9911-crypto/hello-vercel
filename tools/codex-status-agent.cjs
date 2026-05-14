@@ -121,6 +121,15 @@ function execCapture(command, args, options = {}) {
   });
 }
 
+function fileUpdatedAt(filePath) {
+  if (!filePath) return null;
+  try {
+    return fs.statSync(filePath).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 async function findWindowsProcess(pattern) {
   if (!pattern) return { online: null, pid: null, lastLine: "Set CODEX_*_PROCESS_PATTERN to enable process detection." };
   const script = [
@@ -184,6 +193,7 @@ async function buildStatus(config) {
         model: process.env.CODEX_QI_MODEL || "gpt-5.5",
         sandbox: process.env.CODEX_QI_SANDBOX || "danger-full-access",
         reasoning: process.env.CODEX_QI_REASONING || "medium",
+        logUpdatedAt: fileUpdatedAt(process.env.CODEX_QI_LOG_FILE || ""),
         lastLine: qi.lastLine || ""
       },
       ccgramBridge: {
@@ -193,6 +203,7 @@ async function buildStatus(config) {
         groupId: process.env.CODEX_CCGRAM_GROUP_ID || "",
         tmuxSession: ccTmux.tmuxSession,
         provider: process.env.CODEX_CCGRAM_PROVIDER || "codex",
+        logUpdatedAt: fileUpdatedAt(process.env.CODEX_CCGRAM_LOG_FILE || ""),
         lastLine: ccProcess.lastLine || ccTmux.lastLine || ""
       }
     },

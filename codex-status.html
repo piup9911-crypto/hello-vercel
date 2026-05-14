@@ -161,7 +161,7 @@
           </article>
           <article class="card wide">
             <div class="card-title">
-              <span>最近日志</span>
+              <span>运行信息</span>
               <span class="pill" id="qi-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="qi-log">暂无日志。</div>
@@ -203,7 +203,7 @@
           </article>
           <article class="card wide">
             <div class="card-title">
-              <span>最近日志</span>
+              <span>运行信息</span>
               <span class="pill" id="cc-fresh-pill"><span class="dot"></span><span>未同步</span></span>
             </div>
             <div class="value log mono" id="cc-log">暂无日志。</div>
@@ -256,6 +256,24 @@
       return Number.isNaN(d.getTime()) ? Infinity : Math.round((Date.now() - d.getTime()) / 60000);
     }
 
+    function statusText(value) {
+      if (value === true) return "在线";
+      if (value === false) return "离线";
+      return "未知";
+    }
+
+    function renderRuntimeInfo(service, fallbackCheckedAt) {
+      const output = [
+        `最后检查：${formatTime(service.checkedAt || fallbackCheckedAt)}`,
+        `当前状态：${statusText(service.online)}`
+      ];
+      if (service.logUpdatedAt) {
+        output.push(`日志更新：${formatTime(service.logUpdatedAt)}`);
+      }
+      output.push(service.lastLine || "没有新的日志记录。");
+      return output.join("\n\n");
+    }
+
     function renderStatus(status) {
       const qi = (status.services || {}).qiBridge || {};
       const cc = (status.services || {}).ccgramBridge || {};
@@ -275,10 +293,7 @@
         `沙箱：${qi.sandbox || "danger-full-access"}`,
         `推理强度：${qi.reasoning || "medium"}`
       ].join("<br>");
-      document.getElementById("qi-log").textContent = [
-        `最后检查：${formatTime(qi.checkedAt || status.updatedAt)}`,
-        qi.lastLine || "暂无日志。"
-      ].join("\n\n");
+      document.getElementById("qi-log").textContent = renderRuntimeInfo(qi, status.updatedAt);
 
       // CCGram
       setPill(document.getElementById("cc-bridge-pill"), cc.online ? "good" : cc.online === false ? "bad" : "warn", cc.online ? "在线" : cc.online === false ? "离线" : "未知");
@@ -292,10 +307,7 @@
         `tmux session：${cc.tmuxSession || "ccgram-codex"}`,
         `provider：${cc.provider || "codex"}`
       ].join("<br>");
-      document.getElementById("cc-log").textContent = [
-        `最后检查：${formatTime(cc.checkedAt || status.updatedAt)}`,
-        cc.lastLine || "暂无日志。"
-      ].join("\n\n");
+      document.getElementById("cc-log").textContent = renderRuntimeInfo(cc, status.updatedAt);
 
       document.getElementById("updated-at").textContent = `更新时间：${formatTime(status.updatedAt)}`;
       document.getElementById("reporter").textContent = `上报端：${(status.reporter || {}).hostname || "暂无"}`;
