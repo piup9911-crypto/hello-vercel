@@ -160,6 +160,10 @@
         line-height: 1.5;
       }
 
+      select[multiple] {
+        min-height: 118px;
+      }
+
       input:focus,
       select:focus,
       textarea:focus {
@@ -321,6 +325,8 @@
         <button class="tab active" data-tab="session">当前会话</button>
         <button class="tab" data-tab="library">设定库</button>
         <button class="tab" data-tab="preview">Prompt Preview</button>
+        <button class="tab" data-tab="logs">Generation Logs</button>
+        <button class="tab" data-tab="archives">归档</button>
       </nav>
 
       <section class="view active" id="tab-session">
@@ -368,6 +374,16 @@
               选择 character
               <span>会注入角色说明、性格、场景、开场白和示例对话。</span>
               <select id="characterSelect"></select>
+            </label>
+            <label>
+              绑定 lorebook
+              <span>可多选；命中关键词后会注入 [World Info]。</span>
+              <select id="lorebookSelect" multiple></select>
+            </label>
+            <label>
+              Author's Note
+              <span>会放在 Recent Chat 后、Current User Message 前。</span>
+              <textarea id="authorNote"></textarea>
             </label>
             <button id="saveBindingBtn">保存绑定</button>
           </div>
@@ -464,6 +480,73 @@
               <button id="createCharacterBtn">创建 Character</button>
             </div>
           </div>
+
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>Lorebook 列表</h2>
+                <p class="muted">最基础世界书：用关键词命中 entry。</p>
+              </div>
+              <button class="secondary" id="toggleLorebookFormBtn">新建</button>
+            </div>
+            <div class="item-list" id="lorebookList"></div>
+
+            <div class="stack hidden" id="lorebookForm">
+              <h3>新建 Lorebook</h3>
+              <label>
+                名称
+                <span>例如：当前世界观、地点资料、关系设定。</span>
+                <input id="lorebookName" />
+              </label>
+              <label>
+                description
+                <span>只给你自己识别用，不直接注入 prompt。</span>
+                <textarea id="lorebookDescription"></textarea>
+              </label>
+              <button id="createLorebookBtn">创建 Lorebook</button>
+            </div>
+          </div>
+
+          <div class="panel stack">
+            <div class="section-head">
+              <div>
+                <h2>Lore Entry</h2>
+                <p class="muted">选择 lorebook 后创建条目；keys 命中后注入内容。</p>
+              </div>
+              <button class="secondary" id="toggleLoreEntryFormBtn">新建</button>
+            </div>
+            <label>
+              选择 lorebook
+              <span>entry 会保存到这个 lorebook 下面。</span>
+              <select id="entryLorebookSelect"></select>
+            </label>
+            <div class="item-list" id="loreEntryList"></div>
+
+            <div class="stack hidden" id="loreEntryForm">
+              <h3>新建 / 编辑 Entry</h3>
+              <label>
+                标题
+                <span>用于在 Prompt Preview 里显示命中的条目。</span>
+                <input id="loreEntryTitle" />
+              </label>
+              <label>
+                keys
+                <span>一行一个关键词；当前用户输入或最近消息包含关键词就触发。</span>
+                <textarea id="loreEntryKeys"></textarea>
+              </label>
+              <label>
+                content
+                <span>触发后注入 [World Info] 的内容。</span>
+                <textarea id="loreEntryContent"></textarea>
+              </label>
+              <label>
+                priority
+                <span>数字越大越靠前。</span>
+                <input id="loreEntryPriority" type="number" value="100" />
+              </label>
+              <button id="createLoreEntryBtn">保存 Entry</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -481,7 +564,37 @@
             <div class="fact"><span class="muted">preset</span><strong id="previewPreset">未绑定</strong></div>
             <div class="fact"><span class="muted">character</span><strong id="previewCharacter">未绑定</strong></div>
           </div>
+          <div class="item-list" id="triggeredLoreList"></div>
           <pre id="promptPreview">等待选择会话。</pre>
+        </div>
+      </section>
+
+      <section class="view" id="tab-logs">
+        <div class="panel stack">
+          <div class="section-head">
+            <div>
+              <h2>Generation Logs</h2>
+              <p class="muted">最近几次生成的 prompt、reply、error 都在这里。</p>
+            </div>
+            <button class="secondary" id="refreshLogsBtn">刷新日志</button>
+          </div>
+          <div class="item-list" id="generationLogList"></div>
+        </div>
+      </section>
+
+      <section class="view" id="tab-archives">
+        <div class="panel stack">
+          <div class="section-head">
+            <div>
+              <h2>RP Archive</h2>
+              <p class="muted">归档当前 RP 会话，或者从归档恢复一个续写窗口。</p>
+            </div>
+            <div class="actions">
+              <button id="archiveCurrentBtn">归档当前会话</button>
+              <button class="secondary" id="refreshArchivesBtn">刷新归档</button>
+            </div>
+          </div>
+          <div class="item-list" id="archiveList"></div>
         </div>
       </section>
     </div>
@@ -490,7 +603,11 @@
       const state = {
         chatId: "telegram_rp_7541487750",
         presets: [],
-        characters: []
+        characters: [],
+        lorebooks: [],
+        loreEntries: [],
+        logs: [],
+        archives: []
       };
 
       const $ = (id) => document.getElementById(id);
@@ -534,8 +651,13 @@
         for (const preset of state.presets) $("presetSelect").appendChild(option(preset.name, preset.id));
         $("characterSelect").replaceChildren(option("未绑定", ""));
         for (const character of state.characters) $("characterSelect").appendChild(option(character.name, character.id));
+        $("lorebookSelect").replaceChildren();
+        for (const lorebook of state.lorebooks) $("lorebookSelect").appendChild(option(lorebook.name, lorebook.id));
         $("presetSelect").value = binding.active_preset_id || "";
         $("characterSelect").value = binding.active_character_id || "";
+        const activeLorebooks = new Set(binding.active_lorebook_ids || []);
+        for (const item of $("lorebookSelect").options) item.selected = activeLorebooks.has(item.value);
+        $("authorNote").value = binding.author_note || "";
       }
 
       function renderLists() {
@@ -562,6 +684,38 @@
           $("characterList").appendChild(item);
         }
         if (!state.characters.length) $("characterList").textContent = "还没有 character。";
+
+        $("lorebookList").replaceChildren();
+        for (const lorebook of state.lorebooks) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-title"></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = lorebook.name;
+          item.querySelector(".item-body").textContent = lorebook.description || "没有说明";
+          $("lorebookList").appendChild(item);
+        }
+        if (!state.lorebooks.length) $("lorebookList").textContent = "还没有 lorebook。";
+
+        $("entryLorebookSelect").replaceChildren();
+        for (const lorebook of state.lorebooks) $("entryLorebookSelect").appendChild(option(lorebook.name, lorebook.id));
+        renderLoreEntries();
+      }
+
+      function renderLoreEntries() {
+        $("loreEntryList").replaceChildren();
+        const lorebookId = $("entryLorebookSelect").value;
+        const entries = state.loreEntries.filter((entry) => entry.lorebook_id === lorebookId);
+        for (const entry of entries) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-head"><div class="item-title"></div><span class="hint"></span></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = entry.title;
+          item.querySelector(".hint").textContent = `priority ${entry.priority}`;
+          item.querySelector(".item-body").textContent = `keys: ${(entry.keys || []).join(", ")}\n${entry.content || ""}`;
+          item.onclick = () => fillLoreEntryForm(entry);
+          $("loreEntryList").appendChild(item);
+        }
+        if (!entries.length) $("loreEntryList").textContent = lorebookId ? "这个 lorebook 还没有 entry。" : "先创建 lorebook。";
       }
 
       function renderPreview(payload) {
@@ -574,18 +728,36 @@
         $("previewChatId").textContent = preview.chatId || state.chatId;
         $("previewPreset").textContent = presetName;
         $("previewCharacter").textContent = characterName;
+        const triggered = preview.triggered_lore_entries || [];
+        $("triggeredLoreList").replaceChildren();
+        for (const entry of triggered) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-title"></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = `触发：${entry.title}`;
+          item.querySelector(".item-body").textContent = entry.content || "";
+          $("triggeredLoreList").appendChild(item);
+        }
+        if (!triggered.length) $("triggeredLoreList").textContent = "本轮没有触发 lore entry。";
         $("promptPreview").textContent = preview.prompt || "暂无 prompt。";
         $("previewUpdated").textContent = new Date().toLocaleString();
         renderSelects(payload.binding || {});
       }
 
       async function loadConfig() {
-        const [presets, characters] = await Promise.all([
+        const [presets, characters, lorebooks] = await Promise.all([
           api("/api/rp/presets"),
-          api("/api/rp/characters")
+          api("/api/rp/characters"),
+          api("/api/rp/lorebooks")
         ]);
         state.presets = presets.presets || [];
         state.characters = characters.characters || [];
+        state.lorebooks = lorebooks.lorebooks || [];
+        state.loreEntries = [];
+        for (const lorebook of state.lorebooks) {
+          const entries = await api(`/api/rp/lorebooks/${encodeURIComponent(lorebook.id)}/entries`);
+          state.loreEntries.push(...(entries.entries || []));
+        }
         renderLists();
       }
 
@@ -631,7 +803,8 @@
             body: JSON.stringify({
               active_preset_id: $("presetSelect").value,
               active_character_id: $("characterSelect").value,
-              active_lorebook_ids: []
+              active_lorebook_ids: Array.from($("lorebookSelect").selectedOptions).map((item) => item.value),
+              author_note: $("authorNote").value
             })
           });
           renderPreview(payload);
@@ -705,6 +878,116 @@
         }
       }
 
+      async function createLorebook() {
+        const button = $("createLorebookBtn");
+        button.disabled = true;
+        try {
+          const data = await api("/api/rp/lorebooks", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("lorebookName").value,
+              description: $("lorebookDescription").value
+            })
+          });
+          state.lorebooks = data.lorebooks || [];
+          $("lorebookName").value = "";
+          $("lorebookDescription").value = "";
+          $("lorebookForm").classList.add("hidden");
+          renderLists();
+        } catch (error) {
+          showError(error);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      function fillLoreEntryForm(entry) {
+        $("loreEntryForm").classList.remove("hidden");
+        $("loreEntryTitle").dataset.entryId = entry.id;
+        $("loreEntryTitle").value = entry.title || "";
+        $("loreEntryKeys").value = (entry.keys || []).join("\n");
+        $("loreEntryContent").value = entry.content || "";
+        $("loreEntryPriority").value = entry.priority || 100;
+      }
+
+      async function createLoreEntry() {
+        const lorebookId = $("entryLorebookSelect").value;
+        if (!lorebookId) throw new Error("先创建或选择一个 lorebook。");
+        const entryId = $("loreEntryTitle").dataset.entryId || "";
+        const path = entryId
+          ? `/api/rp/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`
+          : `/api/rp/lorebooks/${encodeURIComponent(lorebookId)}/entries`;
+        const method = entryId ? "PUT" : "POST";
+        const data = await api(path, {
+          method,
+          body: JSON.stringify({
+            title: $("loreEntryTitle").value,
+            keys: $("loreEntryKeys").value,
+            content: $("loreEntryContent").value,
+            priority: $("loreEntryPriority").value,
+            enabled: true
+          })
+        });
+        state.loreEntries = state.loreEntries.filter((entry) => entry.lorebook_id !== lorebookId);
+        if (data.entries) state.loreEntries.push(...data.entries);
+        if (data.entry && !data.entries) {
+          state.loreEntries.push(data.entry);
+        }
+        $("loreEntryTitle").dataset.entryId = "";
+        $("loreEntryTitle").value = "";
+        $("loreEntryKeys").value = "";
+        $("loreEntryContent").value = "";
+        $("loreEntryPriority").value = "100";
+        $("loreEntryForm").classList.add("hidden");
+        await loadConfig();
+      }
+
+      async function loadLogs() {
+        const data = await api(`/api/rp/${encodeURIComponent(state.chatId)}/generation-logs`);
+        state.logs = data.logs || [];
+        $("generationLogList").replaceChildren();
+        for (const log of state.logs) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-head"><div class="item-title"></div><span class="hint"></span></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = log.error ? "生成失败" : "生成成功";
+          item.querySelector(".hint").textContent = log.created_at || "";
+          item.querySelector(".item-body").textContent = [
+            `prompt:\n${log.prompt_preview || log.final_prompt || ""}`,
+            `reply:\n${log.final_reply || ""}`,
+            log.error ? `error:\n${log.error}` : ""
+          ].filter(Boolean).join("\n\n");
+          $("generationLogList").appendChild(item);
+        }
+        if (!state.logs.length) $("generationLogList").textContent = "还没有 generation log。";
+      }
+
+      async function loadArchives() {
+        const data = await api("/api/rp/archives");
+        state.archives = data.archives || [];
+        $("archiveList").replaceChildren();
+        for (const archive of state.archives) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `<div class="item-head"><div class="item-title"></div><button class="secondary">恢复</button></div><div class="item-body"></div>`;
+          item.querySelector(".item-title").textContent = archive.display_name || archive.chat_id;
+          item.querySelector(".item-body").textContent = `${archive.chat_id} / ${archive.message_count} messages / ${archive.archived_at || ""}`;
+          item.querySelector("button").onclick = async () => {
+            const restored = await api(`/api/rp/archives/${encodeURIComponent(archive.id)}/restore`, { method: "POST" });
+            await selectChat(restored.newChatId);
+            showTab("session");
+          };
+          $("archiveList").appendChild(item);
+        }
+        if (!state.archives.length) $("archiveList").textContent = "还没有 RP archive。";
+      }
+
+      async function archiveCurrent() {
+        await api(`/api/rp/${encodeURIComponent(state.chatId)}/archive`, { method: "POST" });
+        await loadArchives();
+        showTab("archives");
+      }
+
       function showError(error) {
         $("leftStatus").textContent = error && error.message ? error.message : String(error);
       }
@@ -714,12 +997,20 @@
       });
       $("togglePresetFormBtn").onclick = () => $("presetForm").classList.toggle("hidden");
       $("toggleCharacterFormBtn").onclick = () => $("characterForm").classList.toggle("hidden");
+      $("toggleLorebookFormBtn").onclick = () => $("lorebookForm").classList.toggle("hidden");
+      $("toggleLoreEntryFormBtn").onclick = () => $("loreEntryForm").classList.toggle("hidden");
       $("refreshBtn").onclick = () => refreshAll().catch(showError);
       $("previewBtn").onclick = () => loadContext().catch(showError);
+      $("refreshLogsBtn").onclick = () => loadLogs().catch(showError);
+      $("refreshArchivesBtn").onclick = () => loadArchives().catch(showError);
       $("useManualBtn").onclick = () => selectChat($("manualChatId").value).catch(showError);
       $("saveBindingBtn").onclick = saveBinding;
       $("createPresetBtn").onclick = createPreset;
       $("createCharacterBtn").onclick = createCharacter;
+      $("createLorebookBtn").onclick = () => createLorebook().catch(showError);
+      $("createLoreEntryBtn").onclick = () => createLoreEntry().catch(showError);
+      $("entryLorebookSelect").onchange = renderLoreEntries;
+      $("archiveCurrentBtn").onclick = () => archiveCurrent().catch(showError);
 
       refreshAll().catch(showError);
     </script>
