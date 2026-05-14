@@ -517,6 +517,23 @@
       </div>
     </section>
 
+    <section class="section" data-section="error-inbox">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="toolbar">
+            <div>
+              <h2>实时错误 / Error Inbox</h2>
+              <p class="muted">查看最近前端或 API 上报的错误摘要，并一键复制最小修 Bug 指令。这里仍然只读，不启动、不删除、不清理任何东西。</p>
+            </div>
+            <button class="button" id="refresh-errors" type="button">刷新错误</button>
+          </div>
+          <div id="error-list" class="module-list">
+            <div class="empty">正在加载最近错误...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" data-section="agent-state">
       <div class="panel">
         <div class="panel-body">
@@ -562,6 +579,7 @@
       { id: "bug-triage", label: "找 Bug", hint: "Bug Triage" },
       { id: "project-map", label: "项目地图", hint: "Project Map" },
       { id: "runtime-health", label: "运行状态", hint: "Runtime Health" },
+      { id: "error-inbox", label: "实时错误", hint: "Error Inbox" },
       { id: "agent-state", label: "Agent 协作状态", hint: "Agent State" },
       { id: "known-bugs", label: "历史 Bug", hint: "Known Bugs" },
       { id: "safety-check", label: "安全边界", hint: "Safety Check" },
@@ -993,7 +1011,9 @@
       renderKnownBugs();
       renderSafety();
       renderPromptPreview();
+      loadErrors();
       document.getElementById("copy-current").onclick = copyCurrentPrompt;
+      document.getElementById("refresh-errors").onclick = loadErrors;
       document.getElementById("triage-search").addEventListener("input", (event) => {
         state.searchQuery = event.target.value;
         state.selectedSymptom = "";
