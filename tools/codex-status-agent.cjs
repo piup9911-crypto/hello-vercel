@@ -7,6 +7,11 @@ const { execFile, spawn } = require("child_process");
 
 const ROOT = __dirname;
 const GEM_TOOLS_ROOT = path.join(ROOT, "gemini-cli-telegram");
+const LEGACY_CODEX_ROOT =
+  process.env.CODEX_BRIDGE_ROOT || path.join(os.homedir(), "Documents", "Codex", "2026-04-21-gemini-cli-telegram");
+const QI_LOCK_PATH = process.env.CODEX_QI_LOCK_FILE || path.join(LEGACY_CODEX_ROOT, "codex-bridge-state", "codex-bridge.lock.json");
+const QI_LOG_PATH = process.env.CODEX_QI_LOG_FILE || path.join(LEGACY_CODEX_ROOT, "codex-bridge-state", "codex-bridge.log");
+const CCGRAM_LOG_PATH = process.env.CODEX_CCGRAM_LOG_FILE || path.join(os.homedir(), ".ccgram", "ccgram-codex.log");
 
 function loadEnvFile(filePath, overrideExisting) {
   if (!fs.existsSync(filePath)) return;
@@ -27,6 +32,7 @@ function loadEnvFile(filePath, overrideExisting) {
 
 loadEnvFile(path.join(os.homedir(), ".gemini", ".env"), false);
 loadEnvFile(path.join(GEM_TOOLS_ROOT, "bridge.env"), false);
+loadEnvFile(path.join(LEGACY_CODEX_ROOT, "codex-bridge.env"), false);
 
 const STATUS_INTERVAL_MS = Math.max(
   15000,
@@ -130,8 +136,42 @@ function fileUpdatedAt(filePath) {
   }
 }
 
+function readText(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function readLastLine(filePath) {
+  const lines = readText(filePath)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\x1b\[[0-9;]*m/g, "").trim())
+    .filter(Boolean);
+  return lines.length ? lines[lines.length - 1].slice(0, 800) : "";
+}
+
+function processAlive(pid) {
+  if (!pid || !Number.isFinite(Number(pid))) return false;
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function findWindowsProcess(pattern) {
-  if (!pattern) return { online: null, pid: null, lastLine: "Set CODEX_*_PROCESS_PATTERN to enable process detection." };
+  if (!pattern) return { online: null, pid: null, lastLine: "" };
   const script = [
     "$pattern = $args[0]",
     "Get-CimInstance Win32_Process |",
@@ -155,16 +195,31 @@ async function findWindowsProcess(pattern) {
   }
 }
 
+async function getQiBridgeStatus(config, checkedAt) {
+  const lock = readJson(QI_LOCK_PATH);
+  const lockPid = lock && lock.pid ? Number(lock.pid) : null;
+  const processStatus =
+    config.qiCommandPattern || !lockPid
+      ? await findWindowsProcess(config.qiCommandPattern || "telegram-codex-bridge.cjs")
+      : { online: processAlive(lockPid), pid: lockPid, lastLine: "" };
+  const pid = processStatus.pid || lockPid;
+  return {
+    online: Boolean(processStatus.online || processAlive(pid)),
+    checkedAt,
+    pid,
+    lockFile: fs.existsSync(QI_LOCK_PATH),
+    startedAt: lock && lock.startedAt ? lock.startedAt : null,
+    model: process.env.CODEX_QI_MODEL || process.env.CODEX_BRIDGE_MODEL || "gpt-5.5",
+    sandbox: process.env.CODEX_QI_SANDBOX || process.env.CODEX_BRIDGE_SANDBOX || "danger-full-access",
+    reasoning: process.env.CODEX_QI_REASONING || process.env.CODEX_BRIDGE_REASONING_EFFORT || "medium",
+    logUpdatedAt: fileUpdatedAt(QI_LOG_PATH),
+    lastLine: readLastLine(QI_LOG_PATH) || processStatus.lastLine || ""
+  };
+}
+
 async function getWslTmuxStatus(sessionName) {
-  const result = await execCapture("wsl.exe", ["-e", "sh", "-lc", `tmux has-session -t ${JSON.stringify(sessionName)} 2>/dev/null && echo online || echo offline`]);
-  if (!result.ok && !result.stdout.trim()) {
-    return {
-      online: null,
-      tmuxSession: sessionName,
-      lastLine: result.error || "WSL/tmux not available."
-    };
-  }
-  const online = result.stdout.includes("online");
+  const result = await execCapture("wsl.exe", ["-e", "tmux", "has-session", "-t", sessionName]);
+  const online = result.ok;
   return {
     online,
     tmuxSession: sessionName,
@@ -172,11 +227,33 @@ async function getWslTmuxStatus(sessionName) {
   };
 }
 
+async function readWslLastLine(filePath) {
+  const result = await execCapture("wsl.exe", [
+    "-e",
+    "sh",
+    "-lc",
+    `tail -n 20 ${JSON.stringify(filePath)} 2>/dev/null | sed -r 's/\\x1b\\[[0-9;]*m//g'`
+  ]);
+  const lines = result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\0/g, "").trim())
+    .filter(Boolean);
+  return lines.length ? lines[lines.length - 1].slice(0, 800) : "";
+}
+
+async function wslFileUpdatedAt(filePath) {
+  const result = await execCapture("wsl.exe", ["-e", "stat", "-c", "%Y", filePath]);
+  const seconds = Number.parseInt(result.stdout.trim(), 10);
+  if (!result.ok || !Number.isFinite(seconds)) return null;
+  return new Date(seconds * 1000).toISOString();
+}
+
 async function buildStatus(config) {
   const checkedAt = new Date().toISOString();
-  const qi = await findWindowsProcess(config.qiCommandPattern);
   const ccProcess = await findWindowsProcess(config.ccCommandPattern);
   const ccTmux = await getWslTmuxStatus(config.ccTmuxSession);
+  const ccWslLastLine = await readWslLastLine("/home/yx/.ccgram/ccgram-codex.log");
+  const ccWslLogUpdatedAt = await wslFileUpdatedAt("/home/yx/.ccgram/ccgram-codex.log");
   return {
     schemaVersion: 1,
     reporter: {
@@ -185,26 +262,16 @@ async function buildStatus(config) {
       agent: "codex-status-agent"
     },
     services: {
-      qiBridge: {
-        online: qi.online,
-        checkedAt,
-        pid: qi.pid,
-        lockFile: Boolean(process.env.CODEX_QI_LOCK_FILE && fs.existsSync(process.env.CODEX_QI_LOCK_FILE)),
-        model: process.env.CODEX_QI_MODEL || "gpt-5.5",
-        sandbox: process.env.CODEX_QI_SANDBOX || "danger-full-access",
-        reasoning: process.env.CODEX_QI_REASONING || "medium",
-        logUpdatedAt: fileUpdatedAt(process.env.CODEX_QI_LOG_FILE || ""),
-        lastLine: qi.lastLine || ""
-      },
+      qiBridge: await getQiBridgeStatus(config, checkedAt),
       ccgramBridge: {
         online: ccProcess.online === null ? ccTmux.online : ccProcess.online,
         checkedAt,
         instanceName: process.env.CODEX_CCGRAM_INSTANCE || "codex-ccgram",
-        groupId: process.env.CODEX_CCGRAM_GROUP_ID || "",
+        groupId: process.env.CODEX_CCGRAM_GROUP_ID || "-1003961269202",
         tmuxSession: ccTmux.tmuxSession,
         provider: process.env.CODEX_CCGRAM_PROVIDER || "codex",
-        logUpdatedAt: fileUpdatedAt(process.env.CODEX_CCGRAM_LOG_FILE || ""),
-        lastLine: ccProcess.lastLine || ccTmux.lastLine || ""
+        logUpdatedAt: fileUpdatedAt(CCGRAM_LOG_PATH) || ccWslLogUpdatedAt,
+        lastLine: ccWslLastLine || readLastLine(CCGRAM_LOG_PATH) || (ccProcess.online === null ? ccTmux.lastLine : ccProcess.lastLine) || ""
       }
     },
     links: {},
