@@ -18,6 +18,15 @@
       --warn: #b7791f;
       --bad: #b23b3b;
       --shadow: 0 24px 70px rgba(70, 55, 25, 0.15);
+      --openai-accent: #2563eb;
+      --openai-bg: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.06));
+      --openai-border: rgba(37, 99, 235, 0.22);
+      --telegram-accent: #0f9f6e;
+      --telegram-bg: linear-gradient(135deg, rgba(15, 159, 110, 0.08), rgba(132, 204, 22, 0.06));
+      --telegram-border: rgba(15, 159, 110, 0.22);
+      --rp-accent: #d97706;
+      --rp-bg: linear-gradient(135deg, rgba(217, 119, 6, 0.09), rgba(244, 63, 94, 0.05));
+      --rp-border: rgba(217, 119, 6, 0.22);
     }
 
     * {
@@ -131,20 +140,74 @@
       box-shadow: 0 12px 26px rgba(67, 54, 31, 0.1);
     }
 
+    .section-group {
+      margin-top: 28px;
+    }
+
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 20px 20px 0 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+      position: relative;
+      z-index: 2;
+    }
+
+    .section-label.openai {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    }
+
+    .section-label.telegram {
+      background: linear-gradient(135deg, #0f9f6e, #84cc16);
+    }
+
+    .section-label.rp {
+      background: linear-gradient(135deg, #d97706, #f43f5e);
+    }
+
+    .section-label .label-icon {
+      font-size: 18px;
+    }
+
+    .section-body {
+      border-radius: 0 26px 26px 26px;
+      padding: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-body.openai {
+      background: var(--openai-bg);
+      border: 1.5px solid var(--openai-border);
+    }
+
+    .section-body.telegram {
+      background: var(--telegram-bg);
+      border: 1.5px solid var(--telegram-border);
+    }
+
+    .section-body.rp {
+      background: var(--rp-bg);
+      border: 1.5px solid var(--rp-border);
+    }
+
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
     }
 
     .card {
-      min-height: 170px;
+      min-height: 140px;
       border: 1px solid rgba(255, 255, 255, 0.72);
-      border-radius: 26px;
-      padding: 20px;
-      background: var(--card);
-      box-shadow: 0 18px 44px rgba(70, 55, 25, 0.08);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 12px 30px rgba(70, 55, 25, 0.06);
     }
 
     .card.wide {
@@ -225,6 +288,20 @@
     .control-buttons button {
       border-color: rgba(47, 143, 98, 0.22);
       background: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+
+    .openai .control-buttons button {
+      border-color: var(--openai-border);
+    }
+
+    .telegram .control-buttons button {
+      border-color: var(--telegram-border);
+    }
+
+    .rp .control-buttons button {
+      border-color: var(--rp-border);
     }
 
     .footer {
@@ -266,63 +343,125 @@
       </div>
     </section>
 
-    <section class="grid" aria-live="polite">
-      <article class="card">
-        <div class="card-title">
-          <span>OpenAI Bridge</span>
-          <span class="pill" id="openai-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value" id="openai-value">等待本机上报。</div>
-      </article>
+    <div class="section-group" aria-live="polite">
+      <div class="section-label openai"><span class="label-icon">API</span> OpenAI Bridge · 酒馆 / ST 接口</div>
+      <div class="section-body openai">
+        <div class="grid">
+          <article class="card">
+            <div class="card-title">
+              <span>桥接进程</span>
+              <span class="pill" id="openai-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="openai-value">等待本机上报。</div>
+          </article>
 
-      <article class="card">
-        <div class="card-title">
-          <span>公网入口</span>
-          <span class="pill" id="public-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value mono" id="public-url">暂无</div>
-        <div class="actions" style="margin-top: 14px;">
-          <button id="copy-public-url" type="button">复制地址</button>
-        </div>
-      </article>
+          <article class="card">
+            <div class="card-title">
+              <span>公网入口</span>
+              <span class="pill" id="public-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value mono" id="public-url">暂无</div>
+            <div class="actions" style="margin-top: 14px;">
+              <button id="copy-public-url" type="button">复制地址</button>
+            </div>
+          </article>
 
-      <article class="card">
-        <div class="card-title">
-          <span>Telegram Bridge</span>
-          <span class="pill" id="telegram-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value" id="telegram-value">等待本机上报。</div>
-      </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>最近请求</span>
+              <span class="pill" id="openai-fresh-pill"><span class="dot"></span><span>未同步</span></span>
+            </div>
+            <div class="value log mono" id="openai-log">暂无日志。</div>
+          </article>
 
-      <article class="card wide">
-        <div class="card-title">
-          <span>最近请求</span>
-          <span class="pill" id="fresh-pill"><span class="dot"></span><span>未同步</span></span>
+          <article class="card wide">
+            <div class="card-title">
+              <span>远程控制</span>
+              <span class="pill" id="openai-control-pill"><span class="dot"></span><span>待命</span></span>
+            </div>
+            <div class="value" id="openai-control-value">电脑端控制器在线时，可以从这里请求它启动本地 OpenAI Bridge。</div>
+            <div class="control-buttons">
+              <button class="control-action" type="button" data-target="openai" data-action="start_public_openai_bridge">启动小手机/ST 桥接</button>
+              <button class="control-action" type="button" data-target="openai" data-action="sync_status_once">同步一次状态</button>
+            </div>
+          </article>
         </div>
-        <div class="value log mono" id="last-events">暂无日志。</div>
-      </article>
+      </div>
+    </div>
 
-      <article class="card">
-        <div class="card-title">
-          <span>记忆同步</span>
-          <span class="pill" id="memory-pill"><span class="dot"></span><span>未知</span></span>
-        </div>
-        <div class="value" id="memory-value">等待本机上报。</div>
-      </article>
+    <div class="section-group" aria-live="polite">
+      <div class="section-label telegram"><span class="label-icon">TG</span> Telegram Bridge · Gem 主 bot</div>
+      <div class="section-body telegram">
+        <div class="grid">
+          <article class="card">
+            <div class="card-title">
+              <span>桥接进程</span>
+              <span class="pill" id="telegram-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="telegram-value">等待本机上报。</div>
+          </article>
 
-      <article class="card wide">
-        <div class="card-title">
-          <span>远程控制</span>
-          <span class="pill" id="control-pill"><span class="dot"></span><span>待命</span></span>
+          <article class="card">
+            <div class="card-title">
+              <span>记忆同步</span>
+              <span class="pill" id="memory-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="memory-value">等待本机上报。</div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-title">
+              <span>最近日志</span>
+              <span class="pill" id="telegram-fresh-pill"><span class="dot"></span><span>未同步</span></span>
+            </div>
+            <div class="value log mono" id="telegram-log">暂无日志。</div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-title">
+              <span>远程控制</span>
+              <span class="pill" id="telegram-control-pill"><span class="dot"></span><span>待命</span></span>
+            </div>
+            <div class="value" id="telegram-control-value">电脑端控制器在线时，可以从这里请求它启动 Telegram Bridge。</div>
+            <div class="control-buttons">
+              <button class="control-action" type="button" data-target="telegram" data-action="start_telegram_bridge">启动 Telegram 桥接</button>
+              <button class="control-action" type="button" data-target="telegram" data-action="sync_status_once">同步一次状态</button>
+            </div>
+          </article>
         </div>
-        <div class="value" id="control-value">电脑端控制器在线时，可以从这里请求它启动本地桥接。</div>
-        <div class="control-buttons">
-          <button class="control-action" type="button" data-action="start_public_openai_bridge">启动小手机/ST 桥接</button>
-          <button class="control-action" type="button" data-action="start_telegram_bridge">启动 Telegram 桥接</button>
-          <button class="control-action" type="button" data-action="sync_status_once">同步一次状态</button>
+      </div>
+    </div>
+
+    <div class="section-group" aria-live="polite">
+      <div class="section-label rp"><span class="label-icon">RP</span> TG RP Bot · 角色扮演 bot</div>
+      <div class="section-body rp">
+        <div class="grid">
+          <article class="card">
+            <div class="card-title">
+              <span>Bot 进程</span>
+              <span class="pill" id="rp-pill"><span class="dot"></span><span>未知</span></span>
+            </div>
+            <div class="value" id="rp-value">等待本机上报。</div>
+          </article>
+
+          <article class="card">
+            <div class="card-title">
+              <span>记录入口</span>
+              <span class="pill" id="rp-records-pill"><span class="dot"></span><span>独立服务</span></span>
+            </div>
+            <div class="value" id="rp-records-value">读取 Gem Chat Records 的上下文接口。</div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-title">
+              <span>最近日志</span>
+              <span class="pill" id="rp-fresh-pill"><span class="dot"></span><span>未同步</span></span>
+            </div>
+            <div class="value log mono" id="rp-log">暂无日志。</div>
+          </article>
         </div>
-      </article>
-    </section>
+      </div>
+    </div>
 
     <div class="footer">
       <span id="updated-at">更新时间：暂无</span>
@@ -341,26 +480,38 @@
       openaiValue: document.getElementById("openai-value"),
       publicPill: document.getElementById("public-pill"),
       publicUrl: document.getElementById("public-url"),
+      openaiFreshPill: document.getElementById("openai-fresh-pill"),
       telegramPill: document.getElementById("telegram-pill"),
       telegramValue: document.getElementById("telegram-value"),
-      freshPill: document.getElementById("fresh-pill"),
-      lastEvents: document.getElementById("last-events"),
+      openaiLog: document.getElementById("openai-log"),
+      telegramFreshPill: document.getElementById("telegram-fresh-pill"),
+      telegramLog: document.getElementById("telegram-log"),
       memoryPill: document.getElementById("memory-pill"),
       memoryValue: document.getElementById("memory-value"),
+      rpPill: document.getElementById("rp-pill"),
+      rpValue: document.getElementById("rp-value"),
+      rpRecordsPill: document.getElementById("rp-records-pill"),
+      rpRecordsValue: document.getElementById("rp-records-value"),
+      rpFreshPill: document.getElementById("rp-fresh-pill"),
+      rpLog: document.getElementById("rp-log"),
       updatedAt: document.getElementById("updated-at"),
       reporter: document.getElementById("reporter"),
       refreshBtn: document.getElementById("refresh-btn"),
       copyBtn: document.getElementById("copy-public-url"),
-      controlPill: document.getElementById("control-pill"),
-      controlValue: document.getElementById("control-value"),
+      openaiControlPill: document.getElementById("openai-control-pill"),
+      openaiControlValue: document.getElementById("openai-control-value"),
+      telegramControlPill: document.getElementById("telegram-control-pill"),
+      telegramControlValue: document.getElementById("telegram-control-value"),
       controlButtons: Array.from(document.querySelectorAll(".control-action"))
     };
 
     function setPill(node, state, label) {
+      if (!node) return;
       node.classList.remove("good", "bad");
       if (state === "good") node.classList.add("good");
       if (state === "bad") node.classList.add("bad");
-      node.querySelector("span:last-child").textContent = label;
+      const labelNode = node.querySelector("span:last-child");
+      if (labelNode) labelNode.textContent = label;
     }
 
     function formatTime(value) {
@@ -386,13 +537,19 @@
       const telegram = services.telegramBridge || {};
       const memory = services.memorySync || {};
       const publicTunnel = services.publicTunnel || {};
+      const rp = services.rpTelegramBot || services.telegramRpBot || services.rpBot || {};
       const age = minutesSince(status.updatedAt);
+      const rpAge = minutesSince(rp.updatedAt || rp.lastSeenAt || status.updatedAt);
 
-      setPill(el.freshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      setPill(el.openaiFreshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      setPill(el.telegramFreshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
       setPill(el.openaiPill, openai.online ? "good" : "bad", openai.online ? "在线" : "离线");
       setPill(el.publicPill, links.publicUrl ? "good" : "bad", links.publicUrl ? "可用" : "暂无");
       setPill(el.telegramPill, telegram.online ? "good" : telegram.online === false ? "bad" : "warn", telegram.online ? "在线" : telegram.online === false ? "离线" : "未知");
       setPill(el.memoryPill, memory.configured ? "good" : "warn", memory.configured ? "已配置" : "未配置");
+      setPill(el.rpPill, rp.online ? "good" : rp.online === false ? "bad" : "warn", rp.online ? "在线" : rp.online === false ? "离线" : "等待上报");
+      setPill(el.rpRecordsPill, rp.recordsUrl || rp.gemChatRecordsUrl ? "good" : "warn", rp.recordsUrl || rp.gemChatRecordsUrl ? "已配置" : "独立服务");
+      setPill(el.rpFreshPill, rpAge <= 5 ? "good" : rpAge <= 15 ? "warn" : "bad", rpAge === Infinity ? "未同步" : `${rpAge} 分钟前`);
 
       latestPublicUrl = links.publicUrl || "";
       el.publicUrl.textContent = latestPublicUrl || "暂无公网地址。";
@@ -410,12 +567,22 @@
         `云端接口：${memory.url || "未知"}`,
         `Token：${memory.hasToken ? "已配置" : "未配置"}`
       ].join("<br>");
+      el.rpValue.innerHTML = [
+        `Bot：${rp.botName || "rp-gem-bot"}`,
+        `PID：${rp.pid || "未知"}`,
+        `状态文件：${rp.stateFile ? "存在" : "等待上报"}`
+      ].join("<br>");
+      el.rpRecordsValue.innerHTML = [
+        `记录接口：${rp.recordsUrl || rp.gemChatRecordsUrl || "http://127.0.0.1:4144"}`,
+        `最近消息：${rp.lastMessageAt ? formatTime(rp.lastMessageAt) : "等待上报"}`
+      ].join("<br>");
 
-      const eventLines = [];
-      if (openai.lastLine) eventLines.push(`[OpenAI] ${openai.lastLine}`);
-      if (publicTunnel.lastLine) eventLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
-      if (telegram.lastLine) eventLines.push(`[Telegram] ${telegram.lastLine}`);
-      el.lastEvents.textContent = eventLines.length ? eventLines.join("\n\n") : "暂无日志。";
+      const openaiLines = [];
+      if (openai.lastLine) openaiLines.push(`[OpenAI] ${openai.lastLine}`);
+      if (publicTunnel.lastLine) openaiLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
+      el.openaiLog.textContent = openaiLines.length ? openaiLines.join("\n\n") : "暂无日志。";
+      el.telegramLog.textContent = telegram.lastLine || "暂无日志。";
+      el.rpLog.textContent = rp.lastLine || rp.lastLog || "暂无日志。";
 
       el.updatedAt.textContent = `更新时间：${formatTime(status.updatedAt)}`;
       el.reporter.textContent = `上报端：${status.reporter && status.reporter.hostname ? status.reporter.hostname : "暂无"}`;
@@ -436,11 +603,23 @@
       renderStatus(payload);
     }
 
+    function controlTarget(action) {
+      return action === "start_telegram_bridge" ? "telegram" : "openai";
+    }
+
+    function controlNodes(target) {
+      return target === "telegram"
+        ? { pill: el.telegramControlPill, value: el.telegramControlValue }
+        : { pill: el.openaiControlPill, value: el.openaiControlValue };
+    }
+
     function renderControl(state) {
       const command = state && state.command ? state.command : null;
       if (!command) {
-        setPill(el.controlPill, "warn", "无指令");
-        el.controlValue.textContent = "暂无待执行指令。电脑端控制器运行后，会领取这里发出的动作。";
+        setPill(el.openaiControlPill, "warn", "无指令");
+        setPill(el.telegramControlPill, "warn", "无指令");
+        el.openaiControlValue.textContent = "暂无待执行指令。电脑端控制器运行后，会领取这里发出的动作。";
+        el.telegramControlValue.textContent = "暂无待执行指令。电脑端控制器运行后，会领取这里发出的动作。";
         return;
       }
 
@@ -452,8 +631,9 @@
         skipped: ["good", "已跳过"]
       };
       const [pillState, label] = statusMap[command.status] || ["warn", command.status || "未知"];
-      setPill(el.controlPill, pillState, label);
-      el.controlValue.innerHTML = [
+      const nodes = controlNodes(controlTarget(command.action));
+      setPill(nodes.pill, pillState, label);
+      nodes.value.innerHTML = [
         `动作：${command.label || command.action || "未知"}`,
         `状态：${label}`,
         `消息：${command.message || "暂无"}`,
@@ -477,7 +657,7 @@
       return payload;
     }
 
-    async function sendControlAction(action) {
+    async function sendControlAction(action, target) {
       el.controlButtons.forEach((button) => {
         button.disabled = true;
       });
@@ -496,6 +676,13 @@
           throw new Error(payload.error || `指令发送失败：${response.status}`);
         }
         renderControl(payload);
+        if (target) {
+          const nodes = controlNodes(target);
+          const command = payload && payload.command ? payload.command : null;
+          if (command) {
+            nodes.value.textContent = `${command.label || action}：${command.message || "已发送"}`;
+          }
+        }
       } finally {
         el.controlButtons.forEach((button) => {
           button.disabled = false;
@@ -513,7 +700,7 @@
 
     el.refreshBtn.addEventListener("click", () => {
       Promise.all([requestStatus(), requestControl()]).catch((error) => {
-        el.lastEvents.textContent = error && error.message ? error.message : String(error);
+        el.openaiLog.textContent = error && error.message ? error.message : String(error);
       });
     });
 
@@ -528,16 +715,20 @@
 
     el.controlButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        sendControlAction(button.dataset.action).catch((error) => {
-          setPill(el.controlPill, "bad", "发送失败");
-          el.controlValue.textContent = error && error.message ? error.message : String(error);
+        const target = button.dataset.target || controlTarget(button.dataset.action);
+        sendControlAction(button.dataset.action, target).catch((error) => {
+          const nodes = controlNodes(target);
+          setPill(nodes.pill, "bad", "发送失败");
+          nodes.value.textContent = error && error.message ? error.message : String(error);
         });
       });
     });
 
     init().catch((error) => {
-      el.lastEvents.textContent = error && error.message ? error.message : String(error);
-      setPill(el.freshPill, "bad", "读取失败");
+      el.openaiLog.textContent = error && error.message ? error.message : String(error);
+      setPill(el.openaiFreshPill, "bad", "读取失败");
+      setPill(el.telegramFreshPill, "bad", "读取失败");
+      setPill(el.rpFreshPill, "bad", "读取失败");
     });
   </script>
 </body>
