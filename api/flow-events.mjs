@@ -38,11 +38,11 @@ const SENSITIVE_PATTERNS = [
   /private[_\s-]*memory/i
 ];
 
-function cleanText(value, maxLength) {
+function cleanText(value, maxLength, options = {}) {
   if (typeof value !== "string") return "";
   const text = value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   if (!text) return "";
-  if (SENSITIVE_PATTERNS.some((pattern) => pattern.test(text))) {
+  if (options.redact !== false && SENSITIVE_PATTERNS.some((pattern) => pattern.test(text))) {
     return "[redacted]";
   }
   return text.slice(0, maxLength);
@@ -62,11 +62,11 @@ function normalizeEvent(source = {}) {
     createdAt,
     program: cleanText(source.program, LIMITS.program) || "unknown",
     runId: cleanText(source.run_id || source.runId, LIMITS.runId),
-    step: cleanText(source.step, LIMITS.step) || "unknown-step",
-    stepLabel: cleanText(source.step_label || source.stepLabel, LIMITS.stepLabel) || "未知步骤",
+    step: cleanText(source.step, LIMITS.step, { redact: false }) || "unknown-step",
+    stepLabel: cleanText(source.step_label || source.stepLabel, LIMITS.stepLabel, { redact: false }) || "未知步骤",
     status: VALID_STATUSES.has(status) ? status : "warning",
     message: cleanText(source.message, LIMITS.message),
-    file: cleanText(source.file, LIMITS.file),
+    file: cleanText(source.file, LIMITS.file, { redact: false }),
     line: cleanNumber(source.line),
     hint: cleanText(source.hint, LIMITS.hint),
     impact: cleanText(source.impact, LIMITS.impact),
