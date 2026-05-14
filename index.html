@@ -399,21 +399,17 @@
                         <div class="app-title">魔法实验室</div>
                         <div class="app-body">保留你原来那片轻松一点的小乐园，不受登录流程影响。</div>
                     </a>
-                    <a class="app-card" href="bridge-tools.html">
+                    <a class="app-card" href="bridge-cabinet.html">
                         <div class="app-icon">🧩</div>
-                        <div class="app-title">Gemini 工具桥</div>
-                        <div class="app-body">查看 Telegram 桥接、CLI 记忆、本地聊天记录面板和启动说明。</div>
+                        <div class="app-title">桥接工具箱</div>
+                        <div class="app-body">把 Gemini 工具桥和桥接状态总舱收纳到下一页，点进去后再选择要看的入口。</div>
                     </a>
                     <a class="app-card" href="chat-records.html">
                         <div class="app-icon">💬</div>
                         <div class="app-title">聊天记录面板</div>
                         <div class="app-body">从网页入口打开本机 Gem 聊天记录管理器，查看、删除和归档上下文。</div>
                     </a>
-                    <a class="app-card" href="bridge-status.html">
-                        <div class="app-icon">🛰️</div>
-                        <div class="app-title">桥接状态总舱</div>
-                        <div class="app-body">查看 Gem 和 Codex 两个桥接系统的运行状态、日志和远程控制。</div>
-                    </a>
+
                     <a class="app-card" href="backend-cockpit.html">
                         <div class="app-icon">🛠️</div>
                         <div class="app-title">Bug Triage Cockpit / 后端排错驾驶舱</div>
@@ -473,9 +469,8 @@
                     <a class="ghost-btn" href="secret-diary.html">🤍 打开秘密日记</a>
                     <a class="ghost-btn" href="magic.html">✨ 打开魔法实验室</a>
                     <a class="ghost-btn" href="memory.html">☁️ 打开共享记忆</a>
-                    <a class="ghost-btn" href="bridge-tools.html">🧩 打开 Gemini 工具桥</a>
+                    <a class="ghost-btn" href="bridge-cabinet.html">🧩 打开桥接工具箱</a>
                     <a class="ghost-btn" href="chat-records.html">💬 打开聊天记录面板</a>
-                    <a class="ghost-btn" href="bridge-status.html">🛰️ 打开桥接状态总舱</a>
                     <a class="ghost-btn" href="backend-cockpit.html">🛠️ 打开后端排错驾驶舱</a>
                     <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
                 </div>
@@ -528,6 +523,10 @@
 
             if (path.startsWith('/chat-records.html')) {
                 return '聊天记录面板';
+            }
+
+            if (path.startsWith('/bridge-cabinet.html')) {
+                return '桥接工具箱';
             }
 
             if (path.startsWith('/bridge-status.html')) {
