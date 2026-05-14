@@ -536,11 +536,45 @@
       return "未知";
     }
 
-    function renderRuntimeInfo(service, fallbackCheckedAt, lines) {
+    function freshnessHint(age, service) {
+      if (age === Infinity) return "还没有收到本机上报，先看状态同步 agent 是否在跑。";
+      if (age > 10) return `本机已经 ${age} 分钟没有更新状态，页面结果可能过期。`;
+      if (service.logUpdatedAt && minutesSince(service.logUpdatedAt) > 60) return "服务状态有检查，但日志很久没变化，可能是空闲，也可能是没有新请求进来。";
+      return "";
+    }
+
+    function diagnoseOpenAi(openai, publicTunnel, age, hasPublicUrl) {
+      const stale = freshnessHint(age, openai);
+      if (stale) return `判断：${stale}`;
+      if (openai.online) {
+        return `判断：OpenAI Bridge 在线，${publicTunnel.usable || hasPublicUrl ? "公网入口可以继续重点看请求日志。" : "但暂时没有公网入口地址。"}`;
+      }
+      if (hasPublicUrl) return "判断：公网地址还在，但本地 OpenAI Bridge 离线，所以 ST/API 请求会失败。";
+      return "判断：OpenAI Bridge 离线，也没有可用公网入口。";
+    }
+
+    function diagnoseTelegram(telegram, age) {
+      const stale = freshnessHint(age, telegram);
+      if (stale) return `判断：${stale}`;
+      if (telegram.online) return "判断：Gem Telegram bot 在线；如果仍没有回复，优先看下面最后一行日志。";
+      if (telegram.lockFile) return "判断：锁文件还在但进程离线，可能是旧锁或异常退出。";
+      return "判断：Gem Telegram bot 离线，没有发现有效运行进程。";
+    }
+
+    function diagnoseRp(rp, age) {
+      const stale = freshnessHint(age, rp);
+      if (stale) return `判断：${stale}`;
+      if (rp.online) return "判断：TG RP bot 在线；是否有新消息要看最近消息时间和日志。";
+      if (rp.stateFile) return "判断：RP 状态文件存在但 bot 离线，可能是进程停了。";
+      return "判断：TG RP bot 还没有有效上报。";
+    }
+
+    function renderRuntimeInfo(service, fallbackCheckedAt, lines, diagnosis) {
       const output = [
+        diagnosis,
         `最后检查：${formatTime(service.checkedAt || fallbackCheckedAt)}`,
         `当前状态：${statusText(service.online)}`
-      ];
+      ].filter(Boolean);
       if (service.logUpdatedAt) {
         output.push(`日志更新：${formatTime(service.logUpdatedAt)}`);
       }
@@ -560,18 +594,21 @@
       const openaiAge = minutesSince(openai.checkedAt || status.updatedAt);
       const telegramAge = minutesSince(telegram.checkedAt || status.updatedAt);
       const rpAge = minutesSince(rp.checkedAt || rp.updatedAt || rp.lastSeenAt || status.updatedAt);
+      const publicUrl = links.publicUrl || publicTunnel.url || "";
+      const hasPublicUrl = Boolean(publicUrl);
+      const publicUsable = publicTunnel.usable !== undefined ? publicTunnel.usable : hasPublicUrl && openai.online;
 
       setPill(el.openaiFreshPill, openaiAge <= 2 ? "good" : openaiAge <= 10 ? "warn" : "bad", openaiAge === Infinity ? "未同步" : `检查于 ${openaiAge} 分钟前`);
       setPill(el.telegramFreshPill, telegramAge <= 2 ? "good" : telegramAge <= 10 ? "warn" : "bad", telegramAge === Infinity ? "未同步" : `检查于 ${telegramAge} 分钟前`);
       setPill(el.openaiPill, openai.online ? "good" : "bad", openai.online ? "在线" : "离线");
-      setPill(el.publicPill, links.publicUrl ? "good" : "bad", links.publicUrl ? "可用" : "暂无");
+      setPill(el.publicPill, publicUsable ? "good" : hasPublicUrl ? "warn" : "bad", publicUsable ? "入口可用" : hasPublicUrl ? "地址保留" : "暂无");
       setPill(el.telegramPill, telegram.online ? "good" : telegram.online === false ? "bad" : "warn", telegram.online ? "在线" : telegram.online === false ? "离线" : "未知");
       setPill(el.memoryPill, memory.configured ? "good" : "warn", memory.configured ? "已配置" : "未配置");
       setPill(el.rpPill, rp.online ? "good" : rp.online === false ? "bad" : "warn", rp.online ? "在线" : rp.online === false ? "离线" : "等待上报");
       setPill(el.rpRecordsPill, rp.recordsUrl || rp.gemChatRecordsUrl ? "good" : "warn", rp.recordsUrl || rp.gemChatRecordsUrl ? "已配置" : "独立服务");
       setPill(el.rpFreshPill, rpAge <= 5 ? "good" : rpAge <= 15 ? "warn" : "bad", rpAge === Infinity ? "未同步" : `检查于 ${rpAge} 分钟前`);
 
-      latestPublicUrl = links.publicUrl || "";
+      latestPublicUrl = publicUrl;
       el.publicUrl.textContent = latestPublicUrl || "暂无公网地址。";
       el.openaiValue.innerHTML = [
         `端口：${openai.port || 4141}`,
@@ -600,9 +637,10 @@
       const openaiLines = [];
       if (openai.lastLine) openaiLines.push(`[OpenAI] ${openai.lastLine}`);
       if (publicTunnel.lastLine) openaiLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
-      el.openaiLog.textContent = renderRuntimeInfo(openai, status.updatedAt, openaiLines);
-      el.telegramLog.textContent = renderRuntimeInfo(telegram, status.updatedAt, telegram.lastLine);
-      el.rpLog.textContent = renderRuntimeInfo(rp, status.updatedAt, rp.lastLine || rp.lastLog);
+      if (hasPublicUrl && !openai.online) openaiLines.push("[Public] 公网入口地址已保留；OpenAI Bridge 未在线时它不会可用。");
+      el.openaiLog.textContent = renderRuntimeInfo(openai, status.updatedAt, openaiLines, diagnoseOpenAi(openai, publicTunnel, openaiAge, hasPublicUrl));
+      el.telegramLog.textContent = renderRuntimeInfo(telegram, status.updatedAt, telegram.lastLine, diagnoseTelegram(telegram, telegramAge));
+      el.rpLog.textContent = renderRuntimeInfo(rp, status.updatedAt, rp.lastLine || rp.lastLog, diagnoseRp(rp, rpAge));
 
       el.updatedAt.textContent = `更新时间：${formatTime(status.updatedAt)}`;
       el.reporter.textContent = `上报端：${status.reporter && status.reporter.hostname ? status.reporter.hostname : "暂无"}`;

@@ -86,8 +86,11 @@ function readText(filePath) {
 function readLastLine(filePath) {
   const text = readText(filePath).trim();
   if (!text) return "";
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  return lines.length ? lines[lines.length - 1].replace(/\x1b\[[0-9;]*m/g, "").slice(0, 800) : "";
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\x1b\[[0-9;]*m/g, "").trim())
+    .filter(Boolean);
+  return lines.length ? lines[lines.length - 1].slice(0, 800) : "";
 }
 
 function firstExisting(paths) {
@@ -272,13 +275,16 @@ function getMemoryStatus(config, checkedAt) {
   };
 }
 
-function getPublicTunnelStatus(checkedAt) {
+function getPublicTunnelStatus(checkedAt, backendOnline) {
   const url = findPublicUrl();
   const cloudflared = findProcessByCommand("cloudflared");
   const sshTunnel = findProcessByCommand("localhost.run");
+  const tunnelProcessOnline = Boolean(cloudflared || sshTunnel);
   return {
     checkedAt,
-    online: Boolean(url && (cloudflared || sshTunnel)),
+    online: tunnelProcessOnline,
+    usable: Boolean(url && tunnelProcessOnline && backendOnline),
+    backendOnline: Boolean(backendOnline),
     url,
     pid: cloudflared && cloudflared.pid ? cloudflared.pid : sshTunnel && sshTunnel.pid ? sshTunnel.pid : null,
     lastLine: readLastLine(newestExisting(TUNNEL_LOG_PATHS))
@@ -315,7 +321,7 @@ async function buildStatus(config) {
     },
     services: {
       openaiBridge,
-      publicTunnel: getPublicTunnelStatus(checkedAt),
+      publicTunnel: getPublicTunnelStatus(checkedAt, openaiBridge.online),
       telegramBridge: getTelegramBridgeStatus(checkedAt),
       memorySync: getMemoryStatus(config, checkedAt),
       rpTelegramBot: getRpBotStatus(checkedAt)
