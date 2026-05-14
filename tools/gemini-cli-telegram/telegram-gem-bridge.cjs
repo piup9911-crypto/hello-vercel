@@ -172,6 +172,7 @@ const memoryIngestCooldowns = new Map();
 const memoryIngestTimers = new Map();
 let bridgeLockHeld = false;
 const FLOW_RUN_ID = new Date().toISOString();
+let flowReportQueue = Promise.resolve();
 let proactiveModuleLoaded = false;
 let startProactiveMessages = () => {};
 let updateLastChatTime = () => {};
@@ -321,17 +322,21 @@ function reportFlowEvent(event) {
   writeLocalFlowEvent(payload);
   if (!url || !token) return;
 
-  fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Memory-Sync-Token": token,
-      "X-Memory-Client": "telegram-gem-bridge"
-    },
-    body: JSON.stringify(payload)
-  }).catch((error) => {
-    log("flow event report failed", error && error.message ? error.message : String(error));
-  });
+  flowReportQueue = flowReportQueue
+    .then(() =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Memory-Sync-Token": token,
+          "X-Memory-Client": "telegram-gem-bridge"
+        },
+        body: JSON.stringify(payload)
+      })
+    )
+    .catch((error) => {
+      log("flow event report failed", error && error.message ? error.message : String(error));
+    });
 }
 
 function reportFlowError(step, stepLabel, error, details = {}) {
