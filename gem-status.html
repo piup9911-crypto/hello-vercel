@@ -538,18 +538,19 @@
       const memory = services.memorySync || {};
       const publicTunnel = services.publicTunnel || {};
       const rp = services.rpTelegramBot || services.telegramRpBot || services.rpBot || {};
-      const age = minutesSince(status.updatedAt);
-      const rpAge = minutesSince(rp.updatedAt || rp.lastSeenAt || status.updatedAt);
+      const openaiAge = minutesSince(openai.checkedAt || status.updatedAt);
+      const telegramAge = minutesSince(telegram.checkedAt || status.updatedAt);
+      const rpAge = minutesSince(rp.checkedAt || rp.updatedAt || rp.lastSeenAt || status.updatedAt);
 
-      setPill(el.openaiFreshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
-      setPill(el.telegramFreshPill, age <= 2 ? "good" : age <= 10 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      setPill(el.openaiFreshPill, openaiAge <= 2 ? "good" : openaiAge <= 10 ? "warn" : "bad", openaiAge === Infinity ? "未同步" : `检查于 ${openaiAge} 分钟前`);
+      setPill(el.telegramFreshPill, telegramAge <= 2 ? "good" : telegramAge <= 10 ? "warn" : "bad", telegramAge === Infinity ? "未同步" : `检查于 ${telegramAge} 分钟前`);
       setPill(el.openaiPill, openai.online ? "good" : "bad", openai.online ? "在线" : "离线");
       setPill(el.publicPill, links.publicUrl ? "good" : "bad", links.publicUrl ? "可用" : "暂无");
       setPill(el.telegramPill, telegram.online ? "good" : telegram.online === false ? "bad" : "warn", telegram.online ? "在线" : telegram.online === false ? "离线" : "未知");
       setPill(el.memoryPill, memory.configured ? "good" : "warn", memory.configured ? "已配置" : "未配置");
       setPill(el.rpPill, rp.online ? "good" : rp.online === false ? "bad" : "warn", rp.online ? "在线" : rp.online === false ? "离线" : "等待上报");
       setPill(el.rpRecordsPill, rp.recordsUrl || rp.gemChatRecordsUrl ? "good" : "warn", rp.recordsUrl || rp.gemChatRecordsUrl ? "已配置" : "独立服务");
-      setPill(el.rpFreshPill, rpAge <= 5 ? "good" : rpAge <= 15 ? "warn" : "bad", rpAge === Infinity ? "未同步" : `${rpAge} 分钟前`);
+      setPill(el.rpFreshPill, rpAge <= 5 ? "good" : rpAge <= 15 ? "warn" : "bad", rpAge === Infinity ? "未同步" : `检查于 ${rpAge} 分钟前`);
 
       latestPublicUrl = links.publicUrl || "";
       el.publicUrl.textContent = latestPublicUrl || "暂无公网地址。";
@@ -580,9 +581,18 @@
       const openaiLines = [];
       if (openai.lastLine) openaiLines.push(`[OpenAI] ${openai.lastLine}`);
       if (publicTunnel.lastLine) openaiLines.push(`[Tunnel] ${publicTunnel.lastLine}`);
-      el.openaiLog.textContent = openaiLines.length ? openaiLines.join("\n\n") : "暂无日志。";
-      el.telegramLog.textContent = telegram.lastLine || "暂无日志。";
-      el.rpLog.textContent = rp.lastLine || rp.lastLog || "暂无日志。";
+      el.openaiLog.textContent = [
+        `最后检查：${formatTime(openai.checkedAt || status.updatedAt)}`,
+        openaiLines.length ? openaiLines.join("\n\n") : "暂无日志。"
+      ].join("\n\n");
+      el.telegramLog.textContent = [
+        `最后检查：${formatTime(telegram.checkedAt || status.updatedAt)}`,
+        telegram.lastLine || "暂无日志。"
+      ].join("\n\n");
+      el.rpLog.textContent = [
+        `最后检查：${formatTime(rp.checkedAt || status.updatedAt)}`,
+        rp.lastLine || rp.lastLog || "暂无日志。"
+      ].join("\n\n");
 
       el.updatedAt.textContent = `更新时间：${formatTime(status.updatedAt)}`;
       el.reporter.textContent = `上报端：${status.reporter && status.reporter.hostname ? status.reporter.hostname : "暂无"}`;

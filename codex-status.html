@@ -259,12 +259,13 @@
     function renderStatus(status) {
       const qi = (status.services || {}).qiBridge || {};
       const cc = (status.services || {}).ccgramBridge || {};
-      const age = minutesSince(status.updatedAt);
+      const qiAge = minutesSince(qi.checkedAt || status.updatedAt);
+      const ccAge = minutesSince(cc.checkedAt || status.updatedAt);
 
       // 祈
       setPill(document.getElementById("qi-bridge-pill"), qi.online ? "good" : qi.online === false ? "bad" : "warn", qi.online ? "在线" : qi.online === false ? "离线" : "未知");
       setPill(document.getElementById("qi-model-pill"), qi.model ? "good" : "warn", qi.model || "未知");
-      setPill(document.getElementById("qi-fresh-pill"), age <= 5 ? "good" : age <= 15 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      setPill(document.getElementById("qi-fresh-pill"), qiAge <= 5 ? "good" : qiAge <= 15 ? "warn" : "bad", qiAge === Infinity ? "未同步" : `检查于 ${qiAge} 分钟前`);
       document.getElementById("qi-bridge-value").innerHTML = [
         `PID：${qi.pid || "未知"}`,
         `锁文件：${qi.lockFile ? "存在" : "未发现"}`
@@ -274,12 +275,15 @@
         `沙箱：${qi.sandbox || "danger-full-access"}`,
         `推理强度：${qi.reasoning || "medium"}`
       ].join("<br>");
-      document.getElementById("qi-log").textContent = qi.lastLine || "暂无日志。";
+      document.getElementById("qi-log").textContent = [
+        `最后检查：${formatTime(qi.checkedAt || status.updatedAt)}`,
+        qi.lastLine || "暂无日志。"
+      ].join("\n\n");
 
       // CCGram
       setPill(document.getElementById("cc-bridge-pill"), cc.online ? "good" : cc.online === false ? "bad" : "warn", cc.online ? "在线" : cc.online === false ? "离线" : "未知");
       setPill(document.getElementById("cc-tmux-pill"), cc.tmuxSession ? "good" : "warn", cc.tmuxSession || "未知");
-      setPill(document.getElementById("cc-fresh-pill"), age <= 5 ? "good" : age <= 15 ? "warn" : "bad", age === Infinity ? "未同步" : `${age} 分钟前`);
+      setPill(document.getElementById("cc-fresh-pill"), ccAge <= 5 ? "good" : ccAge <= 15 ? "warn" : "bad", ccAge === Infinity ? "未同步" : `检查于 ${ccAge} 分钟前`);
       document.getElementById("cc-bridge-value").innerHTML = [
         `实例：${cc.instanceName || "codex-ccgram"}`,
         `Group ID：${cc.groupId || "未知"}`
@@ -288,7 +292,10 @@
         `tmux session：${cc.tmuxSession || "ccgram-codex"}`,
         `provider：${cc.provider || "codex"}`
       ].join("<br>");
-      document.getElementById("cc-log").textContent = cc.lastLine || "暂无日志。";
+      document.getElementById("cc-log").textContent = [
+        `最后检查：${formatTime(cc.checkedAt || status.updatedAt)}`,
+        cc.lastLine || "暂无日志。"
+      ].join("\n\n");
 
       document.getElementById("updated-at").textContent = `更新时间：${formatTime(status.updatedAt)}`;
       document.getElementById("reporter").textContent = `上报端：${(status.reporter || {}).hostname || "暂无"}`;

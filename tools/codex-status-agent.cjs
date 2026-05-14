@@ -164,6 +164,7 @@ async function getWslTmuxStatus(sessionName) {
 }
 
 async function buildStatus(config) {
+  const checkedAt = new Date().toISOString();
   const qi = await findWindowsProcess(config.qiCommandPattern);
   const ccProcess = await findWindowsProcess(config.ccCommandPattern);
   const ccTmux = await getWslTmuxStatus(config.ccTmuxSession);
@@ -177,6 +178,7 @@ async function buildStatus(config) {
     services: {
       qiBridge: {
         online: qi.online,
+        checkedAt,
         pid: qi.pid,
         lockFile: Boolean(process.env.CODEX_QI_LOCK_FILE && fs.existsSync(process.env.CODEX_QI_LOCK_FILE)),
         model: process.env.CODEX_QI_MODEL || "gpt-5.5",
@@ -186,6 +188,7 @@ async function buildStatus(config) {
       },
       ccgramBridge: {
         online: ccProcess.online === null ? ccTmux.online : ccProcess.online,
+        checkedAt,
         instanceName: process.env.CODEX_CCGRAM_INSTANCE || "codex-ccgram",
         groupId: process.env.CODEX_CCGRAM_GROUP_ID || "",
         tmuxSession: ccTmux.tmuxSession,

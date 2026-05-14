@@ -129,7 +129,7 @@ function requestLocalJson(urlString, headers = {}) {
   });
 }
 
-async function getOpenAiBridgeStatus() {
+async function getOpenAiBridgeStatus(checkedAt) {
   const port = Number.parseInt(process.env.OPENAI_BRIDGE_PORT || "4141", 10) || 4141;
   const apiKey = process.env.OPENAI_BRIDGE_API_KEY || "";
   const health = await requestLocalJson(`http://127.0.0.1:${port}/v1/models`, {
@@ -138,6 +138,7 @@ async function getOpenAiBridgeStatus() {
   });
   return {
     online: health.ok,
+    checkedAt,
     port,
     pid: null,
     model:
@@ -149,11 +150,12 @@ async function getOpenAiBridgeStatus() {
   };
 }
 
-function getTelegramBridgeStatus() {
+function getTelegramBridgeStatus(checkedAt) {
   const lock = readJson(TELEGRAM_LOCK_PATH);
   const pid = lock && lock.pid ? lock.pid : null;
   return {
     online: processAlive(pid),
+    checkedAt,
     pid,
     lockFile: Boolean(lock),
     startedAt: lock && lock.startedAt ? lock.startedAt : null,
@@ -161,28 +163,31 @@ function getTelegramBridgeStatus() {
   };
 }
 
-function getMemoryStatus(config) {
+function getMemoryStatus(config, checkedAt) {
   return {
+    checkedAt,
     configured: Boolean(config.statusUrl && config.syncToken),
     url: config.statusUrl ? config.statusUrl.replace(/\/api\/gem-status(?:\?.*)?$/i, "/api/shared-memory") : "",
     hasToken: Boolean(config.syncToken)
   };
 }
 
-function getPublicTunnelStatus() {
+function getPublicTunnelStatus(checkedAt) {
   return {
+    checkedAt,
     online: false,
     lastLine: ""
   };
 }
 
-function getRpBotStatus() {
+function getRpBotStatus(checkedAt) {
   const pidText = readText(RP_PID_PATH).trim();
   const pid = pidText ? Number.parseInt(pidText, 10) : null;
   const state = readJson(RP_STATE_PATH);
   const lastErr = readLastLine(RP_ERR_LOG_PATH);
   return {
     online: processAlive(pid),
+    checkedAt,
     pid,
     botName: process.env.BOT_NAME || "rp-gem-bot",
     stateFile: fs.existsSync(RP_STATE_PATH),
@@ -193,7 +198,8 @@ function getRpBotStatus() {
 }
 
 async function buildStatus(config) {
-  const openaiBridge = await getOpenAiBridgeStatus();
+  const checkedAt = new Date().toISOString();
+  const openaiBridge = await getOpenAiBridgeStatus(checkedAt);
   return {
     schemaVersion: 1,
     reporter: {
@@ -203,10 +209,10 @@ async function buildStatus(config) {
     },
     services: {
       openaiBridge,
-      publicTunnel: getPublicTunnelStatus(),
-      telegramBridge: getTelegramBridgeStatus(),
-      memorySync: getMemoryStatus(config),
-      rpTelegramBot: getRpBotStatus()
+      publicTunnel: getPublicTunnelStatus(checkedAt),
+      telegramBridge: getTelegramBridgeStatus(checkedAt),
+      memorySync: getMemoryStatus(config, checkedAt),
+      rpTelegramBot: getRpBotStatus(checkedAt)
     },
     links: {
       publicUrl: process.env.GEM_PUBLIC_URL || process.env.PUBLIC_OPENAI_BRIDGE_URL || ""
