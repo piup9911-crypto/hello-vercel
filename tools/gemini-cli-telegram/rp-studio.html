@@ -89,6 +89,26 @@
         overflow-x: auto;
       }
 
+      .flow-steps {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .step-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .step-card strong {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 3px;
+      }
+
       .tab {
         min-width: 108px;
         color: var(--ink);
@@ -273,6 +293,65 @@
         font-size: 12px;
       }
 
+      .test-result {
+        min-height: 80px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcfa;
+        padding: 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .copy-note {
+        min-height: 18px;
+        font-size: 12px;
+        color: var(--accent);
+      }
+
+      details.log-detail {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+
+      details.log-detail summary {
+        cursor: pointer;
+        list-style: none;
+      }
+
+      details.log-detail summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .log-summary {
+        display: grid;
+        grid-template-columns: 170px 80px minmax(0, 1fr) minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .log-status {
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .log-status.error {
+        color: var(--warn);
+      }
+
+      .log-full {
+        margin-top: 10px;
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       .record-link {
         color: var(--accent);
         text-decoration: none;
@@ -296,7 +375,9 @@
         .grid,
         .library-grid,
         .facts,
-        .row {
+        .row,
+        .flow-steps,
+        .log-summary {
           grid-template-columns: 1fr;
         }
 
@@ -318,6 +399,13 @@
             <p class="muted">给 telegram_rp 会话选择 preset 和 character，然后检查最终 prompt。</p>
           </div>
           <button class="secondary" id="refreshBtn">刷新</button>
+        </div>
+        <div class="flow-steps" aria-label="使用流程">
+          <div class="step-card"><strong>1. 设定库</strong><span class="muted">创建 Preset / Character</span></div>
+          <div class="step-card"><strong>2. 当前会话</strong><span class="muted">绑定设定和世界书</span></div>
+          <div class="step-card"><strong>3. Prompt Preview</strong><span class="muted">检查最终 prompt</span></div>
+          <div class="step-card"><strong>4. Telegram</strong><span class="muted">回到 bot 开聊</span></div>
+          <div class="step-card"><strong>5. Logs</strong><span class="muted">出错看 Generation Logs</span></div>
         </div>
       </header>
 
@@ -388,9 +476,38 @@
             <button id="saveBindingBtn">保存绑定</button>
           </div>
         </div>
+
+        <div class="panel stack" style="margin-top: 16px">
+          <div class="section-head">
+            <div>
+              <h2>网页测试生成</h2>
+              <p class="muted">这里直接调用 /api/rp/generate，用来测试当前绑定效果；不会写入 Telegram 聊天记录，但会写 generation log。</p>
+            </div>
+          </div>
+          <label>
+            测试 user_input
+            <span>模拟你在 Telegram 发的一句话。</span>
+            <textarea id="testUserInput" placeholder="输入一句测试消息，例如：你现在看见我了吗？"></textarea>
+          </label>
+          <div class="actions">
+            <button id="testGenerateBtn">测试生成</button>
+            <button class="secondary" id="openLogsBtn">查看日志</button>
+          </div>
+          <div class="test-result" id="testResult">等待测试。</div>
+        </div>
       </section>
 
       <section class="view" id="tab-library">
+        <div class="panel stack" style="margin-bottom: 16px">
+          <h2>设定库怎么用</h2>
+          <div class="flow-steps">
+            <div class="step-card"><strong>Preset</strong><span class="muted">控制整体规则、模型参数和停止词。</span></div>
+            <div class="step-card"><strong>Character</strong><span class="muted">控制角色身份、性格、场景和示例对话。</span></div>
+            <div class="step-card"><strong>Lorebook</strong><span class="muted">控制关键词触发的世界信息集合。</span></div>
+            <div class="step-card"><strong>Entry</strong><span class="muted">具体世界书条目，命中 keys 后注入 prompt。</span></div>
+            <div class="step-card"><strong>绑定</strong><span class="muted">创建完回到当前会话选择并保存。</span></div>
+          </div>
+        </div>
         <div class="library-grid">
           <div class="panel stack">
             <div class="section-head">
@@ -557,8 +674,12 @@
               <h2>Prompt Preview</h2>
               <p class="muted" id="previewUpdated">等待读取</p>
             </div>
-            <button class="secondary" id="previewBtn">重新生成</button>
+            <div class="actions">
+              <button class="secondary" id="copyPromptBtn">复制 prompt</button>
+              <button class="secondary" id="previewBtn">重新生成</button>
+            </div>
           </div>
+          <div class="copy-note" id="copyPromptStatus"></div>
           <div class="facts">
             <div class="fact"><span class="muted">chatId</span><strong id="previewChatId">-</strong></div>
             <div class="fact"><span class="muted">preset</span><strong id="previewPreset">未绑定</strong></div>
@@ -742,6 +863,11 @@
         $("promptPreview").textContent = preview.prompt || "暂无 prompt。";
         $("previewUpdated").textContent = new Date().toLocaleString();
         renderSelects(payload.binding || {});
+      }
+
+      function shortText(value, length = 120) {
+        const text = String(value || "").replace(/\s+/g, " ").trim();
+        return text.length > length ? `${text.slice(0, length)}...` : text || "-";
       }
 
       async function loadConfig() {
@@ -947,16 +1073,35 @@
         state.logs = data.logs || [];
         $("generationLogList").replaceChildren();
         for (const log of state.logs) {
-          const item = document.createElement("div");
-          item.className = "item";
-          item.innerHTML = `<div class="item-head"><div class="item-title"></div><span class="hint"></span></div><div class="item-body"></div>`;
-          item.querySelector(".item-title").textContent = log.error ? "生成失败" : "生成成功";
+          const item = document.createElement("details");
+          item.className = "log-detail";
+          item.innerHTML = `
+            <summary>
+              <div class="log-summary">
+                <span class="hint"></span>
+                <span class="log-status"></span>
+                <span class="reply-summary"></span>
+                <span class="error-summary"></span>
+                <button class="secondary" type="button">展开</button>
+              </div>
+            </summary>
+            <div class="log-full"></div>
+          `;
           item.querySelector(".hint").textContent = log.created_at || "";
-          item.querySelector(".item-body").textContent = [
+          item.querySelector(".log-status").textContent = log.error ? "失败" : "成功";
+          item.querySelector(".log-status").classList.toggle("error", Boolean(log.error));
+          item.querySelector(".reply-summary").textContent = `reply: ${shortText(log.final_reply)}`;
+          item.querySelector(".error-summary").textContent = log.error ? `error: ${shortText(log.error)}` : "error: -";
+          item.querySelector(".log-full").textContent = [
             `prompt:\n${log.prompt_preview || log.final_prompt || ""}`,
             `reply:\n${log.final_reply || ""}`,
             log.error ? `error:\n${log.error}` : ""
           ].filter(Boolean).join("\n\n");
+          item.querySelector("button").onclick = (event) => {
+            event.preventDefault();
+            item.open = !item.open;
+            item.querySelector("button").textContent = item.open ? "收起" : "展开";
+          };
           $("generationLogList").appendChild(item);
         }
         if (!state.logs.length) $("generationLogList").textContent = "还没有 generation log。";
@@ -988,6 +1133,40 @@
         showTab("archives");
       }
 
+      async function testGenerate() {
+        const button = $("testGenerateBtn");
+        button.disabled = true;
+        $("testResult").textContent = "正在生成...";
+        try {
+          const result = await api("/api/rp/generate", {
+            method: "POST",
+            body: JSON.stringify({
+              chat_id: state.chatId,
+              user_input: $("testUserInput").value
+            })
+          });
+          $("testResult").textContent = [
+            result.error ? `error:\n${result.error}` : "",
+            `reply:\n${result.reply || ""}`
+          ].filter(Boolean).join("\n\n");
+          await loadLogs();
+        } catch (error) {
+          $("testResult").textContent = `error:\n${error && error.message ? error.message : String(error)}`;
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function copyPrompt() {
+        const text = $("promptPreview").textContent || "";
+        if (!text.trim()) return;
+        await navigator.clipboard.writeText(text);
+        $("copyPromptStatus").textContent = "已复制 prompt。";
+        setTimeout(() => {
+          $("copyPromptStatus").textContent = "";
+        }, 1800);
+      }
+
       function showError(error) {
         $("leftStatus").textContent = error && error.message ? error.message : String(error);
       }
@@ -1001,6 +1180,7 @@
       $("toggleLoreEntryFormBtn").onclick = () => $("loreEntryForm").classList.toggle("hidden");
       $("refreshBtn").onclick = () => refreshAll().catch(showError);
       $("previewBtn").onclick = () => loadContext().catch(showError);
+      $("copyPromptBtn").onclick = () => copyPrompt().catch(showError);
       $("refreshLogsBtn").onclick = () => loadLogs().catch(showError);
       $("refreshArchivesBtn").onclick = () => loadArchives().catch(showError);
       $("useManualBtn").onclick = () => selectChat($("manualChatId").value).catch(showError);
@@ -1011,6 +1191,11 @@
       $("createLoreEntryBtn").onclick = () => createLoreEntry().catch(showError);
       $("entryLorebookSelect").onchange = renderLoreEntries;
       $("archiveCurrentBtn").onclick = () => archiveCurrent().catch(showError);
+      $("testGenerateBtn").onclick = () => testGenerate().catch(showError);
+      $("openLogsBtn").onclick = () => {
+        showTab("logs");
+        loadLogs().catch(showError);
+      };
 
       refreshAll().catch(showError);
     </script>
