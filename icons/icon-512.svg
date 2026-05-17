@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="秘密岛屿占位图标">
+  <rect width="512" height="512" rx="118" fill="#f5f6f2"/>
+  <circle cx="256" cy="256" r="186" fill="#1f7a68"/>
+  <path d="M125 330c43-64 88-96 133-96 44 0 87 32 129 96H125Z" fill="#f8dd8f"/>
+  <path d="M202 234c22-49 55-85 96-107-6 45-5 85 3 120-30-14-63-18-99-13Z" fill="#ffffff"/>
+  <path d="M220 242c37-13 72-10 104 8-27 25-57 41-91 48-3-19-8-38-13-56Z" fill="#cfeee5"/>
+  <circle cx="362" cy="147" r="24" fill="#f8dd8f"/>
+</svg>
