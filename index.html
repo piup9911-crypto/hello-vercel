@@ -92,31 +92,6 @@
             max-width: 44ch;
         }
 
-        .story-grid {
-            display: grid;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .story-card {
-            border-radius: 22px;
-            padding: 18px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-        }
-
-        .story-card-title {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .story-card-body {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.75;
-        }
-
         .app-grid {
             margin-top: 18px;
             display: grid;
@@ -291,12 +266,6 @@
             gap: 10px;
         }
 
-        .portal-links {
-            display: grid;
-            gap: 10px;
-            margin-top: 18px;
-        }
-
         .ghost-btn,
         .signout-btn {
             width: 100%;
@@ -311,6 +280,10 @@
             justify-content: center;
             gap: 8px;
             font-weight: 600;
+        }
+
+        .signout-btn {
+            margin-top: 18px;
         }
 
         .continue-wrap {
@@ -364,26 +337,6 @@
                 <div class="lead">
                     不再单独绕去一个云端门户。登录以后，你会直接留在首页，Mini Notion 和秘密日记都从这里进入，
                     两边的数据也都会自动写进 Supabase。
-                </div>
-                <div class="story-grid">
-                    <div class="story-card">
-                        <div class="story-card-title">Mini Notion</div>
-                        <div class="story-card-body">
-                            笔记已经改成云端同步版，刷新页面或换设备后也能继续读写同一份内容。
-                        </div>
-                    </div>
-                    <div class="story-card">
-                        <div class="story-card-title">秘密日记</div>
-                        <div class="story-card-body">
-                            日记现在也会写进 `secret_diary_entries` 这张云端表，不再只留在单一浏览器里。
-                        </div>
-                    </div>
-                    <div class="story-card">
-                        <div class="story-card-title">旧数据迁移</div>
-                        <div class="story-card-body">
-                            如果你以前在本机写过内容，登录后页面里会继续显示“导入本地旧数据”的按钮。
-                        </div>
-                    </div>
                 </div>
                 <div class="app-grid">
                     <a class="app-card" href="notion.html">
@@ -471,16 +424,7 @@
                     <div class="continue-hint" id="continue-hint"></div>
                 </div>
 
-                <div class="portal-links">
-                    <a class="ghost-btn" href="notion.html">📝 打开 Mini Notion</a>
-                    <a class="ghost-btn" href="secret-diary.html">🤍 打开秘密日记</a>
-                    <a class="ghost-btn" href="magic.html">✨ 打开魔法实验室</a>
-                    <a class="ghost-btn" href="memory.html">☁️ 打开共享记忆</a>
-                    <a class="ghost-btn" href="bridge-cabinet.html">🧩 打开桥接工具箱</a>
-                    <a class="ghost-btn" href="chat-records.html">💬 打开聊天记录面板</a>
-                    <a class="ghost-btn" href="backend-cockpit.html">🛠️ 打开后端排错驾驶舱</a>
-                    <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
-                </div>
+                <button class="signout-btn" id="signout-btn" type="button">↩ 退出当前云端账号</button>
             </div>
         </section>
     </div>
