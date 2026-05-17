@@ -11,6 +11,30 @@
                      {
                          "source":  "/chat-records-live/:path*",
                          "destination":  "https://chat.naginoumi.com/:path*"
+                     },
+                     {
+                         "source":  "/rp-studio-live",
+                         "destination":  "https://chat.naginoumi.com/rp-studio.html"
+                     },
+                     {
+                         "source":  "/rp-studio-live/",
+                         "destination":  "https://chat.naginoumi.com/rp-studio.html"
+                     },
+                     {
+                         "source":  "/rp-studio-live/:path*",
+                         "destination":  "https://chat.naginoumi.com/:path*"
+                     },
+                     {
+                         "source":  "/api/chats",
+                         "destination":  "https://chat.naginoumi.com/api/chats"
+                     },
+                     {
+                         "source":  "/api/rp/:path*",
+                         "destination":  "https://chat.naginoumi.com/api/rp/:path*"
+                     },
+                     {
+                         "source":  "/api/ingest/telegram-rp",
+                         "destination":  "https://chat.naginoumi.com/api/ingest/telegram-rp"
                      }
                  ]
 }
