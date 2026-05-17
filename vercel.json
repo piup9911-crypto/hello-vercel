@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/chat-records-live",
-                         "destination":  "/gem-chat-record-manager.html"
+                         "destination":  "https://chat.naginoumi.com/"
                      },
                      {
                          "source":  "/chat-records-live/",
-                         "destination":  "/gem-chat-record-manager.html"
+                         "destination":  "https://chat.naginoumi.com/"
                      },
                      {
                          "source":  "/chat-records-live/:path*",
