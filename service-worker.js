@@ -1,4 +1,4 @@
-const CACHE_NAME = "secret-island-static-v1";
+const CACHE_NAME = "secret-island-static-v2";
 
 const STATIC_ASSETS = [
   "/",
@@ -67,6 +67,13 @@ function isStaticRequest(request, url) {
   return ["style", "script", "image", "font"].includes(request.destination);
 }
 
+function isPageRequest(request, url) {
+  return request.mode === "navigate" ||
+    request.destination === "document" ||
+    url.pathname === "/" ||
+    STATIC_PATHS.has(url.pathname) && url.pathname.endsWith(".html");
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -88,6 +95,19 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (isSensitiveRequest(request, url) || !isStaticRequest(request, url)) {
+    return;
+  }
+
+  if (isPageRequest(request, url)) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response && response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
     return;
   }
 
