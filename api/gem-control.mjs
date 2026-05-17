@@ -10,7 +10,8 @@ const GEM_CONTROL_KEY = "gem_control";
 const ALLOWED_ACTIONS = new Map([
   ["start_public_openai_bridge", "启动小手机/ST 公网桥接"],
   ["start_telegram_bridge", "启动 Telegram 桥接"],
-  ["sync_status_once", "同步一次状态"]
+  ["sync_status_once", "同步一次状态"],
+  ["set_gem_context_max_chars", "设置 Gem 主 bot 最大历史字符数"]
 ]);
 
 function emptyState() {
@@ -25,12 +26,13 @@ function safeHistory(history) {
   return Array.isArray(history) ? history.slice(-20) : [];
 }
 
-function createCommand(action, userId) {
+function createCommand(action, userId, params = {}) {
   const now = new Date().toISOString();
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     action,
     label: ALLOWED_ACTIONS.get(action),
+    params,
     status: "queued",
     requestedAt: now,
     requestedBy: userId || null,
@@ -161,11 +163,14 @@ export async function POST(request) {
       error: "Unsupported action"
     });
   }
+  const params = payload && typeof payload.params === "object" && payload.params
+    ? payload.params
+    : {};
 
   try {
     const state = await readControlState(config);
     const previous = state.command ? [state.command, ...safeHistory(state.history)] : safeHistory(state.history);
-    const command = createCommand(action, auth.userId);
+    const command = createCommand(action, auth.userId, params);
     return json(
       200,
       await writeControlState(

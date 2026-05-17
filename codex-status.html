@@ -122,6 +122,17 @@
     .control-buttons button { font-size: 13px; padding: 8px 14px; }
     .qi .control-buttons button { border-color: var(--qi-border); }
     .cc .control-buttons button { border-color: var(--cc-border); }
+    .context-form { display: grid; gap: 10px; margin-top: 12px; }
+    .context-form label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .context-form input {
+      width: min(320px, 100%);
+      border: 1px solid var(--qi-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.86);
+      font: inherit;
+    }
 
     .footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 13px; }
 
@@ -192,6 +203,22 @@
               <button class="qi-action" type="button" data-action="start_codex_bridge">启动祈桥接</button>
               <button class="qi-action" type="button" data-action="restart_codex_bridge">重启祈桥接</button>
               <button class="qi-action" type="button" data-action="sync_codex_status">同步状态</button>
+            </div>
+          </article>
+          <article class="card wide">
+            <div class="card-title">
+              <span>上下文窗口</span>
+              <span class="pill good" id="qi-context-pill"><span class="dot"></span><span>Codex</span></span>
+            </div>
+            <div class="value" id="qi-context-value">等待本机上报。</div>
+            <div class="context-form">
+              <label>
+                最大历史字符数
+                <input id="qi-context-max-chars" type="number" min="10000" max="800000" step="10000" value="800000">
+              </label>
+              <div class="control-buttons">
+                <button id="qi-save-context" type="button">保存上下文设置</button>
+              </div>
             </div>
           </article>
         </div>
@@ -393,6 +420,7 @@
     function renderStatus(status) {
       const qi = (status.services || {}).qiBridge || {};
       const cc = (status.services || {}).ccgramBridge || {};
+      const codexContext = (status.context || {}).codex || {};
       const qiAge = minutesSince(qi.checkedAt || status.updatedAt);
       const ccAge = minutesSince(cc.checkedAt || status.updatedAt);
 
@@ -408,6 +436,14 @@
         `模型：${qi.model || "gpt-5.5"}`,
         `沙箱：${qi.sandbox || "danger-full-access"}`,
         `推理强度：${qi.reasoning || "medium"}`
+      ].join("<br>");
+      const maxHistoryChars = Number(codexContext.maxHistoryChars || 800000);
+      document.getElementById("qi-context-max-chars").value = String(maxHistoryChars);
+      setPill(document.getElementById("qi-context-pill"), "good", "可调");
+      document.getElementById("qi-context-value").innerHTML = [
+        `当前：${maxHistoryChars.toLocaleString("zh-CN")} 字符`,
+        `官方上下文窗口：${Number(codexContext.officialContextTokenLimit || 1050000).toLocaleString("zh-CN")} tokens`,
+        `本页允许上限：${Number(codexContext.maxAllowedHistoryChars || 800000).toLocaleString("zh-CN")} 字符`
       ].join("<br>");
       document.getElementById("qi-log").textContent = renderRuntimeInfo(qi, status.updatedAt);
 
@@ -454,10 +490,10 @@
       }
     }
 
-    async function sendAction(action) {
-      document.querySelectorAll(".qi-action, .cc-action").forEach(b => { b.disabled = true; });
+    async function sendAction(action, params = {}) {
+      document.querySelectorAll(".qi-action, .cc-action, #qi-save-context").forEach(b => { b.disabled = true; });
       try {
-        const p = await fetchApi(CONTROL_API_URL, "POST", { action });
+        const p = await fetchApi(CONTROL_API_URL, "POST", { action, params });
         const cmd = p.command || {};
         const map = { queued: ["warn","排队中"], running: ["warn","执行中"], completed: ["good","已完成"], failed: ["bad","失败"] };
         const [s, l] = map[cmd.status] || ["warn", cmd.status || "未知"];
@@ -466,7 +502,7 @@
         const valId = isQi ? "qi-ctrl-value" : "cc-ctrl-value";
         setPill(document.getElementById(pillId), s, l);
         document.getElementById(valId).textContent = `${cmd.label || action}：${l} — ${cmd.message || ""}`;
-      } finally { document.querySelectorAll(".qi-action, .cc-action").forEach(b => { b.disabled = false; }); }
+      } finally { document.querySelectorAll(".qi-action, .cc-action, #qi-save-context").forEach(b => { b.disabled = false; }); }
     }
 
     async function init() {
@@ -487,6 +523,13 @@
         const isQi = btn.classList.contains("qi-action");
         setPill(document.getElementById(isQi ? "qi-ctrl-pill" : "cc-ctrl-pill"), "bad", "失败");
       }));
+    });
+    document.getElementById("qi-save-context").addEventListener("click", () => {
+      const maxHistoryChars = Number.parseInt(document.getElementById("qi-context-max-chars").value, 10);
+      sendAction("set_codex_context_max_chars", { maxHistoryChars }).catch(e => {
+        setPill(document.getElementById("qi-ctrl-pill"), "bad", "失败");
+        document.getElementById("qi-ctrl-value").textContent = e.message || String(e);
+      });
     });
 
     init().catch(e => {

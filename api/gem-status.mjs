@@ -18,6 +18,7 @@ function normalizeStatus(payload) {
     reporter: source.reporter && typeof source.reporter === "object" ? source.reporter : {},
     services: source.services && typeof source.services === "object" ? source.services : {},
     links: source.links && typeof source.links === "object" ? source.links : {},
+    context: source.context && typeof source.context === "object" ? source.context : {},
     notes: typeof source.notes === "string" ? source.notes.slice(0, 1200) : ""
   };
 }
@@ -37,6 +38,7 @@ async function readGemStatus(config) {
       reporter: {},
       services: {},
       links: {},
+      context: {},
       notes: ""
     };
   }
@@ -54,6 +56,7 @@ async function readGemStatus(config) {
       reporter: {},
       services: {},
       links: {},
+      context: {},
       notes: row.content
     };
   }

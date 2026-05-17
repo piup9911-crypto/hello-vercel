@@ -13,7 +13,8 @@ const ALLOWED_ACTIONS = new Map([
   ["sync_codex_status", "同步 Codex 状态"],
   ["start_ccgram", "启动 CCGram"],
   ["restart_ccgram", "重启 CCGram"],
-  ["sync_ccgram_status", "同步 Codex 状态"]
+  ["sync_ccgram_status", "同步 Codex 状态"],
+  ["set_codex_context_max_chars", "设置 Codex bot 最大历史字符数"]
 ]);
 
 function emptyState() {
@@ -28,12 +29,13 @@ function safeHistory(history) {
   return Array.isArray(history) ? history.slice(-20) : [];
 }
 
-function createCommand(action, userId) {
+function createCommand(action, userId, params = {}) {
   const now = new Date().toISOString();
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     action,
     label: ALLOWED_ACTIONS.get(action),
+    params,
     status: "queued",
     requestedAt: now,
     requestedBy: userId || null,
@@ -164,11 +166,14 @@ export async function POST(request) {
       error: "Unsupported action"
     });
   }
+  const params = payload && typeof payload.params === "object" && payload.params
+    ? payload.params
+    : {};
 
   try {
     const state = await readControlState(config);
     const previous = state.command ? [state.command, ...safeHistory(state.history)] : safeHistory(state.history);
-    const command = createCommand(action, auth.userId);
+    const command = createCommand(action, auth.userId, params);
     return json(
       200,
       await writeControlState(

@@ -359,6 +359,30 @@
       border-color: var(--rp-border);
     }
 
+    .context-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .context-form label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .context-form input {
+      width: min(320px, 100%);
+      border: 1px solid var(--telegram-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.86);
+      font: inherit;
+    }
+
     .footer {
       display: flex;
       flex-wrap: wrap;
@@ -472,6 +496,23 @@
             <div class="value" id="memory-value">等待本机上报。</div>
           </article>
 
+          <article class="card">
+            <div class="card-title">
+              <span>上下文窗口</span>
+              <span class="pill good" id="context-pill"><span class="dot"></span><span>Gem</span></span>
+            </div>
+            <div class="value" id="context-value">等待本机上报。</div>
+            <div class="context-form">
+              <label>
+                最大历史字符数
+                <input id="context-max-chars" type="number" min="10000" max="1000000" step="10000" value="1000000">
+              </label>
+              <div class="control-buttons">
+                <button id="save-context-btn" type="button">保存上下文设置</button>
+              </div>
+            </div>
+          </article>
+
           <article class="card wide">
             <div class="card-title">
               <span>运行信息</span>
@@ -571,6 +612,10 @@
       telegramFlow: document.getElementById("telegram-flow"),
       memoryPill: document.getElementById("memory-pill"),
       memoryValue: document.getElementById("memory-value"),
+      contextPill: document.getElementById("context-pill"),
+      contextValue: document.getElementById("context-value"),
+      contextMaxChars: document.getElementById("context-max-chars"),
+      saveContextBtn: document.getElementById("save-context-btn"),
       rpPill: document.getElementById("rp-pill"),
       rpValue: document.getElementById("rp-value"),
       rpRecordsPill: document.getElementById("rp-records-pill"),
@@ -772,6 +817,7 @@
       const openai = services.openaiBridge || {};
       const telegram = services.telegramBridge || {};
       const memory = services.memorySync || {};
+      const context = (status.context || {}).telegramGem || {};
       const publicTunnel = services.publicTunnel || {};
       const rp = services.rpTelegramBot || services.telegramRpBot || services.rpBot || {};
       const openaiAge = minutesSince(openai.checkedAt || status.updatedAt);
@@ -806,6 +852,14 @@
       el.memoryValue.innerHTML = [
         `云端接口：${memory.url || "未知"}`,
         `Token：${memory.hasToken ? "已配置" : "未配置"}`
+      ].join("<br>");
+      const maxHistoryChars = Number(context.maxHistoryChars || 1000000);
+      el.contextMaxChars.value = String(maxHistoryChars);
+      setPill(el.contextPill, "good", "可调");
+      el.contextValue.innerHTML = [
+        `当前：${maxHistoryChars.toLocaleString("zh-CN")} 字符`,
+        `官方输入窗口：${Number(context.officialInputTokenLimit || 1048576).toLocaleString("zh-CN")} tokens`,
+        `本页允许上限：${Number(context.maxAllowedHistoryChars || 1000000).toLocaleString("zh-CN")} 字符`
       ].join("<br>");
       el.rpValue.innerHTML = [
         `Bot：${rp.botName || "rp-gem-bot"}`,
@@ -905,10 +959,11 @@
       return payload;
     }
 
-    async function sendControlAction(action, target) {
+    async function sendControlAction(action, target, params = {}) {
       el.controlButtons.forEach((button) => {
         button.disabled = true;
       });
+      if (el.saveContextBtn) el.saveContextBtn.disabled = true;
       try {
         const response = await fetch(CONTROL_API_URL, {
           method: "POST",
@@ -917,7 +972,7 @@
             "Content-Type": "application/json",
             Accept: "application/json"
           },
-          body: JSON.stringify({ action })
+          body: JSON.stringify({ action, params })
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -935,6 +990,7 @@
         el.controlButtons.forEach((button) => {
           button.disabled = false;
         });
+        if (el.saveContextBtn) el.saveContextBtn.disabled = false;
       }
     }
 
@@ -978,6 +1034,14 @@
           setPill(nodes.pill, "bad", "发送失败");
           nodes.value.textContent = error && error.message ? error.message : String(error);
         });
+      });
+    });
+
+    el.saveContextBtn.addEventListener("click", () => {
+      const maxHistoryChars = Number.parseInt(el.contextMaxChars.value, 10);
+      sendControlAction("set_gem_context_max_chars", "telegram", { maxHistoryChars }).catch((error) => {
+        setPill(el.telegramControlPill, "bad", "发送失败");
+        el.telegramControlValue.textContent = error && error.message ? error.message : String(error);
       });
     });
 
