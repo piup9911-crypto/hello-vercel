@@ -26,6 +26,8 @@ const PORT = Math.max(
 const ROOT = __dirname;
 const CHAT_STATE_DIR =
   process.env.GEM_CHAT_RECORD_STATE_DIR || path.join(ROOT, "bridge-state", "chats");
+const RP_CHAT_STATE_DIR =
+  process.env.RP_CHAT_RECORD_STATE_DIR || path.join(ROOT, "bridge-state", "rp-chats");
 const ARCHIVE_DIR =
   process.env.GEM_CHAT_RECORD_ARCHIVE_DIR ||
   path.join(ROOT, "bridge-state", "chat-archives");
@@ -69,6 +71,7 @@ function sendError(res, status, message) {
 
 function ensureChatStateDir() {
   fs.mkdirSync(CHAT_STATE_DIR, { recursive: true });
+  fs.mkdirSync(RP_CHAT_STATE_DIR, { recursive: true });
   fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
   fs.mkdirSync(RP_CONFIG_DIR, { recursive: true });
 }
@@ -82,6 +85,11 @@ function assertSafeChatId(chatId) {
 function getChatPath(chatId) {
   assertSafeChatId(chatId);
   return path.join(CHAT_STATE_DIR, `${chatId}.json`);
+}
+
+function getRpChatPath(storageChatId) {
+  assertSafeChatId(storageChatId);
+  return path.join(RP_CHAT_STATE_DIR, `${storageChatId}.json`);
 }
 
 function getArchiveChatDir(chatId) {
@@ -320,8 +328,7 @@ function saveBinding(nextBinding) {
 }
 
 function recentChatMessages(chatId, limit = 20) {
-  const storageChatId = storageChatIdFromRpChatId(chatId);
-  const { messages } = loadTelegramWindow(storageChatId);
+  const { messages } = loadRpTelegramWindow(chatId);
   return messages
     .filter((message) => message && message.content)
     .slice(-limit)
@@ -460,6 +467,12 @@ function loadChatState(chatId) {
   return normalizeChatState(chatId, readJsonFile(getChatPath(chatId), null));
 }
 
+function loadRpChatState(chatId) {
+  const storageChatId = storageChatIdFromRpChatId(chatId);
+  const rpChatId = rpChatIdFromStorageChatId(storageChatId);
+  return normalizeChatState(rpChatId, readJsonFile(getRpChatPath(storageChatId), null));
+}
+
 function loadArchiveState(chatId, archiveId) {
   return normalizeChatState(
     chatId,
@@ -555,6 +568,30 @@ function saveEditedActiveChat(chatId, state, reason) {
   return backupPath;
 }
 
+function backupRpChatFile(storageChatId, reason) {
+  const filePath = getRpChatPath(storageChatId);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+$/, "")
+    .replace("T", "-");
+  const backupPath = `${filePath}.${reason}-backup-${stamp}`;
+  fs.copyFileSync(filePath, backupPath);
+  return backupPath;
+}
+
+function saveEditedRpChat(chatId, state, reason) {
+  const storageChatId = storageChatIdFromRpChatId(chatId);
+  const backupPath = backupRpChatFile(storageChatId, reason);
+  state.updatedAt = new Date().toISOString();
+  recomputeLastMessages(state);
+  writeJsonFile(getRpChatPath(storageChatId), state);
+  return backupPath;
+}
+
 function backupArchiveFile(chatId, archiveId, reason) {
   const filePath = getArchivePath(chatId, archiveId);
   if (!fs.existsSync(filePath)) {
@@ -582,8 +619,21 @@ function listChatFiles() {
   ensureChatStateDir();
   return fs
     .readdirSync(CHAT_STATE_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^\w[\w-]*\.json$/.test(entry.name))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        /^\w[\w-]*\.json$/.test(entry.name) &&
+        !entry.name.startsWith("telegram_rp_")
+    )
     .map((entry) => path.join(CHAT_STATE_DIR, entry.name));
+}
+
+function listRpChatFiles() {
+  ensureChatStateDir();
+  return fs
+    .readdirSync(RP_CHAT_STATE_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /^\w[\w-]*\.json$/.test(entry.name))
+    .map((entry) => path.join(RP_CHAT_STATE_DIR, entry.name));
 }
 
 function summarizeState(filePath, kind, archiveId = "") {
@@ -699,14 +749,15 @@ function mutateSelectedMessages(state, ids, bucket = "active") {
 
 async function handleIngestTelegramRp(req, res) {
   const payload = await readBody(req);
-  const chatId = storageChatIdFromRpChatId(payload.telegram_chat_id ?? payload.telegramChatId ?? payload.chat_id ?? payload.chatId);
-  assertSafeChatId(chatId);
+  const storageChatId = storageChatIdFromRpChatId(payload.telegram_chat_id ?? payload.telegramChatId ?? payload.chat_id ?? payload.chatId);
+  assertSafeChatId(storageChatId);
+  const chatId = rpChatIdFromStorageChatId(storageChatId);
   const role = cleanString(payload.role, 40);
   if (!["user", "assistant", "system"].includes(role)) {
     sendError(res, 400, "Invalid role.");
     return;
   }
-  const state = loadChatState(chatId);
+  const state = loadRpChatState(chatId);
   state.title = cleanString(payload.display_name ?? payload.displayName, 160) || state.title || `Telegram RP ${chatId}`;
   state.history.push({
     role,
@@ -717,8 +768,8 @@ async function handleIngestTelegramRp(req, res) {
   });
   state.updatedAt = new Date().toISOString();
   recomputeLastMessages(state);
-  writeJsonFile(getChatPath(chatId), state);
-  sendJson(res, 200, { ok: true, chatId: rpChatIdFromStorageChatId(chatId) });
+  writeJsonFile(getRpChatPath(storageChatId), state);
+  sendJson(res, 200, { ok: true, chatId });
 }
 
 async function handleChats(req, res) {
@@ -733,7 +784,8 @@ async function handleChats(req, res) {
   }
 
   const chats = [
-    ...Array.from(activeChatIds).map((chatId) => summarizeTelegramWindow(chatId))
+    ...Array.from(activeChatIds).map((chatId) => summarizeTelegramWindow(chatId)),
+    ...listRpChatFiles().map((filePath) => summarizeRpTelegramWindow(path.basename(filePath, ".json")))
   ].sort((a, b) => {
     return parseTime(b.latestAt || b.updatedAt) - parseTime(a.latestAt || a.updatedAt);
   });
@@ -777,6 +829,16 @@ function loadTelegramWindow(chatId) {
   return { activeState, archiveStates, messages };
 }
 
+function loadRpTelegramWindow(chatId) {
+  const storageChatId = storageChatIdFromRpChatId(chatId);
+  const rpChatId = rpChatIdFromStorageChatId(storageChatId);
+  const activeState = loadRpChatState(rpChatId);
+  const messages = decorateMessages(rpChatId, activeState.history, "active").sort(
+    (a, b) => parseTime(a.at) - parseTime(b.at)
+  );
+  return { activeState, messages, storageChatId, rpChatId };
+}
+
 function summarizeTelegramWindow(chatId) {
   const { activeState, messages } = loadTelegramWindow(chatId);
   const latest = [...messages].sort((a, b) => parseTime(b.at) - parseTime(a.at))[0];
@@ -794,6 +856,27 @@ function summarizeTelegramWindow(chatId) {
     latestPreview: latest ? String(latest.content || "").slice(0, 120) : "",
     fileName: `${chatId}.json`,
     sourceGroup: "telegram"
+  };
+}
+
+function summarizeRpTelegramWindow(storageChatId) {
+  const rpChatId = rpChatIdFromStorageChatId(storageChatId);
+  const { activeState, messages } = loadRpTelegramWindow(rpChatId);
+  const latest = [...messages].sort((a, b) => parseTime(b.at) - parseTime(a.at))[0];
+  return {
+    windowId: `telegram-rp:${storageChatId}`,
+    kind: "telegram_rp",
+    chatId: rpChatId,
+    archiveId: "",
+    title: activeState.title || `Telegram RP ${storageChatId}`,
+    activeCount: messages.length,
+    archivedCount: 0,
+    archivedAt: "",
+    updatedAt: activeState.updatedAt || (latest && latest.at) || new Date().toISOString(),
+    latestAt: latest ? latest.at : "",
+    latestPreview: latest ? String(latest.content || "").slice(0, 120) : "",
+    fileName: `rp-chats/${storageChatId}.json`,
+    sourceGroup: "telegram_rp"
   };
 }
 
@@ -852,6 +935,22 @@ async function handleTelegramWindow(req, res, chatId) {
   });
 }
 
+async function handleRpTelegramWindow(req, res, chatId) {
+  const { activeState, messages, storageChatId } = loadRpTelegramWindow(chatId);
+  sendJson(res, 200, {
+    chat: summarizeRpTelegramWindow(storageChatId),
+    state: {
+      chatId: activeState.chatId,
+      sessionId: activeState.sessionId,
+      updatedAt: activeState.updatedAt,
+      thinkingMode: activeState.thinkingMode,
+      modelMode: activeState.modelMode,
+      customModel: activeState.customModel
+    },
+    messages
+  });
+}
+
 async function handleDeleteMessages(req, res, chatId, archiveId = "") {
   const payload = await readBody(req);
   const ids = requireIds(payload);
@@ -872,6 +971,27 @@ async function handleDeleteMessages(req, res, chatId, archiveId = "") {
     changedCount,
     backupPath,
     sessionIdReset: !archiveId
+  });
+}
+
+async function handleDeleteRpTelegramMessages(req, res, chatId) {
+  const payload = await readBody(req);
+  const ids = requireIds(payload);
+  const state = loadRpChatState(chatId);
+  const changedCount = mutateSelectedMessages(state, ids, "active");
+  if (changedCount === 0) {
+    sendJson(res, 409, {
+      error: "No matching messages were changed. Refresh the page and try again."
+    });
+    return;
+  }
+  const backupPath = saveEditedRpChat(chatId, state, "delete-rp-telegram-messages");
+  sendJson(res, 200, {
+    ok: true,
+    action: "delete-rp-telegram-messages",
+    changedCount,
+    backupPath,
+    sessionIdReset: false
   });
 }
 
@@ -945,6 +1065,34 @@ async function handleExportTelegram(req, res, chatId) {
     note: "This is a merged Telegram bridge display export. It combines active context and old Telegram bridge session archives.",
     chat: summarizeTelegramWindow(chatId),
     messages
+  });
+}
+
+async function handleExportRpTelegram(req, res, chatId) {
+  const { messages, storageChatId } = loadRpTelegramWindow(chatId);
+  sendJson(res, 200, {
+    exportedAt: new Date().toISOString(),
+    note: "This is an isolated Telegram RP chat export.",
+    chat: summarizeRpTelegramWindow(storageChatId),
+    messages
+  });
+}
+
+async function handleRenameRpTelegram(req, res, chatId) {
+  const payload = await readBody(req);
+  const displayName = cleanString(payload.display_name ?? payload.displayName, 160);
+  if (!displayName) {
+    sendError(res, 400, "Display name is required.");
+    return;
+  }
+  const state = loadRpChatState(chatId);
+  state.title = displayName;
+  const backupPath = saveEditedRpChat(chatId, state, "rename-rp-telegram");
+  sendJson(res, 200, {
+    ok: true,
+    action: "rename-rp-telegram",
+    backupPath,
+    chat: summarizeRpTelegramWindow(storageChatIdFromRpChatId(chatId))
   });
 }
 
@@ -1225,7 +1373,7 @@ async function handleRpGenerationLogs(req, res, chatId) {
 function snapshotForChat(chatId) {
   assertSafeRpChatId(chatId);
   const preview = buildRpPrompt({ chatId, userInput: "" });
-  const { activeState, messages } = loadTelegramWindow(storageChatIdFromRpChatId(chatId));
+  const { activeState, messages } = loadRpTelegramWindow(chatId);
   const lorebooks = loadLorebooks().filter((item) => preview.binding.active_lorebook_ids.includes(item.id));
   const loreEntries = loadLoreEntries().filter((entry) => preview.binding.active_lorebook_ids.includes(entry.lorebook_id));
   return {
@@ -1297,7 +1445,7 @@ async function handleRpArchives(req, res, archiveId = "", restore = false) {
     sessionId: null,
     updatedAt: new Date().toISOString()
   });
-  writeJsonFile(getChatPath(newStorageId), restoredState);
+  writeJsonFile(getRpChatPath(newStorageId), restoredState);
   saveBinding({
     chat_id: newChatId,
     active_preset_id: archive.active_preset_snapshot ? archive.active_preset_snapshot.id : "",
@@ -1305,7 +1453,7 @@ async function handleRpArchives(req, res, archiveId = "", restore = false) {
     active_lorebook_ids: (archive.active_lorebooks_snapshot || []).map((item) => item.id),
     author_note: archive.author_note_snapshot || ""
   });
-  sendJson(res, 200, { ok: true, archiveId, newChatId, restoredChat: summarizeTelegramWindow(newStorageId) });
+  sendJson(res, 200, { ok: true, archiveId, newChatId, restoredChat: summarizeRpTelegramWindow(newStorageId) });
 }
 
 async function handleDeleteArchiveWindow(req, res, chatId, archiveId) {
@@ -1417,6 +1565,25 @@ function route(req, res) {
         }
         if (req.method === "POST" && parts[3] === "delete-messages") {
           await handleDeleteTelegramMessages(req, res, chatId);
+          return;
+        }
+      }
+      if (parts[0] === "api" && parts[1] === "telegram-rp" && parts[2]) {
+        const chatId = parts[2];
+        if (req.method === "GET" && parts.length === 3) {
+          await handleRpTelegramWindow(req, res, chatId);
+          return;
+        }
+        if (req.method === "GET" && parts[3] === "export") {
+          await handleExportRpTelegram(req, res, chatId);
+          return;
+        }
+        if (req.method === "POST" && parts[3] === "delete-messages") {
+          await handleDeleteRpTelegramMessages(req, res, chatId);
+          return;
+        }
+        if (req.method === "POST" && parts[3] === "rename") {
+          await handleRenameRpTelegram(req, res, chatId);
           return;
         }
       }

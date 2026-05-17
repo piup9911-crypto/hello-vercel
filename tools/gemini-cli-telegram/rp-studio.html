@@ -889,7 +889,13 @@
 
       async function loadChats() {
         const data = await api("/api/chats");
-        const ids = [...new Set((data.chats || []).map((chat) => rpChatId(chat.chatId)))];
+        const ids = [
+          ...new Set(
+            (data.chats || [])
+              .filter((chat) => chat.sourceGroup === "telegram_rp" || chat.kind === "telegram_rp")
+              .map((chat) => rpChatId(chat.chatId))
+          )
+        ];
         if (!ids.includes(state.chatId)) ids.unshift(state.chatId);
         $("chatList").replaceChildren();
         for (const id of ids) {
